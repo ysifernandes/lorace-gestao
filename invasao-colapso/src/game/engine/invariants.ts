@@ -71,6 +71,25 @@ export function validateState(state: GameState): string[] {
     }
   }
 
+  for (const [key, runtime] of Object.entries(state.abilityStates)) {
+    if (!state.players[runtime.playerId as string]) {
+      problems.push(`Habilidade ${key} pertence a jogador inexistente.`);
+    }
+    if (runtime.chargesRemaining < -1) {
+      problems.push(`Habilidade ${key} com cargas negativas (${runtime.chargesRemaining}).`);
+    }
+    if (runtime.usesThisTurn < 0) {
+      problems.push(`Habilidade ${key} com usos negativos no turno.`);
+    }
+  }
+
+  // A fila só pode conter o que ainda não foi resolvido.
+  for (const entry of state.effectQueue) {
+    if (entry.status !== 'PENDING') {
+      problems.push(`Efeito ${entry.id} já processado (${entry.status}) ainda está na fila.`);
+    }
+  }
+
   return problems;
 }
 

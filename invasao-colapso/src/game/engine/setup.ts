@@ -13,6 +13,9 @@ import { createSoldier } from '../soldiers/soldier';
 import { syncPlayerTerritories } from '../map/territory';
 import { reinforcementsFor } from '../turns/turnMachine';
 import { pushLog } from './log';
+import { seedAbilityStates } from '../abilities/abilityEngine';
+import { emitGameEvent } from '../events/gameEvents';
+import { turnStartedKey } from '../turns/turnMachine';
 
 export interface NewGameOptions {
   gameId?: string;
@@ -75,8 +78,13 @@ export function createGame(options: NewGameOptions = {}): GameState {
     pendingOccupation: null,
     pendingDistribution: null,
     animationQueue: [],
+    abilityStates: {},
+    effectQueue: [],
+    effectHistory: [],
+    abilityFeed: [],
+    emittedEventKeys: [],
     log: [],
-    counters: { soldier: 0, card: 0, event: 0, log: 0 },
+    counters: { soldier: 0, card: 0, event: 0, log: 0, effect: 0 },
   };
 
   // Guarnições iniciais, criadas pelo caminho oficial (registro único de soldados).
@@ -100,8 +108,15 @@ export function createGame(options: NewGameOptions = {}): GameState {
   }
 
   syncPlayerTerritories(state);
+  for (const seed of PLAYER_SEEDS) seedAbilityStates(state, seed.id);
   state.turn.pendingReinforcements = reinforcementsFor(state, state.turn.currentPlayerId);
   pushLog(state, 'INFO', 'Partida criada. O Colapso continua.');
+  // O primeiro turno também é um início de turno: habilidades passivas valem.
+  emitGameEvent(state, {
+    kind: 'TURN_STARTED',
+    payload: { playerId: state.turn.currentPlayerId },
+    dedupeKey: turnStartedKey(state.turn.number, state.turn.currentPlayerId),
+  });
   return state;
 }
 

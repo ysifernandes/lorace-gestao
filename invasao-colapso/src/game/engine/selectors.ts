@@ -5,6 +5,9 @@ import type { Territory } from '../types/territory.types';
 import type { Player } from '../types/player.types';
 import type { PlayerId, TerritoryId } from '../types/ids';
 import { getFaction } from '../factions/faction.registry';
+import type { AbilityDefinition, AbilityRuntimeState } from '../abilities/ability.types';
+import { abilitiesOfPlayer, checkAvailability } from '../abilities/abilityEngine';
+import { getCardDefinition } from '../cards/card.registry';
 
 /** Leituras derivadas do estado. A UI consome só daqui. */
 
@@ -74,4 +77,54 @@ export function capturableSoldiers(
 
 export function totalAliveSoldiers(state: GameState): number {
   return Object.values(state.soldiers).filter((s) => s.alive).length;
+}
+
+export interface AbilityView {
+  definition: AbilityDefinition;
+  runtime: AbilityRuntimeState;
+  /** Rótulo de estado para a interface. */
+  status: 'DISPONIVEL' | 'INDISPONIVEL' | 'ESGOTADA' | 'DESATIVADA';
+  reason?: string;
+  /** -1 = ilimitada. */
+  chargesRemaining: number;
+}
+
+/** Habilidades do jogador já com status pronto para exibição. */
+export function abilityViews(state: GameState, playerId: PlayerId): AbilityView[] {
+  return abilitiesOfPlayer(state, playerId).map(({ definition, runtime }) => {
+    const availability = checkAvailability(state, playerId, definition.id);
+    let status: AbilityView['status'] = 'DISPONIVEL';
+    if (!runtime.enabled) status = 'DESATIVADA';
+    else if (runtime.chargesRemaining === 0) status = 'ESGOTADA';
+    else if (!availability.available) status = 'INDISPONIVEL';
+    return {
+      definition,
+      runtime,
+      status,
+      reason: availability.available ? undefined : availability.reason,
+      chargesRemaining: runtime.chargesRemaining,
+    };
+  });
+}
+
+/** Cartas exclusivas da facção do jogador, com o que ele tem em mão. */
+export function signatureCards(state: GameState, playerId: PlayerId) {
+  const player = state.players[playerId as string];
+  if (!player) return [];
+  const faction = getFaction(player.factionId);
+  return faction.signatureCardIds.map((id) => {
+    const definition = getCardDefinition(id as never);
+    const owned = Object.values(state.cards).filter(
+      (card) => card.ownerId === playerId && (card.definitionId as string) === id,
+    );
+    return {
+      definition,
+      inHand: owned.filter((card) => card.state === 'IN_HAND').length,
+      consumed: owned.filter((card) => card.state === 'CONSUMED').length,
+    };
+  });
+}
+
+export function pendingEffects(state: GameState) {
+  return state.effectQueue.filter((entry) => entry.status === 'PENDING');
 }

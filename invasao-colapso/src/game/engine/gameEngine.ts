@@ -22,8 +22,21 @@ import { canUseCard, consumeCard, effectFor, getCardInstance } from '../cards/ca
 import { getCardDefinition } from '../cards/card.registry';
 import { applySequestro, validateSequestroSelection } from '../cards/effects/sequestro.effect';
 import { applyVacina } from '../cards/effects/vacina.effect';
-import { markAnimationPlayed } from '../events/animationEvents';
+import { emitAnimation, markAnimationPlayed } from '../events/animationEvents';
 import { reserveSoldiers } from './selectors';
+import { emitGameEvent } from '../events/gameEvents';
+import { turnStartedKey } from '../turns/turnMachine';
+import {
+  abilityKey,
+  buildContext,
+  checkAvailability,
+  consumeUsage,
+  getAbilityState,
+  initialAbilityState,
+} from '../abilities/abilityEngine';
+import { getAbility, tryGetAbility } from '../abilities/ability.registry';
+import { enqueueEffect, clearEffectQueue, resolveEffectQueue } from '../effects/effectQueue';
+import { EFFECT_PRIORITY } from '../effects/effect.types';
 
 export interface EngineOptions {
   rng?: Rng;
@@ -65,6 +78,7 @@ export function applyAction(
         return fail(state, 'Distribua as tropas capturadas antes de avançar a fase.');
       }
       const before = PHASE_LABELS[draft.turn.phase];
+      const previousPlayer = draft.turn.currentPlayerId;
       const { changedPlayer } = advancePhase(draft);
       const player = draft.players[draft.turn.currentPlayerId as string];
       pushLog(
@@ -74,6 +88,19 @@ export function applyAction(
           ? `Turno ${draft.turn.number}: vez de ${player?.name ?? '???'}.`
           : `${before} → ${PHASE_LABELS[draft.turn.phase]}.`,
       );
+      if (changedPlayer) {
+        emitGameEvent(draft, { kind: 'TURN_ENDED', payload: { playerId: previousPlayer } });
+        emitGameEvent(draft, {
+          kind: 'TURN_STARTED',
+          payload: { playerId: draft.turn.currentPlayerId },
+          dedupeKey: turnStartedKey(draft.turn.number, draft.turn.currentPlayerId),
+        });
+      } else {
+        emitGameEvent(draft, {
+          kind: 'PHASE_CHANGED',
+          payload: { playerId: draft.turn.currentPlayerId, phase: draft.turn.phase },
+        });
+      }
       return { ok: true, state: draft };
     }
 
@@ -88,9 +115,16 @@ export function applyAction(
       if (draft.pendingDistribution) {
         return fail(state, 'Distribua as tropas capturadas antes de encerrar o turno.');
       }
+      const previous = draft.turn.currentPlayerId;
       const { next } = endTurn(draft);
       const player = draft.players[next as string];
       pushLog(draft, 'ACTION', `Turno ${draft.turn.number}: vez de ${player?.name ?? '???'}.`);
+      emitGameEvent(draft, { kind: 'TURN_ENDED', payload: { playerId: previous } });
+      emitGameEvent(draft, {
+        kind: 'TURN_STARTED',
+        payload: { playerId: next },
+        dedupeKey: turnStartedKey(draft.turn.number, next),
+      });
       return { ok: true, state: draft };
     }
 
@@ -163,6 +197,15 @@ export function applyAction(
         draft.soldiers[soldier.id as string].status = 'MOVED';
       }
       pushLog(draft, 'ACTION', `${action.amount} soldado(s): ${from.name} → ${to.name}.`);
+      emitGameEvent(draft, {
+        kind: 'TROOPS_MOVED',
+        payload: {
+          playerId: draft.turn.currentPlayerId,
+          fromTerritoryId: from.id,
+          toTerritoryId: to.id,
+          amount: action.amount,
+        },
+      });
       return { ok: true, state: draft };
     }
 
@@ -211,6 +254,21 @@ export function applyAction(
         'COMBAT',
         `Ataque declarado: ${from.name} → ${to.name} com ${action.amount} soldado(s).`,
       );
+      emitGameEvent(draft, {
+        kind: 'BATTLE_STARTED',
+        payload: {
+          playerId: from.controllerId,
+          opponentId: to.controllerId,
+          fromTerritoryId: from.id,
+          toTerritoryId: to.id,
+          amount: action.amount,
+        },
+      });
+      // Janela em que o defensor pode reagir antes da resolução.
+      emitGameEvent(draft, {
+        kind: 'BEFORE_DEFENSE',
+        payload: { playerId: to.controllerId, opponentId: from.controllerId, territoryId: to.id },
+      });
       return { ok: true, state: draft };
     }
 
@@ -258,6 +316,14 @@ export function applyAction(
         to: attack.toTerritoryId,
       });
       attack.status = 'RESOLVED';
+      emitGameEvent(draft, {
+        kind: 'TERRITORY_CONQUERED',
+        payload: { playerId: attack.attackerPlayerId, territoryId: attack.toTerritoryId },
+      });
+      emitGameEvent(draft, {
+        kind: 'TERRITORY_LOST',
+        payload: { playerId: attack.defenderPlayerId, territoryId: attack.toTerritoryId },
+      });
       pushLog(
         draft,
         'COMBAT',
@@ -397,6 +463,15 @@ export function applyAction(
           'CARD',
           `Sequestro: ${result.capturedIds.length} soldado(s) capturado(s) e incorporado(s) à facção ${faction.name}.`,
         );
+        emitGameEvent(draft, {
+          kind: 'CARD_ACTIVATED',
+          payload: {
+            playerId: card.ownerId,
+            cardInstanceId: card.instanceId as string,
+            mode: action.mode,
+            amount: result.capturedIds.length,
+          },
+        });
         return { ok: true, state: draft, data: result };
       }
 
@@ -408,6 +483,22 @@ export function applyAction(
           'CARD',
           `Vacina / Contra-Ataque: dado ${result.diceValue} → ${result.eliminatedCount} atacante(s) eliminado(s).`,
         );
+        emitGameEvent(draft, {
+          kind: 'CARD_ACTIVATED',
+          payload: {
+            playerId: card.ownerId,
+            cardInstanceId: card.instanceId as string,
+            mode: action.mode,
+          },
+        });
+        emitGameEvent(draft, {
+          kind: 'DICE_ROLLED',
+          payload: { playerId: card.ownerId, diceValue: result.diceValue },
+        });
+        emitGameEvent(draft, {
+          kind: 'AFTER_DEFENSE',
+          payload: { playerId: card.ownerId, amount: result.eliminatedCount },
+        });
         // Sem atacantes vivos, o ataque deixa de existir e o mapa volta ao normal.
         if (draft.pendingAttack && draft.pendingAttack.status === 'CANCELLED') {
           const target = draft.territories[draft.pendingAttack.toTerritoryId as string];
@@ -472,6 +563,107 @@ export function applyAction(
       const instance = grantCard(draft, action.playerId, action.definitionId);
       const definition = getCardDefinition(instance.definitionId);
       pushLog(draft, 'CARD', `Carta recebida: ${definition.name}.`);
+      return { ok: true, state: draft };
+    }
+
+    case 'ACTIVATE_ABILITY': {
+      const draft = draftOf(state);
+      const ability = tryGetAbility(action.abilityId);
+      if (!ability) return fail(state, 'Habilidade desconhecida.');
+      if (ability.kind !== 'ACTIVE') {
+        return fail(state, 'Esta habilidade não é acionada manualmente.');
+      }
+      const playerId = draft.turn.currentPlayerId;
+      if (!getAbilityState(draft, playerId, ability.id)) {
+        return fail(state, 'Sua facção não possui esta habilidade.');
+      }
+
+      const availability = checkAvailability(draft, playerId, ability.id);
+      if (!availability.available) return fail(state, availability.reason);
+
+      const context = buildContext(draft, playerId, 'ABILITY_ACTIVATED', { playerId }, action.params);
+      const validation = ability.validateParams?.(context) ?? { ok: true as const };
+      if (!validation.ok) return fail(state, validation.error);
+
+      const effects = ability.produceEffects(context);
+      if (effects.length === 0) return fail(state, 'A habilidade não produziu nenhum efeito.');
+      for (const effect of effects) {
+        enqueueEffect(draft, {
+          effect,
+          source: { kind: 'ABILITY', id: ability.id, playerId, label: ability.name },
+          priority: EFFECT_PRIORITY.ABILITY,
+        });
+      }
+      const resolution = resolveEffectQueue(draft);
+      if (resolution.resolved.length === 0) {
+        // Nada foi aplicado: não consome carga nem registra uso.
+        const reason = resolution.failed[0]?.result ?? 'A habilidade não pôde ser aplicada.';
+        return fail(state, reason);
+      }
+
+      consumeUsage(draft, playerId, ability);
+      const detail = ability.feedback.detail?.(context) ?? '';
+      pushLog(draft, 'ABILITY', `${ability.feedback.title}${detail ? ` — ${detail}` : ''}`);
+      draft.abilityFeed.unshift({
+        abilityId: ability.id,
+        playerId,
+        title: ability.feedback.title,
+        detail,
+        turn: draft.turn.number,
+      });
+      if (draft.abilityFeed.length > 10) draft.abilityFeed.length = 10;
+
+      if (ability.animation) {
+        emitAnimation(draft, ability.animation, { abilityId: ability.id, detail });
+      }
+      emitGameEvent(draft, {
+        kind: 'ABILITY_ACTIVATED',
+        payload: { playerId, abilityId: ability.id },
+      });
+      const moved = effects.find((effect) => effect.kind === 'MOVE_TROOPS');
+      if (moved && moved.kind === 'MOVE_TROOPS') {
+        emitGameEvent(draft, {
+          kind: 'TROOPS_MOVED',
+          payload: {
+            playerId,
+            fromTerritoryId: moved.from,
+            toTerritoryId: moved.to,
+            amount: moved.amount,
+          },
+        });
+      }
+      return { ok: true, state: draft, data: { resolved: resolution.resolved.length } };
+    }
+
+    case 'DEV_SET_ABILITY_ENABLED': {
+      const draft = draftOf(state);
+      const runtime = draft.abilityStates[abilityKey(action.playerId, action.abilityId)];
+      if (!runtime) return fail(state, 'Habilidade não encontrada para este jogador.');
+      runtime.enabled = action.enabled;
+      const ability = tryGetAbility(action.abilityId);
+      pushLog(
+        draft,
+        'ABILITY',
+        `[DEV] ${ability?.name ?? action.abilityId}: ${action.enabled ? 'ativada' : 'desativada'}.`,
+      );
+      return { ok: true, state: draft };
+    }
+
+    case 'DEV_RESET_ABILITY': {
+      const draft = draftOf(state);
+      const key = abilityKey(action.playerId, action.abilityId);
+      if (!draft.abilityStates[key]) return fail(state, 'Habilidade não encontrada.');
+      const ability = getAbility(action.abilityId);
+      // Restaura cargas, recarga e limites por turno de uma vez.
+      draft.abilityStates[key] = initialAbilityState(action.playerId, ability);
+      pushLog(draft, 'ABILITY', `[DEV] ${ability.name}: cargas e recarga restauradas.`);
+      return { ok: true, state: draft };
+    }
+
+    case 'DEV_CLEAR_EFFECTS': {
+      const draft = draftOf(state);
+      const removed = clearEffectQueue(draft);
+      pushLog(draft, 'ACTION', `[DEV] Fila de efeitos limpa (${removed} pendente(s)).`);
       return { ok: true, state: draft };
     }
 

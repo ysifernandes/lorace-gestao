@@ -76,14 +76,30 @@ src/
   ser substituída sem reescrever a carta.
 - **Persistência é um adaptador.** Hoje `localStorage`; trocar por backend é
   implementar `StorageAdapter`.
+- **Habilidade ≠ carta.** Carta é objeto que se consome; habilidade pertence à
+  facção e tem cargas, recarga e limite por turno.
+- **Nada de número mágico.** Tudo que define equilíbrio mora em
+  `game/config/balance.ts`.
+- **Eventos, não `if`.** As regras anunciam o que aconteceu (`TURN_STARTED`,
+  `BEFORE_DEFENSE`, `TERRITORY_CONQUERED`…); habilidades se inscrevem. Os efeitos
+  entram numa fila com prioridade, então uma carta nova não quebra o combate.
 
 ---
 
 ## Facções
 
-Começamos com **Humanos** (logística de resgate e medicina de guerra). O adversário
-`Insurgentes` existe apenas para validar o sistema — identidade própria vem depois.
-Adicionar uma facção = adicionar um objeto em `game/factions/`.
+**Humanos** é a facção oficial: *Adaptação · Tecnologia · Controle Tático*.
+
+| Habilidade | Tipo | O que faz |
+| --- | --- | --- |
+| Sobrevivência | Passiva | Começando o turno com poucos territórios, recebe reforço extra |
+| Operação Aérea | Ativa | Transporta tropas entre territórios seus, mesmo sem fronteira |
+
+Ambas são **provisórias** e configuráveis em `game/config/balance.ts`.
+
+`Insurgentes` e os slots `FACTION_02..05` existem só para validar o sistema —
+identidade, lore, comandantes e poderes aguardam definição. Adicionar uma facção
+é registrar um objeto em `game/factions/`; o motor não muda.
 
 ## Cartas
 

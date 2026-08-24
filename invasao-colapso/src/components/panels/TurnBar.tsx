@@ -19,7 +19,7 @@ export function TurnBar({ state, onAdvancePhase, onEndTurn, blocked }: TurnBarPr
     <header className="turnbar">
       <div className="turnbar__identity">
         <h1 className="turnbar__title">{GAME_TITLE}</h1>
-        <p className="turnbar__sub">Etapa 2 — Mapa, Conquista e Movimentação</p>
+        <p className="turnbar__sub">Etapa 4 — Facções, Habilidades e Identidade</p>
       </div>
 
       <div className="turnbar__status">

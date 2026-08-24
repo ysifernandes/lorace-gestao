@@ -3,13 +3,14 @@ import type { CardDefinition } from '../types/card.types';
 import { HUMANOS_ID } from '../factions/humanos';
 import { SEQUESTRO_ANIMATION } from './animations/sequestro.animation';
 import { VACINA_ANIMATION } from './animations/vacina.animation';
+import { BALANCE } from '../config/balance';
 
 export const SEQUESTRO_CARD_ID = cardDefinitionId('card.sequestro');
 
-/** Máximo de soldados extraídos por um Sequestro. */
-export const SEQUESTRO_MAX_TARGETS = 7;
-/** Faces do dado da Vacina / Contra-Ataque. */
-export const VACINA_DICE_SIDES = 6;
+/** Máximo de soldados extraídos por um Sequestro. Valor em `BALANCE`. */
+export const SEQUESTRO_MAX_TARGETS = BALANCE.cards.sequestro.maxTargets;
+/** Faces do dado da Vacina / Contra-Ataque. Valor em `BALANCE`. */
+export const VACINA_DICE_SIDES = BALANCE.cards.vacina.diceSides;
 
 export const SEQUESTRO_CARD: CardDefinition = {
   id: SEQUESTRO_CARD_ID,
@@ -19,7 +20,7 @@ export const SEQUESTRO_CARD: CardDefinition = {
   description:
     'Operação de extração aérea humana. Pode ser usada para capturar tropas inimigas ' +
     'ou, defensivamente, como contramedida biológica. Um uso consome a carta.',
-  maxUses: 1,
+  maxUses: BALANCE.cards.sequestro.maxUses,
   // Sem condição de "jogador do turno" no nível da carta: o uso defensivo
   // acontece justamente no turno do adversário. Cada efeito declara as suas.
   conditions: [],

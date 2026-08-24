@@ -28,7 +28,13 @@ export type GameAction =
   | { type: 'PLAY_CARD'; cardInstanceId: CardInstanceId; mode: CardMode; targetSoldierIds?: SoldierId[] }
   | { type: 'DISTRIBUTE_RESERVES'; assignments: { territoryId: TerritoryId; amount: number }[] }
   | { type: 'GRANT_CARD'; playerId: PlayerId; definitionId: CardDefinitionId }
-  | { type: 'ACK_ANIMATION'; eventId: string };
+  | { type: 'ACK_ANIMATION'; eventId: string }
+  /** Aciona uma habilidade ATIVA da facção (ex.: Operação Aérea). */
+  | { type: 'ACTIVATE_ABILITY'; abilityId: string; params?: Record<string, unknown> }
+  // --- DEV: depuração de habilidades e efeitos ---
+  | { type: 'DEV_SET_ABILITY_ENABLED'; abilityId: string; playerId: PlayerId; enabled: boolean }
+  | { type: 'DEV_RESET_ABILITY'; abilityId: string; playerId: PlayerId }
+  | { type: 'DEV_CLEAR_EFFECTS' };
 
 export type ActionResult =
   | { ok: true; state: import('../types/game.types').GameState; info?: string; data?: unknown }

@@ -5,6 +5,9 @@ import type { Soldier } from './soldier.types';
 import type { Territory } from './territory.types';
 import type { TurnState } from './turn.types';
 import type { AnimationEvent } from './animation.types';
+import type { AbilityRuntimeState } from '../abilities/ability.types';
+import type { QueuedEffect } from '../effects/effect.types';
+import type { AbilityTriggerRecord } from '../events/gameEvents';
 
 /** Ataque declarado e ainda não resolvido — janela para cartas defensivas. */
 export interface PendingAttack {
@@ -44,10 +47,10 @@ export interface GameLogEntry {
   id: string;
   turn: number;
   message: string;
-  level: 'INFO' | 'ACTION' | 'COMBAT' | 'CARD' | 'ERROR';
+  level: 'INFO' | 'ACTION' | 'COMBAT' | 'CARD' | 'ABILITY' | 'ERROR';
 }
 
-export const GAME_STATE_VERSION = 1;
+export const GAME_STATE_VERSION = 2;
 
 export interface GameState {
   version: number;
@@ -64,9 +67,19 @@ export interface GameState {
   pendingOccupation: PendingOccupation | null;
   pendingDistribution: PendingDistribution | null;
   animationQueue: AnimationEvent[];
+  /** Estado das habilidades por jogador (chave `playerId::abilityId`). */
+  abilityStates: Record<string, AbilityRuntimeState>;
+  /** Efeitos aguardando resolução, em ordem de prioridade. */
+  effectQueue: QueuedEffect[];
+  /** Efeitos já processados — só para depuração no painel DEV. */
+  effectHistory: QueuedEffect[];
+  /** Últimas habilidades acionadas, para o retorno visual ao jogador. */
+  abilityFeed: AbilityTriggerRecord[];
+  /** Chaves de eventos já emitidos: impede disparo duplicado. */
+  emittedEventKeys: string[];
   log: GameLogEntry[];
   /** Contadores para geração de ids determinística. */
-  counters: { soldier: number; card: number; event: number; log: number };
+  counters: { soldier: number; card: number; event: number; log: number; effect: number };
 }
 
 export type CardUseIntent = { cardInstanceId: CardInstanceId; mode: CardMode };

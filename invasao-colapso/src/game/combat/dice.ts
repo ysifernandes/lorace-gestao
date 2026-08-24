@@ -1,5 +1,6 @@
 import type { Rng } from '../rng/rng';
 import { defaultRng } from '../rng/rng';
+import { BALANCE } from '../config/balance';
 
 export interface DiceRoll {
   sides: number;
@@ -7,8 +8,8 @@ export interface DiceRoll {
 }
 
 /** Rola um dado de `sides` faces. Resultado sempre inteiro em [1, sides]. */
-export function rollDie(sides = 6, rng: Rng = defaultRng): DiceRoll {
-  if (!Number.isInteger(sides) || sides < 2) {
+export function rollDie(sides = BALANCE.dice.defaultSides, rng: Rng = defaultRng): DiceRoll {
+  if (!Number.isInteger(sides) || sides < 2 || sides > BALANCE.dice.maxSides) {
     throw new Error(`Número de faces inválido: ${sides}`);
   }
   const raw = rng.next();

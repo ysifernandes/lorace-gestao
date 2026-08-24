@@ -1,6 +1,8 @@
 import type { GameState } from '../types/game.types';
 import type { PlayerId } from '../types/ids';
 import { isLastPhase, nextPhase } from './phases';
+import { BALANCE } from '../config/balance';
+import { resetTurnCounters } from '../abilities/abilityEngine';
 
 /**
  * Máquina de estados do turno. Pura: recebe o rascunho do estado e o avança.
@@ -22,10 +24,16 @@ export function peekNextPlayerId(state: GameState): PlayerId {
   return state.turn.currentPlayerId;
 }
 
-/** Reforços concedidos no início do turno (regra provisória da Etapa 1). */
+/** Chave de idempotência do início de turno: um turno começa uma vez só. */
+export function turnStartedKey(turnNumber: number, player: PlayerId): string {
+  return `TURN_STARTED:${turnNumber}:${player}`;
+}
+
+/** Reforços base do turno. Valores em `BALANCE.reinforcements` (provisórios). */
 export function reinforcementsFor(state: GameState, player: PlayerId): number {
   const owned = Object.values(state.territories).filter((t) => t.controllerId === player).length;
-  return Math.max(3, Math.floor(owned / 2));
+  const { minimum, territoriesPerExtraTroop } = BALANCE.reinforcements;
+  return Math.max(minimum, Math.floor(owned / territoriesPerExtraTroop));
 }
 
 function startTurnFor(draft: GameState, player: PlayerId): void {
@@ -33,6 +41,8 @@ function startTurnFor(draft: GameState, player: PlayerId): void {
   draft.turn.currentIndex = draft.turn.order.indexOf(player);
   draft.turn.phase = 'INICIO';
   draft.turn.pendingReinforcements = reinforcementsFor(draft, player);
+  // Limites "por turno" das habilidades valem para a vez que está começando.
+  resetTurnCounters(draft, player);
   for (const soldier of Object.values(draft.soldiers)) {
     if (soldier.alive && soldier.ownerId === player && soldier.status === 'MOVED') {
       soldier.status = 'READY';

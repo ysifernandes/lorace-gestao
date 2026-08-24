@@ -17,6 +17,10 @@ import { DefensePrompt } from '../components/panels/DefensePrompt';
 import { LogPanel } from '../components/panels/LogPanel';
 import { AnimationStage } from '../components/panels/AnimationStage';
 import { DevPanel } from '../dev/DevPanel';
+import { FactionPanel } from '../components/faction/FactionPanel';
+import { OperacaoAereaModal } from '../components/panels/OperacaoAereaModal';
+import { AbilityFeed } from '../components/panels/AbilityFeed';
+import { OPERACAO_AEREA_ID } from '../game/abilities/humanos/operacaoAerea';
 import { maxMovableFrom, validAttackTargets, validMoveTargets } from '../game/map/adjacency';
 import { capturableSoldiers } from '../game/engine/selectors';
 
@@ -30,6 +34,7 @@ export function GamePage() {
     from: Territory;
     to: Territory;
   } | null>(null);
+  const [airliftOpen, setAirliftOpen] = useState(false);
 
   const currentPlayerId = state.turn.currentPlayerId;
   const selectedTerritory = selected ? state.territories[selected as string] : null;
@@ -216,6 +221,18 @@ export function GamePage() {
             onOpenCard={setOpenCard}
           />
 
+          <FactionPanel
+            state={state}
+            playerId={currentPlayerId}
+            onActivate={(abilityId) => {
+              if (abilityId === OPERACAO_AEREA_ID) {
+                setAirliftOpen(true);
+                return;
+              }
+              dispatch({ type: 'ACTIVATE_ABILITY', abilityId });
+            }}
+          />
+
           <LogPanel state={state} />
 
           <p className="save-note">
@@ -282,6 +299,23 @@ export function GamePage() {
           onConfirm={(assignments) => dispatch({ type: 'DISTRIBUTE_RESERVES', assignments })}
         />
       )}
+
+      {airliftOpen && (
+        <OperacaoAereaModal
+          state={state}
+          onClose={() => setAirliftOpen(false)}
+          onConfirm={(params) => {
+            const ok = dispatch({
+              type: 'ACTIVATE_ABILITY',
+              abilityId: OPERACAO_AEREA_ID,
+              params,
+            });
+            if (ok) setAirliftOpen(false);
+          }}
+        />
+      )}
+
+      <AbilityFeed state={state} />
 
       <AnimationStage
         state={state}
