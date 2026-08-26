@@ -18,7 +18,7 @@ import { SEQUESTRO_CARD_ID } from '../cards/sequestro.card';
 import { canUseCard } from '../cards/cardRules';
 import { GameRepository } from '../persistence/gameRepository';
 import { MemoryStorageAdapter } from '../persistence/storage';
-import { reserveSoldiers } from '../engine/selectors';
+import { handOf, reserveSoldiers } from '../engine/selectors';
 import type { SoldierId, TerritoryId } from '../types/ids';
 import type { GameState } from '../types/game.types';
 import { HUMANOS_ID } from '../factions/humanos';
@@ -60,7 +60,9 @@ describe('ETAPA 1 — Fundação', () => {
     expect(state.turn.currentPlayerId).toBe(PLAYER_IDS.p1);
     // 6 territórios por jogador x 3 soldados iniciais
     expect(aliveCount(state)).toBe(36);
-    expect(state.players[PLAYER_IDS.p1 as string].handCardIds).toHaveLength(1);
+    // A mão inicial traz o Sequestro (oficial) + cartas de teste do protótipo.
+    const hand = handOf(state, PLAYER_IDS.p1);
+    expect(hand.some((card) => card.definitionId === SEQUESTRO_CARD_ID)).toBe(true);
   });
 
   it('TESTE 02 — alterna jogador e mantém a ordem de turno', () => {
@@ -383,7 +385,8 @@ describe('ETAPA 1 — Fundação', () => {
     expect(fresh.turn.number).toBe(1);
     expect(fresh.turn.phase).toBe('INICIO');
     expect(aliveCount(fresh)).toBe(36);
-    expect(fresh.players[PLAYER_IDS.p1 as string].handCardIds).toHaveLength(1);
+    expect(handOf(fresh, PLAYER_IDS.p1).some((c) => c.definitionId === SEQUESTRO_CARD_ID))
+      .toBe(true);
 
     repository.clear();
     expect(repository.load()).toBeNull();

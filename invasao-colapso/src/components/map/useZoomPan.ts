@@ -16,7 +16,9 @@ const MAX_SCALE = 3;
  */
 function initialViewport(): Viewport {
   const narrow = typeof window !== 'undefined' && window.innerWidth < 720;
-  return { scale: narrow ? 1.9 : 1, x: 0, y: 0 };
+  // Em tela estreita o mapa inteiro caberia, mas com rótulos ilegíveis.
+  // Começamos parcialmente aproximados; pan e pinça cobrem o resto.
+  return { scale: narrow ? 1.85 : 1, x: 0, y: 0 };
 }
 
 function clampScale(value: number) {

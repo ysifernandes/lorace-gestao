@@ -56,6 +56,7 @@ src/
     persistence/        adaptadores de armazenamento (localStorage / memória)
     rng/                gerador aleatório injetável (testes determinísticos)
   data/                 conteúdo substituível: mapa, jogadores, cartas iniciais, lore
+                        (`boardArt.ts` guarda a geometria das regiões do tabuleiro)
   app/, hooks/          ligação React ↔ motor
   components/           mapa, painéis, modais e primitivos de UI
   pages/                tela do jogo
@@ -112,3 +113,22 @@ identidade, lore, comandantes e poderes aguardam definição. Adicionar uma fac�
   número de soldados atacantes (nunca mais do que existem).
 
 Os dois efeitos nunca podem ser usados com a mesma carta.
+
+---
+
+## Protótipo visual (Etapa 6A)
+
+A tela de partida é o jogo em si: tabuleiro com 12 regiões irregulares em SVG,
+marcadores de exército, HUD de comando com trilha de fases, painel de forças,
+ficha tática do território, mão de cartas, deck/descarte e prévia de batalha.
+
+O que ainda é **mock**, claramente marcado em `src/mocks/prototype.mocks.ts`:
+
+| Mock | Vira real em |
+| --- | --- |
+| Contagem de deck e descarte | Etapa 5 (sistema de cartas) |
+| Faces dos dados na prévia de batalha | Etapa 3 (combate e dados) |
+
+As **cartas de teste** (`src/game/cards/teste.cards.ts`) existem só para a mão ter
+volume visual — não são oficiais e não têm efeito; a interface as marca como
+"Sem efeito" em vez de fingir uma regra.

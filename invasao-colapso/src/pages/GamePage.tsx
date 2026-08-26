@@ -4,41 +4,43 @@ import type { Territory } from '../game/types/territory.types';
 import type { SoldierId, TerritoryId } from '../game/types/ids';
 import { useGame } from '../hooks/useGame';
 import { useMapInteraction } from '../hooks/useMapInteraction';
-import { MapView } from '../components/map/MapView';
-import { TurnBar } from '../components/panels/TurnBar';
-import { TerritoryPanel } from '../components/panels/TerritoryPanel';
-import { HandPanel } from '../components/panels/HandPanel';
-import { CardModal } from '../components/panels/CardModal';
+import { Board } from '../components/board/Board';
+import { TopHud } from '../components/hud/TopHud';
+import { PlayersPanel } from '../components/hud/PlayersPanel';
+import { TerritorySheet } from '../components/hud/TerritorySheet';
+import { BattlePanel } from '../components/hud/BattlePanel';
+import { DeckZone } from '../components/hud/DeckZone';
+import { GameCard } from '../components/cards/GameCard';
+import { CardPreview } from '../components/cards/CardPreview';
 import { SequestroModal } from '../components/panels/SequestroModal';
 import { DistributionModal } from '../components/panels/DistributionModal';
 import { OccupationModal } from '../components/panels/OccupationModal';
 import { TroopTransferModal } from '../components/panels/TroopTransferModal';
+import { OperacaoAereaModal } from '../components/panels/OperacaoAereaModal';
 import { DefensePrompt } from '../components/panels/DefensePrompt';
 import { LogPanel } from '../components/panels/LogPanel';
 import { AnimationStage } from '../components/panels/AnimationStage';
-import { DevPanel } from '../dev/DevPanel';
-import { FactionPanel } from '../components/faction/FactionPanel';
-import { OperacaoAereaModal } from '../components/panels/OperacaoAereaModal';
 import { AbilityFeed } from '../components/panels/AbilityFeed';
+import { FactionPanel } from '../components/faction/FactionPanel';
+import { DevPanel } from '../dev/DevPanel';
+import { maxMovableFrom, neighborsOf, validAttackTargets, validMoveTargets } from '../game/map/adjacency';
+import { capturableSoldiers, handOf } from '../game/engine/selectors';
 import { OPERACAO_AEREA_ID } from '../game/abilities/humanos/operacaoAerea';
-import { maxMovableFrom, validAttackTargets, validMoveTargets } from '../game/map/adjacency';
-import { capturableSoldiers } from '../game/engine/selectors';
 
 export function GamePage() {
   const { state, dispatch, error, notice, saveAvailable } = useGame();
   const { selected, setSelected, mode, setMode, reset } = useMapInteraction();
   const [openCard, setOpenCard] = useState<CardInstance | null>(null);
   const [sequestroCard, setSequestroCard] = useState<CardInstance | null>(null);
-  const [transfer, setTransfer] = useState<{
-    kind: 'MOVE' | 'ATTACK';
-    from: Territory;
-    to: Territory;
-  } | null>(null);
+  const [transfer, setTransfer] = useState<{ from: Territory; to: Territory } | null>(null);
+  const [battle, setBattle] = useState<{ from: Territory; to: Territory; amount: number } | null>(null);
   const [airliftOpen, setAirliftOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
 
   const currentPlayerId = state.turn.currentPlayerId;
   const selectedTerritory = selected ? state.territories[selected as string] : null;
   const blocked = !!state.pendingOccupation || !!state.pendingDistribution;
+  const hand = handOf(state, currentPlayerId);
 
   const moveTargets = useMemo<TerritoryId[]>(
     () => (mode.kind === 'MOVE' ? validMoveTargets(state, mode.from).map((t) => t.id) : []),
@@ -55,31 +57,28 @@ export function GamePage() {
         : [],
     [mode, state, currentPlayerId],
   );
+  const neighborIds = useMemo<TerritoryId[]>(
+    () => (selected && mode.kind === 'IDLE' ? neighborsOf(state, selected).map((t) => t.id) : []),
+    [selected, mode, state],
+  );
 
   const handleSelect = useCallback(
     (territory: Territory) => {
       if (mode.kind === 'MOVE' && territory.id !== mode.from) {
         if (validMoveTargets(state, mode.from).some((t) => t.id === territory.id)) {
-          setTransfer({
-            kind: 'MOVE',
-            from: state.territories[mode.from as string],
-            to: territory,
-          });
+          setTransfer({ from: state.territories[mode.from as string], to: territory });
           return;
         }
       }
       if (mode.kind === 'ATTACK' && territory.id !== mode.from) {
         if (validAttackTargets(state, mode.from).some((t) => t.id === territory.id)) {
-          setTransfer({
-            kind: 'ATTACK',
-            from: state.territories[mode.from as string],
-            to: territory,
-          });
+          setBattle({ from: state.territories[mode.from as string], to: territory, amount: 1 });
           return;
         }
       }
       setMode({ kind: 'IDLE' });
       setSelected(territory.id);
+      setSideOpen(true);
     },
     [mode, state, setMode, setSelected],
   );
@@ -108,19 +107,6 @@ export function GamePage() {
     }
   }
 
-  function confirmTransfer(amount: number) {
-    if (!transfer) return;
-    const ok = dispatch(
-      transfer.kind === 'MOVE'
-        ? { type: 'MOVE_SOLDIERS', from: transfer.from.id, to: transfer.to.id, amount }
-        : { type: 'DECLARE_ATTACK', from: transfer.from.id, to: transfer.to.id, amount },
-    );
-    if (ok) {
-      setTransfer(null);
-      reset();
-    }
-  }
-
   const canMove =
     !!selectedTerritory &&
     selectedTerritory.controllerId === currentPlayerId &&
@@ -138,20 +124,29 @@ export function GamePage() {
 
   function hintFor(territory: Territory): string | undefined {
     if (territory.controllerId !== currentPlayerId) {
-      return 'Território inimigo: selecione um território seu para agir.';
+      return 'Território hostil: selecione um setor sob seu comando para agir.';
     }
     if (state.turn.phase !== 'MOVIMENTACAO' && state.turn.phase !== 'COMBATE') {
       return 'Mover exige a fase de Movimentação; atacar exige a fase de Combate.';
     }
     if (maxMovableFrom(state, territory.id) === 0) {
-      return 'Sem tropas disponíveis: ao menos 1 soldado precisa ficar no território.';
+      return 'Sem tropas disponíveis: ao menos 1 soldado permanece no setor.';
     }
     return undefined;
   }
 
+  const modeMessage =
+    mode.kind === 'MOVE'
+      ? 'Selecione um setor aliado com fronteira para deslocar tropas.'
+      : mode.kind === 'ATTACK'
+        ? 'Selecione um setor hostil com fronteira para atacar.'
+        : mode.kind === 'SEQUESTRO'
+          ? 'Sequestro: escolha um setor hostil no mapa.'
+          : null;
+
   return (
     <div className="game">
-      <TurnBar
+      <TopHud
         state={state}
         blocked={blocked}
         onAdvancePhase={() => {
@@ -164,11 +159,10 @@ export function GamePage() {
         }}
       />
 
-      {mode.kind !== 'IDLE' && (
+      {modeMessage && (
         <div className="mode-banner" role="status">
-          {mode.kind === 'MOVE' && 'Selecione um território aliado adjacente para mover.'}
-          {mode.kind === 'ATTACK' && 'Selecione um território inimigo adjacente para atacar.'}
-          {mode.kind === 'SEQUESTRO' && 'Sequestro: escolha um território inimigo no mapa.'}
+          <span className="mode-banner__pulse" aria-hidden="true" />
+          {modeMessage}
           <button type="button" className="btn btn--small" onClick={reset}>
             Cancelar
           </button>
@@ -176,16 +170,29 @@ export function GamePage() {
       )}
 
       <main className="game__body">
-        <MapView
-          state={state}
-          selectedId={selected}
-          moveTargets={moveTargets}
-          attackTargets={attackTargets}
-          captureTargets={captureTargets}
-          onSelect={handleSelect}
-        />
+        <section className="game__board-area">
+          <Board
+            state={state}
+            selectedId={selected}
+            moveTargets={moveTargets}
+            attackTargets={attackTargets}
+            captureTargets={captureTargets}
+            neighborIds={neighborIds}
+            onSelect={handleSelect}
+          />
+          <PlayersPanel state={state} />
+        </section>
 
-        <aside className="game__side">
+        <aside className={`game__side${sideOpen ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className="game__side-close btn btn--icon"
+            onClick={() => setSideOpen(false)}
+            aria-label="Fechar painel"
+          >
+            ✕
+          </button>
+
           <DefensePrompt
             state={state}
             onUseDefensiveCard={(card) =>
@@ -196,30 +203,30 @@ export function GamePage() {
           />
 
           {selectedTerritory ? (
-            <TerritoryPanel
+            <TerritorySheet
               state={state}
               territory={selectedTerritory}
               canMove={canMove}
               canAttack={canAttack}
               hint={hintFor(selectedTerritory)}
-              onMove={() => setMode({ kind: 'MOVE', from: selectedTerritory.id })}
-              onAttack={() => setMode({ kind: 'ATTACK', from: selectedTerritory.id })}
-              onCancel={reset}
+              onMove={() => {
+                setMode({ kind: 'MOVE', from: selectedTerritory.id });
+                setSideOpen(false);
+              }}
+              onAttack={() => {
+                setMode({ kind: 'ATTACK', from: selectedTerritory.id });
+                setSideOpen(false);
+              }}
+              onCancel={() => {
+                reset();
+                setSideOpen(false);
+              }}
             />
           ) : (
-            <section className="panel">
-              <p className="panel__empty">
-                Toque em um território do mapa para ver detalhes e ações.
-              </p>
+            <section className="panel panel--empty">
+              <p className="panel__empty">Toque em um setor do mapa para abrir a ficha tática.</p>
             </section>
           )}
-
-          <HandPanel
-            state={state}
-            playerId={currentPlayerId}
-            title="Minha mão"
-            onOpenCard={setOpenCard}
-          />
 
           <FactionPanel
             state={state}
@@ -243,6 +250,29 @@ export function GamePage() {
         </aside>
       </main>
 
+      <footer className="hand-bar">
+        <DeckZone />
+        <ul className="hand">
+          {hand.map((card, index) => (
+            <GameCard
+              key={card.instanceId as string}
+              state={state}
+              card={card}
+              index={index}
+              onOpen={setOpenCard}
+            />
+          ))}
+          {hand.length === 0 && <li className="hand__empty">Nenhuma carta na mão.</li>}
+        </ul>
+        <button
+          type="button"
+          className="hand-bar__toggle btn btn--ghost"
+          onClick={() => setSideOpen((open) => !open)}
+        >
+          Painel
+        </button>
+      </footer>
+
       {error && (
         <div className="toast toast--error" role="alert">
           {error}
@@ -255,10 +285,10 @@ export function GamePage() {
       )}
 
       {openCard && (
-        <CardModal
+        <CardPreview
           state={state}
           card={openCard}
-          onChoose={(cardMode) => chooseCardMode(openCard, cardMode)}
+          onUse={(cardMode) => chooseCardMode(openCard, cardMode)}
           onClose={() => setOpenCard(null)}
         />
       )}
@@ -277,12 +307,59 @@ export function GamePage() {
 
       {transfer && (
         <TroopTransferModal
-          kind={transfer.kind}
+          kind="MOVE"
           from={state.territories[transfer.from.id as string]}
           to={state.territories[transfer.to.id as string]}
           max={maxMovableFrom(state, transfer.from.id)}
-          onConfirm={confirmTransfer}
+          onConfirm={(amount) => {
+            const ok = dispatch({
+              type: 'MOVE_SOLDIERS',
+              from: transfer.from.id,
+              to: transfer.to.id,
+              amount,
+            });
+            if (ok) {
+              setTransfer(null);
+              reset();
+            }
+          }}
           onClose={() => setTransfer(null)}
+        />
+      )}
+
+      {battle && (
+        <BattlePanel
+          state={state}
+          from={state.territories[battle.from.id as string]}
+          to={state.territories[battle.to.id as string]}
+          amount={battle.amount}
+          max={maxMovableFrom(state, battle.from.id)}
+          onAmountChange={(amount) => setBattle({ ...battle, amount })}
+          onAttack={() => {
+            const ok = dispatch({
+              type: 'DECLARE_ATTACK',
+              from: battle.from.id,
+              to: battle.to.id,
+              amount: battle.amount,
+            });
+            if (ok) {
+              setBattle(null);
+              reset();
+              setSideOpen(true);
+            }
+          }}
+          onRetreat={() => setBattle(null)}
+        />
+      )}
+
+      {airliftOpen && (
+        <OperacaoAereaModal
+          state={state}
+          onClose={() => setAirliftOpen(false)}
+          onConfirm={(params) => {
+            const ok = dispatch({ type: 'ACTIVATE_ABILITY', abilityId: OPERACAO_AEREA_ID, params });
+            if (ok) setAirliftOpen(false);
+          }}
         />
       )}
 
@@ -297,21 +374,6 @@ export function GamePage() {
         <DistributionModal
           state={state}
           onConfirm={(assignments) => dispatch({ type: 'DISTRIBUTE_RESERVES', assignments })}
-        />
-      )}
-
-      {airliftOpen && (
-        <OperacaoAereaModal
-          state={state}
-          onClose={() => setAirliftOpen(false)}
-          onConfirm={(params) => {
-            const ok = dispatch({
-              type: 'ACTIVATE_ABILITY',
-              abilityId: OPERACAO_AEREA_ID,
-              params,
-            });
-            if (ok) setAirliftOpen(false);
-          }}
         />
       )}
 

@@ -20,14 +20,18 @@ const errors = [];
 
 /** Avança fases até `phase`, garantindo que ainda é o turno de `player`. */
 async function advanceTo(p, phase, player) {
+  // innerText vem em caixa alta por causa do CSS: comparar normalizado.
+  const norm = (v) => v.trim().toLowerCase();
   for (let i = 0; i < 8; i += 1) {
     const active = await p.locator('.phases__item.is-active').innerText();
-    if (active === phase) break;
+    if (norm(active) === norm(phase)) break;
     await p.getByRole('button', { name: 'Avançar fase' }).click();
     await p.waitForTimeout(70);
   }
   const who = await p.locator('.stat--player .stat__value').innerText();
-  if (player && who !== player) throw new Error(`Esperado turno de ${player}, mas é de ${who}.`);
+  if (player && norm(who) !== norm(player)) {
+    throw new Error(`Esperado turno de ${player}, mas é de ${who}.`);
+  }
 }
 
 /** Passa pela tela "Escolha seu exército" e entra na partida. */
@@ -79,10 +83,47 @@ check('UI-43 selecionar Humanos inicia a partida',
 const nodes = await page.locator('.territory-node').count();
 check('UI-01 mapa carrega com os 12 territórios', nodes === 12, `encontrados: ${nodes}`);
 
+// --- Etapa 6A: o protótipo precisa ser VISÍVEL ---
+check('UI-62 territórios são regiões irregulares, não retângulos', await page.evaluate(() => {
+  const shapes = [...document.querySelectorAll('.territory-node__fill')];
+  if (shapes.length !== 12) return false;
+  // Um retângulo teria 5 vértices no path; regiões irregulares têm muito mais.
+  return shapes.every((s) => (s.getAttribute('d').match(/L /g) || []).length >= 8);
+}));
+// <text> em SVG não é HTMLElement: ler por textContent.
+const tokenCounts = await page.evaluate(() =>
+  [...document.querySelectorAll('.army-token__count')].map((n) => n.textContent));
+check('UI-63 tropas aparecem em marcador no centro de cada território',
+  tokenCounts.length === 12 && tokenCounts.every((v) => v === '3'),
+  tokenCounts.join(','));
+check('UI-64 facções são visualmente distinguíveis no mapa', await page.evaluate(() => {
+  const own = document.querySelector('.territory-node.is-own .territory-node__fill');
+  const enemy = document.querySelector('.territory-node.is-enemy .territory-node__fill');
+  const ownTexture = document.querySelector('.territory-node.is-own .territory-node__texture');
+  const enemyTexture = document.querySelector('.territory-node.is-enemy .territory-node__texture');
+  return (
+    own && enemy &&
+    own.style.fill !== enemy.style.fill &&
+    ownTexture.getAttribute('fill') !== enemyTexture.getAttribute('fill')
+  );
+}));
+check('UI-65 painel de forças mostra os dois exércitos',
+  (await page.locator('.force').count()) === 2 &&
+    /\?/.test(await page.locator('.force').last().innerText()),
+  'cartas do adversário permanecem ocultas');
+check('UI-66 mão de cartas aparece com o Sequestro',
+  (await page.locator('.game-card').count()) === 4 &&
+    (await page.locator('.game-card', { hasText: 'Sequestro' }).count()) === 1);
+check('UI-67 deck e descarte aparecem com contagem',
+  (await page.locator('.deck-zone__pile').count()) === 2 &&
+    /\d/.test(await page.locator('.deck-zone').innerText()));
+check('UI-68 trilha de fases destaca a fase atual',
+  (await page.locator('.phase-track__item.is-active').count()) === 1);
+
 const header = await page.locator('.turnbar__status').innerText();
 check(
   'UI-02 turno, jogador e fase visíveis',
-  /Turno/.test(header) && /Comando Humano/.test(header) && /Início do Turno/.test(header),
+  /turno/i.test(header) && /comando humano/i.test(header) && /início do turno/i.test(header),
   header.replace(/\n+/g, ' | '),
 );
 
@@ -90,7 +131,8 @@ await page.locator('.territory-node[aria-label^="Distrito Central"]').click();
 const panelText = await page.locator('.panel--territory').innerText();
 check(
   'UI-03 seleção abre o painel do território',
-  (await page.locator('.panel--territory .panel__title').innerText()) === 'Distrito Central',
+  (await page.locator('.panel--territory .panel__title').innerText()).toUpperCase() ===
+    'DISTRITO CENTRAL',
 );
 check(
   'UI-04 painel mostra controlador, tropas e fronteiras',
@@ -121,16 +163,17 @@ check('UI-DEV painel DEV adiciona tropas ao território escolhido',
 
 await advanceTo(page, 'Ação', 'Comando Humano');
 await page.locator('.card').first().click();
-const options = await page.locator('.card-options').innerText();
+await page.waitForTimeout(200);
+const options = await page.locator('.preview').innerText();
 check(
   'UI-06 carta abre "Utilizar como" com os dois usos',
   /SEQUESTRO/i.test(options) && /VACINA/i.test(options),
 );
 check(
   'UI-07 uso defensivo bloqueado quando não há ataque',
-  await page.locator('.card-option').nth(1).isDisabled(),
+  await page.locator('.preview__actions .btn--defense').isDisabled(),
 );
-await page.locator('.card-option').first().click();
+await page.locator('.preview__actions .btn--primary').click();
 await page.waitForTimeout(150);
 await page.locator('.chooser .chip', { hasText: 'Ruínas do Leste' }).click();
 await page.waitForTimeout(80);
@@ -181,7 +224,8 @@ for (let i = 0; i < toPlace; i += 1) {
 await page.locator('.modal__footer .btn--primary').click();
 await page.waitForTimeout(250);
 check('UI-13 redistribuição concluída', (await page.locator('.modal').count()) === 0);
-check('UI-14 carta consumida sai da mão', (await page.locator('.card').count()) === 0);
+check('UI-14 carta consumida sai da mão',
+  (await page.locator('.game-card', { hasText: 'Sequestro' }).count()) === 0);
 const reinforced = await troops(page, 'Setor Militar');
 check('UI-15 tropas capturadas aparecem no território escolhido',
   reinforced.count === 3 + toPlace, reinforced.label);
@@ -201,13 +245,19 @@ check('UI-16 alvos de ataque destacados no mapa',
 await page.locator('.territory-node[aria-label^="Zona Norte"]').click();
 check('UI-17 território aliado não abre ataque',
   (await page.locator('.modal').count()) === 0 &&
-    (await page.locator('.panel--territory .panel__title').innerText()) === 'Zona Norte');
+    (await page.locator('.panel--territory .panel__title').innerText()).toUpperCase() ===
+      'ZONA NORTE');
 
 await page.locator('.territory-node[aria-label^="Distrito Central"]').click();
 await page.locator('.panel--territory .btn--danger').click();
 await page.locator('.territory-node[aria-label^="Ruínas do Leste"]').click();
-await page.locator('.stepper__controls .btn--round').last().click(); // 1 -> 2
-await page.locator('.modal__footer .btn--danger').click();
+await page.waitForTimeout(250);
+check('UI-61 painel de batalha abre com os dois lados e dados',
+  (await page.locator('.battle').count()) === 1 &&
+    (await page.locator('.die').count()) > 0,
+  `${await page.locator('.die').count()} dados`);
+await page.locator('.battle__force-controls .btn--round').last().click(); // 1 -> 2
+await page.locator('.battle .btn--danger').click();
 await page.waitForTimeout(200);
 check('UI-18 ataque declarado abre o painel de combate',
   /ataque em andamento/i.test(await page.locator('.panel--defense').innerText()));
@@ -301,7 +351,7 @@ await page.locator('.dev-toggle').click();
 await page.locator('.dev-panel__grid button', { hasText: '+ carta Sequestro' }).click();
 await page.locator('.dev-panel__header .btn--icon').click();
 check('UI-25 painel DEV concede carta ao jogador atual',
-  (await page.locator('.card').count()) === 1);
+  (await page.locator('.game-card', { hasText: 'Sequestro' }).count()) === 1);
 
 await page.getByRole('button', { name: 'Finalizar turno' }).click();
 await page.waitForTimeout(150);
@@ -309,7 +359,7 @@ await advanceTo(page, 'Combate', 'Célula Insurgente');
 await page.locator('.territory-node[aria-label^="Vale Cinzento"]').click();
 await page.locator('.panel--territory .btn--danger').click();
 try {
-  await page.locator('.territory-node[aria-label^="Zona Norte"]').click({ timeout: 4000 });
+  await page.locator('.territory-node[aria-label^="Zona Norte"]').click({ timeout: 6000 });
 } catch (err) {
   const geo = await page.evaluate(() => {
     const g = [...document.querySelectorAll('.territory-node')].find((e) =>
@@ -329,9 +379,10 @@ try {
   await page.screenshot({ path: `${SHOTS}/debug-falha.png`, fullPage: true });
   throw err;
 }
-await page.locator('.stepper__controls .btn--round').last().click();
-await page.locator('.modal__footer .btn--danger').click();
-await page.waitForTimeout(200);
+await page.waitForTimeout(250);
+await page.locator('.battle__force-controls .btn--round').last().click();
+await page.locator('.battle .btn--danger').click();
+await page.waitForTimeout(250);
 check('UI-26 defensor recebe a opção de Vacina fora do seu turno',
   (await page.locator('.btn--defense').count()) === 1);
 
@@ -347,19 +398,36 @@ const attackerAfter = await troops(page, 'Vale Cinzento');
 check('UI-28 mapa atualiza sozinho após a Vacina',
   attackerAfter.count < attackerBefore.count,
   `${attackerBefore.count} → ${attackerAfter.count}`);
-check('UI-29 carta defensiva consumida', (await page.locator('.card').count()) === 0);
+check('UI-29 carta defensiva consumida',
+  (await page.locator('.game-card', { hasText: 'Sequestro' }).count()) === 0);
 await page.screenshot({ path: `${SHOTS}/06-vacina.png` });
 
 // --- Etapa 4: Sobrevivência ponta a ponta ---
+// A Vacina pode não eliminar todos os atacantes (o dado é aleatório): se o
+// ataque continuar aberto, o motor recusa encerrar o turno. Fecha antes.
+if (await page.locator('.panel--defense').count()) {
+  const closeAttack = page.locator('.panel--defense .panel__actions .btn').last();
+  if (await closeAttack.count()) {
+    await closeAttack.click();
+    await page.waitForTimeout(200);
+  }
+}
+if (await page.locator('.modal .btn--primary').count()) {
+  // Uma ocupação obrigatória pendente também travaria o fim do turno.
+  await page.locator('.modal .btn--primary').first().click();
+  await page.waitForTimeout(200);
+}
+
 // A passiva é dos Humanos: garantir que a vez é deles antes de forçar.
 for (let i = 0; i < 4; i += 1) {
-  const who = await page.locator('.stat--player .stat__value').innerText();
-  if (who === 'Comando Humano') break;
+  const who = (await page.locator('.stat--player .stat__value').innerText()).toLowerCase();
+  if (who === 'comando humano') break;
   await page.getByRole('button', { name: 'Finalizar turno' }).click();
   await page.waitForTimeout(150);
 }
 check('UI-58a a vez é do Comando Humano antes de testar a passiva',
-  (await page.locator('.stat--player .stat__value').innerText()) === 'Comando Humano');
+  (await page.locator('.stat--player .stat__value').innerText()).toLowerCase() ===
+    'comando humano');
 await page.locator('.dev-toggle').click();
 await page.locator('.dev-panel__grid button', { hasText: 'Forçar Sobrevivência' }).click();
 await page.waitForTimeout(500);
@@ -377,12 +445,12 @@ check('UI-60 a ativação aparece no registro da partida',
 await page.screenshot({ path: `${SHOTS}/12-sobrevivencia.png` });
 
 // --- zoom, pan e reset da visualização ---
-const t0 = await page.locator('.map__canvas').evaluate((el) => el.style.transform);
-await page.locator('.map__controls .btn').first().click();
-await page.locator('.map__controls .btn').first().click();
-const t1 = await page.locator('.map__canvas').evaluate((el) => el.style.transform);
-await page.locator('.map__controls .btn').last().click();
-const t2 = await page.locator('.map__canvas').evaluate((el) => el.style.transform);
+const t0 = await page.locator('.board__canvas').evaluate((el) => el.style.transform);
+await page.locator('.board__controls .btn').first().click();
+await page.locator('.board__controls .btn').first().click();
+const t1 = await page.locator('.board__canvas').evaluate((el) => el.style.transform);
+await page.locator('.board__controls .btn').last().click();
+const t2 = await page.locator('.board__canvas').evaluate((el) => el.style.transform);
 check('UI-30 zoom altera a visualização e o reset a restaura',
   t1 !== t0 && t2 === t0, `${t0} / ${t1} / ${t2}`);
 
@@ -404,7 +472,7 @@ await enterGame(page);
 const resetHeader = await page.locator('.turnbar__status').innerText();
 const resetTroops = await troops(page, 'Distrito Central');
 check('UI-32 reset devolve a partida ao estado inicial',
-  /turno\s*1/i.test(resetHeader) && resetTroops.count === 3,
+  /turno\s*0?1\b/i.test(resetHeader) && resetTroops.count === 3,
   `${resetTroops.label} | ${resetHeader.replace(/\n+/g, ' ')}`);
 
 // =============================================================== MOBILE ====
@@ -453,7 +521,8 @@ check('UI-35 botões com alvo de toque adequado (>=36px)', small.length === 0, s
 // Fase de AÇÃO vem antes de MOVIMENTAÇÃO: a carta é testada primeiro.
 async function mobileAdvanceTo(phase) {
   for (let i = 0; i < 8; i += 1) {
-    if ((await mp.locator('.phases__item.is-active').innerText()) === phase) return;
+    const current = (await mp.locator('.phases__item.is-active').innerText()).toLowerCase();
+    if (current === phase.toLowerCase()) return;
     await mp.getByRole('button', { name: 'Avançar fase' }).tap();
     await mp.waitForTimeout(70);
   }
@@ -461,9 +530,15 @@ async function mobileAdvanceTo(phase) {
 }
 
 await mobileAdvanceTo('Ação');
+// Fecha a folha lateral antes de ir à mão, como um jogador faria.
+if (await mp.locator('.game__side.is-open').count()) {
+  await mp.locator('.game__side-close').tap();
+  await mp.waitForTimeout(250);
+}
 await mp.locator('.card').first().tap();
+await mp.waitForTimeout(250);
 check('UI-36 carta abre por toque no celular',
-  (await mp.locator('.card-options').count()) === 1);
+  (await mp.locator('.preview').count()) === 1);
 await mp.screenshot({ path: `${SHOTS}/08-mobile-carta.png` });
 const modalFits = await mp.evaluate(() => {
   const m = document.querySelector('.modal');
@@ -471,11 +546,12 @@ const modalFits = await mp.evaluate(() => {
   return r.width <= window.innerWidth + 1 && r.height <= window.innerHeight + 1;
 });
 check('UI-37 modal cabe na tela do celular', modalFits);
-await mp.locator('.modal .btn--icon').tap();
+await mp.locator('.preview__actions .btn--ghost').tap();
 await mp.waitForTimeout(120);
 
 await mobileAdvanceTo('Movimentação');
 await mp.locator('.territory-node[aria-label^="Distrito Central"]').tap();
+await mp.waitForTimeout(300);
 await mp.locator('.panel--territory .btn--primary').tap();
 await mp.locator('.territory-node[aria-label^="Zona Norte"]').tap();
 await mp.locator('.modal__footer .btn--primary').tap();
@@ -486,7 +562,7 @@ await mp.screenshot({ path: `${SHOTS}/07-mobile.png`, fullPage: true });
 
 await mp.locator('.territory-node[aria-label^="Zona Sul"]').tap();
 check('UI-38b seleção por toque continua funcionando após o pan',
-  (await mp.locator('.panel--territory .panel__title').innerText()) === 'Zona Sul');
+  (await mp.locator('.panel--territory .panel__title').innerText()).toUpperCase() === 'ZONA SUL');
 
 // --- Etapa 4 no celular ---
 const mobileFaction = await mp.locator('.panel--faction').innerText();

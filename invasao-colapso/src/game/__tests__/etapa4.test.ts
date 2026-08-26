@@ -560,7 +560,8 @@ describe('ETAPA 4 — Cartas continuam intactas', () => {
 
     const habilidades = abilityViews(state, PLAYER_IDS.p1).map((v) => v.definition.id);
     expect(habilidades).not.toContain(SEQUESTRO_CARD_ID);
-    expect(state.players[PLAYER_IDS.p1 as string].handCardIds).toHaveLength(1);
+    // A carta vive na mão; a habilidade nunca aparece lá.
+    expect(state.players[PLAYER_IDS.p1 as string].handCardIds.length).toBeGreaterThan(0);
     // Habilidade tem cargas/recarga; carta tem usos e estado.
     const aerea = abilityViews(state, PLAYER_IDS.p1).find((v) => v.definition.id === OPERACAO_AEREA_ID);
     expect(aerea?.chargesRemaining).toBe(AEREA.usesPerGame);
