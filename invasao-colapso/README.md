@@ -34,6 +34,7 @@ Outros comandos:
 Para `test:ui`: rode `npm run preview` em outro terminal. O caminho do Chromium pode
 ser informado por `CHROME_PATH`, e o endereço por `BASE_URL`.
 | `npm run verify` | Tipos + testes + build |
+| `npm run build:single` | Gera `dist-single/Invasao-Colapso.html` — o jogo inteiro em **um arquivo**, que roda offline com duplo clique |
 
 ---
 
