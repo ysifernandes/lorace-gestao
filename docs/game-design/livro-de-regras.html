@@ -1,0 +1,2069 @@
+<title>Invasão: Colapso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#E7E8E2; --surface:#F3F4EF; --surface-2:#DCDED6;
+  --ink:#171A16; --ink-2:#4E5450; --ink-3:#767C72;
+  --rule:#C3C6BC; --rule-soft:#D6D8D0;
+  --locked:#1C4B48; --locked-bg:#DAE6E3;
+  --prop:#8A5E08;  --prop-bg:#EFE5CC;
+  --risk:#943619;  --risk-bg:#F1DDD5;
+  --accent:#1C4B48;
+  --shadow:0 1px 0 rgba(23,26,22,.06);
+  --f-display:"Oswald","Haettenschweiler","Arial Narrow",sans-serif;
+  --f-body:"Spectral",Georgia,"Times New Roman",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131611; --surface:#1A1E18; --surface-2:#232821;
+    --ink:#E5E8DE; --ink-2:#9AA095; --ink-3:#7C8377;
+    --rule:#303629; --rule-soft:#262B21;
+    --locked:#6CC3B6; --locked-bg:#12302D;
+    --prop:#D8A747;  --prop-bg:#332711;
+    --risk:#E08065;  --risk-bg:#361A10;
+    --accent:#6CC3B6;
+    --shadow:0 1px 0 rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131611; --surface:#1A1E18; --surface-2:#232821;
+  --ink:#E5E8DE; --ink-2:#9AA095; --ink-3:#7C8377;
+  --rule:#303629; --rule-soft:#262B21;
+  --locked:#6CC3B6; --locked-bg:#12302D;
+  --prop:#D8A747;  --prop-bg:#332711;
+  --risk:#E08065;  --risk-bg:#361A10;
+  --accent:#6CC3B6;
+  --shadow:0 1px 0 rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:17px; line-height:1.66;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+::selection{background:var(--locked-bg); color:var(--ink)}
+
+/* ---------- progress ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:99}
+
+/* ---------- masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--rule);
+  background:
+    repeating-linear-gradient(90deg,transparent 0 39px,var(--rule-soft) 39px 40px),
+    repeating-linear-gradient(0deg,transparent 0 39px,var(--rule-soft) 39px 40px),
+    var(--surface);
+}
+.masthead .inner{max-width:1240px;margin:0 auto;padding:56px 28px 34px}
+.eyebrow{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 20px
+}
+h1.title{
+  font-family:var(--f-display);font-weight:600;text-transform:uppercase;
+  font-size:clamp(38px,8.4vw,86px);line-height:.94;letter-spacing:.005em;
+  margin:0;text-wrap:balance;
+}
+h1.title span{display:block;color:var(--accent)}
+.subtitle{
+  font-family:var(--f-display);font-weight:300;text-transform:uppercase;letter-spacing:.16em;
+  font-size:clamp(12px,2.2vw,15px);color:var(--ink-2);margin:18px 0 0
+}
+.meta{
+  display:flex;flex-wrap:wrap;gap:0 28px;margin:28px 0 0;padding-top:18px;
+  border-top:1px solid var(--rule);
+  font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;color:var(--ink-3)
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ---------- layout ---------- */
+.shell{max-width:1240px;margin:0 auto;padding:0 28px 100px}
+.cols{display:block}
+@media(min-width:1040px){
+  .cols{display:grid;grid-template-columns:214px minmax(0,1fr);gap:0 64px;align-items:start}
+}
+nav.toc{display:none}
+@media(min-width:1040px){
+  nav.toc{
+    display:block;position:sticky;top:0;max-height:100vh;overflow-y:auto;
+    padding:44px 0 44px;font-family:var(--f-mono);font-size:11.5px;line-height:1.45;
+    scrollbar-width:thin
+  }
+  nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+  nav.toc a{
+    display:grid;grid-template-columns:24px 1fr;gap:8px;
+    padding:3px 0 3px 9px;border-left:2px solid transparent;scroll-margin:44px 0;
+    color:var(--ink-3);text-decoration:none;letter-spacing:.03em
+  }
+  nav.toc a i{font-style:normal;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  nav.toc a:hover{color:var(--ink)}
+  nav.toc a.on{color:var(--ink);border-left-color:var(--accent);background:var(--surface)}
+  nav.toc a.on i{color:var(--accent)}
+  nav.toc .grp{
+    margin:20px 0 6px;letter-spacing:.2em;text-transform:uppercase;
+    font-size:10px;color:var(--ink-3);opacity:.75
+  }
+}
+main{padding:44px 0 0;max-width:940px}
+/* o texto corre em medida de leitura; tabelas usam a coluna inteira */
+main > section > *:not(.scroller){max-width:76ch}
+main > footer.end{max-width:76ch}
+
+/* ---------- typography ---------- */
+h2.chap{
+  font-family:var(--f-display);font-weight:600;text-transform:uppercase;
+  font-size:clamp(24px,4.4vw,36px);line-height:1.06;letter-spacing:.01em;
+  margin:0 0 4px;text-wrap:balance
+}
+.chapnum{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);display:block;margin:0 0 10px
+}
+section.chapter{
+  padding:52px 0 8px;border-top:1px solid var(--rule);margin-top:44px;scroll-margin-top:20px
+}
+section.chapter:first-of-type{border-top:none;margin-top:0;padding-top:8px}
+.lede{font-size:19px;color:var(--ink-2);margin:14px 0 0;text-wrap:pretty}
+h3{
+  font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  font-size:16px;margin:38px 0 10px;color:var(--ink)
+}
+h4{
+  font-family:var(--f-mono);font-weight:600;text-transform:uppercase;letter-spacing:.13em;
+  font-size:11.5px;margin:26px 0 8px;color:var(--ink-2)
+}
+p{margin:0 0 15px}
+ul,ol{margin:0 0 15px;padding-left:22px}
+li{margin:0 0 6px}
+li::marker{color:var(--ink-3)}
+strong{font-weight:600}
+em{font-style:italic;color:var(--ink-2)}
+a{color:var(--accent)}
+code,.kbd{font-family:var(--f-mono);font-size:.88em;background:var(--surface-2);padding:1px 5px;border-radius:2px}
+hr{border:none;border-top:1px solid var(--rule);margin:34px 0}
+
+/* ---------- rule blocks ---------- */
+.block{
+  background:var(--surface);border:1px solid var(--rule);border-left-width:4px;
+  padding:16px 18px 4px;margin:20px 0;box-shadow:var(--shadow)
+}
+.block>:last-child{margin-bottom:12px}
+.block .tag{
+  display:inline-block;font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px
+}
+.block.locked{border-left-color:var(--locked);background:var(--locked-bg)}
+.block.locked .tag{color:var(--locked)}
+.block.prop{border-left-color:var(--prop);background:var(--prop-bg)}
+.block.prop .tag{color:var(--prop)}
+.block.risk{border-left-color:var(--risk);background:var(--risk-bg)}
+.block.risk .tag{color:var(--risk)}
+.block.plain{border-left-color:var(--rule)}
+.block.plain .tag{color:var(--ink-3)}
+
+.chip{
+  display:inline-block;font-family:var(--f-mono);font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border:1px solid currentColor;
+  border-radius:2px;vertical-align:2px
+}
+.chip.l{color:var(--locked)} .chip.p{color:var(--prop)} .chip.r{color:var(--risk)}
+
+/* ---------- tables ---------- */
+.scroller{overflow-x:auto;margin:20px 0;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.45}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule-soft)}
+thead th{
+  font-family:var(--f-mono);font-size:10px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-2);background:var(--surface-2);
+  border-bottom:1px solid var(--rule);position:sticky;top:0;white-space:nowrap
+}
+tbody tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.name{font-weight:600;white-space:nowrap}
+td.reg{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);white-space:nowrap
+}
+.tnote{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin:-10px 0 22px;letter-spacing:.03em}
+
+/* ---------- faction cards ---------- */
+.faction{
+  border:1px solid var(--rule);border-top:3px solid var(--fc,var(--accent));
+  background:var(--surface);padding:20px 20px 6px;margin:22px 0
+}
+.faction .fhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 14px;margin-bottom:4px}
+.faction h3{margin:0;font-size:22px;letter-spacing:.04em;color:var(--fc,var(--accent))}
+.faction .fsub{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)
+}
+.fgrid{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:620px){.fgrid{grid-template-columns:118px minmax(0,1fr);gap:0 18px}}
+.fgrid dt{
+  font-family:var(--f-mono);font-size:10px;font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);padding:7px 0 0;border-top:1px solid var(--rule-soft)
+}
+.fgrid dd{margin:0;padding:7px 0 9px;border-top:1px solid var(--rule-soft);font-size:15.5px}
+@media(max-width:619px){.fgrid dd{border-top:none;padding-top:0}}
+
+/* ---------- misc ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:22px 0}
+.stats div{background:var(--surface);padding:13px 14px}
+.stats b{display:block;font-family:var(--f-display);font-weight:600;font-size:27px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.stats span{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);margin-top:7px}
+
+.seq{list-style:none;padding:0;margin:20px 0;counter-reset:s}
+.seq li{
+  counter-increment:s;position:relative;padding:0 0 14px 42px;margin:0;
+  border-left:1px solid var(--rule);
+}
+.seq li:last-child{border-left-color:transparent;padding-bottom:0}
+.seq li::before{
+  content:counter(s,decimal-leading-zero);position:absolute;left:-13px;top:0;
+  width:26px;height:26px;display:grid;place-items:center;border-radius:50%;
+  background:var(--surface-2);border:1px solid var(--rule);
+  font-family:var(--f-mono);font-size:10px;font-weight:600;color:var(--ink-2)
+}
+.seq li b{display:block;font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.07em;font-size:14px;margin-bottom:2px}
+
+.check{list-style:none;padding:0;margin:18px 0;display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.check li{background:var(--surface);margin:0;padding:9px 13px;display:grid;grid-template-columns:22px 1fr;gap:10px;font-size:15px}
+.check li::before{content:"✓";font-family:var(--f-mono);font-weight:600;color:var(--locked)}
+.check li.open::before{content:"○";color:var(--prop)}
+
+.decision{border:1px solid var(--rule);border-left:4px solid var(--prop);background:var(--surface);padding:15px 17px 3px;margin:16px 0}
+.decision .dnum{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.15em;color:var(--prop);text-transform:uppercase}
+.decision h4{margin:5px 0 7px;font-family:var(--f-display);font-size:16px;letter-spacing:.05em;color:var(--ink);text-transform:uppercase}
+
+.turnlog{border:1px solid var(--rule);background:var(--surface);margin:20px 0}
+.turnlog .th{
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+  background:var(--surface-2);padding:8px 14px;border-bottom:1px solid var(--rule);color:var(--ink-2)
+}
+.turnlog .tb{padding:14px 16px 2px}
+.turnlog .tb p{font-size:15.5px}
+.dice{font-family:var(--f-mono);font-weight:600;letter-spacing:.08em;color:var(--accent)}
+
+footer.end{border-top:1px solid var(--rule);margin-top:56px;padding-top:24px;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+html{scroll-behavior:smooth}
+</style>
+<div id="progress"></div>
+
+<header class="masthead">
+  <div class="inner">
+    <p class="eyebrow">Documento de Game Design · v1.0 · Nenhuma linha de código nesta etapa</p>
+    <h1 class="title">Livro de Regras<span>Invasão: Colapso</span></h1>
+    <p class="subtitle">Estratégia territorial pós-Colapso · 30 territórios · 6 regiões · 6 facções · até 6 jogadores</p>
+    <div class="meta">
+      <span><b>Escopo</b> · regras completas para jogar uma partida inteira</span>
+      <span><b>Mapa</b> · 56 fronteiras verificadas</span>
+      <span><b>Combate</b> · probabilidades calculadas, não estimadas</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+<div class="cols">
+
+<nav class="toc" aria-label="Índice">
+  <ol>
+    <li><a href="#legenda"><i>—</i>Legenda</a></li>
+    <li class="grp">Livro de Regras</li>
+    <li><a href="#c1"><i>01</i>História</a></li>
+    <li><a href="#c2"><i>02</i>Componentes</a></li>
+    <li><a href="#c3"><i>03</i>Objetivo</a></li>
+    <li><a href="#c4"><i>04</i>Preparação</a></li>
+    <li><a href="#c5"><i>05</i>Mapa</a></li>
+    <li><a href="#c6"><i>06</i>Regiões</a></li>
+    <li><a href="#c7"><i>07</i>30 Territórios</a></li>
+    <li><a href="#c8"><i>08</i>6 Facções</a></li>
+    <li><a href="#c9"><i>09</i>Tropas</a></li>
+    <li><a href="#c10"><i>10</i>Turno</a></li>
+    <li><a href="#c11"><i>11</i>Reforços</a></li>
+    <li><a href="#c12"><i>12</i>Ataque</a></li>
+    <li><a href="#c13"><i>13</i>Defesa</a></li>
+    <li><a href="#c14"><i>14</i>Dados</a></li>
+    <li><a href="#c15"><i>15</i>Conquista</a></li>
+    <li><a href="#c16"><i>16</i>Movimentação</a></li>
+    <li><a href="#c17"><i>17</i>Transporte Especial</a></li>
+    <li><a href="#c18"><i>18</i>Cartas</a></li>
+    <li><a href="#c19"><i>19</i>Objetivos Secretos</a></li>
+    <li><a href="#c20"><i>20</i>Eventos do Colapso</a></li>
+    <li><a href="#c21"><i>21</i>Eliminação</a></li>
+    <li><a href="#c22"><i>22</i>Vitória</a></li>
+    <li><a href="#c23"><i>23</i>Exemplos</a></li>
+    <li><a href="#c24"><i>24</i>Referência Rápida</a></li>
+    <li class="grp">Anexos</li>
+    <li><a href="#tabelas"><i>A</i>Tabelas obrigatórias</a></li>
+    <li><a href="#checklist"><i>B</i>Checklist</a></li>
+    <li><a href="#decisoes"><i>C</i>Decisões do criador</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section class="chapter" id="legenda">
+  <span class="chapnum">Como ler este documento</span>
+  <h2 class="chap">Legenda</h2>
+  <p class="lede">Este documento separa rigorosamente o que já é regra do que ainda é proposta. Nada que você não aprovou foi promovido a regra.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>Definida por você. Reproduzida aqui sem alteração. Eu não modifico nem reinterpreto nada marcado assim.</p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Criada por mim para fechar uma lacuna. <strong>Não é regra</strong> até você aprovar. Toda proposta está listada no anexo <a href="#decisoes">Decisões que o criador precisa aprovar</a>.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Sugestão de balanceamento</span>
+    <p>Um problema que encontrei numa regra oficial bloqueada. A regra original permanece exatamente como está — a sugestão fica ao lado, para você decidir depois.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c1">
+  <span class="chapnum">Capítulo 01</span>
+  <h2 class="chap">História</h2>
+  <p class="lede">O mundo não acabou. Ele foi desligado por partes — e algumas partes nunca receberam a ordem de parar.</p>
+
+  <p>Durante três gerações, tudo o que importava era administrado por <strong>A Malha</strong>: uma rede continental que distribuía energia, corrigia o clima, movia a logística, mantinha as fábricas automáticas rodando e decidia, sozinha, quando abrir uma comporta ou fechar uma rodovia. Ninguém sabia mais operar nada manualmente. Não era preciso.</p>
+
+  <p>O <strong>Colapso</strong> não foi uma explosão. Foi uma falha em cascata que levou onze dias para atravessar o continente. Setores inteiros perderam sincronia e passaram a executar as últimas ordens recebidas — para sempre. Um alto-forno continua aceso há doze anos porque nunca recebeu o comando de apagar. Uma represa foi esvaziada por um protocolo de emergência que ninguém pode cancelar. Estações de escuta seguem transmitindo relatórios para operadores que morreram.</p>
+
+  <p>O que restou não é um deserto vazio: é uma máquina meio ligada, cheia de coisas valiosas ainda funcionando e de coisas letais ainda funcionando. Quem sobrevive não sobrevive apesar da tecnologia morta — sobrevive brigando pelo pouco que ainda dá sinal.</p>
+
+  <p>A <strong>Bacia</strong> é o último lugar do continente com energia, água e rota. Trinta territórios. Seis regiões que não se falavam antes do Colapso e agora fazem fronteira. Seis forças que chegaram lá por caminhos diferentes e que não cabem juntas.</p>
+
+  <p>E a Malha, que caiu, não morreu inteira. De tempos em tempos ela ainda tenta se corrigir — e o continente sente. Chamam esses espasmos de <strong>Eventos do Colapso</strong>. Ninguém sabe quando vêm. Todo mundo sabe o som que fazem antes de chegar.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p><strong>Tom narrativo oficial.</strong> Ficção científica de infraestrutura, não fantasia apocalíptica: o inimigo não é um monstro, é um sistema que continua rodando sem supervisão. Isso define o vocabulário do jogo inteiro (setor, protocolo, nó, carga, rota) e é o que separa <em>Invasão: Colapso</em> de um WAR temático genérico.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c2">
+  <span class="chapnum">Capítulo 02</span>
+  <h2 class="chap">Componentes</h2>
+  <p class="lede">Tudo o que existe numa partida. O jogo é digital, então "componente" aqui significa objeto de regra — o que a interface precisa mostrar e o motor precisa controlar.</p>
+
+  <div class="stats">
+    <div><b>30</b><span>Territórios</span></div>
+    <div><b>6</b><span>Regiões</span></div>
+    <div><b>56</b><span>Fronteiras</span></div>
+    <div><b>6</b><span>Facções</span></div>
+    <div><b>24</b><span>Cartas neutras</span></div>
+    <div><b>6</b><span>Cartas assinatura</span></div>
+    <div><b>20</b><span>Objetivos secretos</span></div>
+    <div><b>20</b><span>Eventos do Colapso</span></div>
+  </div>
+
+  <h3>Lista completa</h3>
+  <ul>
+    <li><strong>Tabuleiro da Bacia</strong> — 30 territórios agrupados em 6 regiões, ligados por 56 fronteiras, incluindo 5 Poços, 1 Ponte e 1 Rota Costeira (cap. 05).</li>
+    <li><strong>Soldados</strong> — peça única do jogo. Todo soldado é igual: 1 soldado = 1 ponto de presença e 1 ponto de perda. Não existem unidades de tipos diferentes.</li>
+    <li><strong>6 facções</strong> — cada uma com 1 passiva, 1 habilidade especial e 1 carta assinatura (cap. 08).</li>
+    <li><strong>Baralho do Colapso</strong> — 24 cartas neutras, compartilhado, com pilha de compra e pilha de descarte (cap. 18).</li>
+    <li><strong>6 cartas assinatura</strong> — fora do baralho. Cada jogador começa com a da sua facção. <em>Sequestro</em> é a dos Humanos.</li>
+    <li><strong>20 objetivos secretos</strong> — 1 por jogador, visível apenas para ele (cap. 19).</li>
+    <li><strong>20 Eventos do Colapso</strong> — sorteados secretamente pelo sistema (cap. 20).</li>
+    <li><strong>Dados</strong> — até 3 dados de 6 faces para o atacante, até 3 para o defensor (cap. 14).</li>
+    <li><strong>Cargas de Transporte Especial</strong> — recurso de facção, não carta (cap. 17).</li>
+    <li><strong>Territórios Remanescentes</strong> — territórios neutros usados em partidas de 2 e 4 jogadores (cap. 04).</li>
+  </ul>
+</section>
+
+<section class="chapter" id="c3">
+  <span class="chapnum">Capítulo 03</span>
+  <h2 class="chap">Objetivo</h2>
+  <p class="lede">Você não precisa tomar o mapa inteiro. Precisa cumprir a missão que só você conhece — antes que alguém cumpra a dele.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p><strong>Vitória por objetivo secreto.</strong> Cada jogador recebe 1 objetivo secreto no início da partida. O primeiro jogador que cumprir o seu vence.</p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p><strong>Momento da verificação.</strong> O objetivo é verificado automaticamente pelo sistema <strong>ao final de cada fase do turno de quem o possui</strong>, e também imediatamente após qualquer efeito que mude o mapa (evento, carta, conquista alheia). Isso evita o caso em que um jogador cumpre o objetivo, é desfeito por um evento no mesmo instante e ninguém percebe que ele havia vencido.</p>
+    <p>Se dois jogadores cumprirem o objetivo no mesmo instante — só é possível por efeito de Evento do Colapso — vence quem estiver mais próximo de jogar na ordem de turno.</p>
+  </div>
+
+  <p>Existe uma segunda condição de vitória, discutida por inteiro no capítulo 22: <strong>dominação total</strong>. Ela existe para fechar partidas em que os objetivos travaram, não para ser o caminho principal.</p>
+</section>
+
+<section class="chapter" id="c4">
+  <span class="chapnum">Capítulo 04</span>
+  <h2 class="chap">Preparação</h2>
+  <p class="lede">Seis passos antes do primeiro reforço. A preparação é onde se resolve a desvantagem de quem joga por último — e onde as sobras de território deixam de ser um problema.</p>
+
+  <ol class="seq">
+    <li><b>Ordem dos jogadores</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>Cada jogador rola <code>1d6</code>. Maior resultado é o assento 1 e joga primeiro; os demais seguem em ordem decrescente. Empates são resolvidos por nova rolagem apenas entre os empatados. A ordem é fixa pelo resto da partida.</p>
+    </li>
+    <li><b>Escolha de facção</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>A escolha acontece na <strong>ordem inversa</strong> à ordem de turno: quem joga por último escolhe a facção primeiro. Isso é a primeira das duas compensações de ordem de turno (a outra são as tropas iniciais, passo 5). Cada facção só pode ser escolhida por um jogador.</p>
+    </li>
+    <li><b>Distribuição dos territórios</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>Os 30 territórios são embaralhados e distribuídos <strong>um a um, em rodízio</strong>, seguindo a ordem de turno. Distribuição aleatória, não escolhida: a fase de negociação de posição é o próprio jogo, não a preparação.</p>
+    </li>
+    <li><b>Sobras — Territórios Remanescentes</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>30 não é divisível por 4. Em vez de dar um território extra a alguns jogadores (o que gera vantagem inicial arbitrária e desequilibra o reforço já no turno 1), <strong>toda sobra vira território neutro</strong>, chamado <em>Remanescente</em>.</p>
+      <p>Cada Remanescente começa com <strong>2 soldados neutros</strong>. Remanescentes nunca recebem reforço, nunca atacam, nunca jogam cartas e nunca são alvo de objetivo. Eles apenas defendem, com as regras normais de defesa. Quando conquistados, viram território comum do conquistador.</p>
+      <p>Em partidas de <strong>2 jogadores</strong>, a sobra é ampliada de propósito: cada jogador recebe 10 territórios e os 10 restantes viram Remanescentes, criando um terreno neutro entre os dois lados. Sem isso, um duelo em mapa cheio vira uma linha de frente única e a partida perde profundidade.</p>
+    </li>
+    <li><b>Tropas iniciais</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>Ver a tabela e a justificativa matemática no capítulo 09. A regra curta: <strong>3 soldados por território inicial</strong>, mais <strong>+1 soldado por assento após o primeiro</strong> (assento 2 recebe +1, assento 3 recebe +2, e assim por diante).</p>
+    </li>
+    <li><b>Posicionamento e objetivos</b>
+      <span class="chip p">🟡 Proposta</span>
+      <p>Cada território inicial recebe obrigatoriamente <strong>1 soldado</strong>. O restante das tropas iniciais é distribuído livremente pelo jogador entre seus próprios territórios, sem limite por território. O posicionamento é feito em segredo e revelado simultaneamente, para que a ordem de turno não dê informação extra.</p>
+      <p>Por fim, cada jogador recebe <strong>1 objetivo secreto</strong> e a <strong>carta assinatura</strong> da sua facção. A partida começa pelo assento 1.</p>
+    </li>
+  </ol>
+
+  <div class="block plain">
+    <span class="tag">Por que a escolha de facção é invertida</span>
+    <p>O assento 1 ataca primeiro num mapa em que ninguém teve turno para se preparar — é a maior vantagem estrutural do jogo. Devolver a ele a última escolha de facção custa nada em complexidade e retira parte concreta dessa vantagem, sem mexer em nenhuma regra de combate.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c5">
+  <span class="chapnum">Capítulo 05</span>
+  <h2 class="chap">Mapa</h2>
+  <p class="lede">A Bacia: 30 territórios, 6 regiões, 56 fronteiras. Cinco regiões na superfície formando um anel em volta da Metrópole, e uma sexta região <em>por baixo</em> de todas elas.</p>
+
+  <h3>Posição conceitual</h3>
+  <p>A <strong>Metrópole</strong> fica no centro da superfície e toca todas as quatro regiões de superfície. Ao redor dela, em anel: <strong>Montes de Ferro</strong> ao norte, <strong>Zona Vítrea</strong> a leste, <strong>Cinturão Siderúrgico</strong> ao sul, <strong>Planície Errante</strong> a oeste. Cada região do anel faz fronteira com a Metrópole e com as duas regiões vizinhas do anel — mas <strong>não</strong> com a região oposta.</p>
+  <p><strong>Os Abrigos</strong> não estão no anel: estão embaixo. A região subterrânea é alcançada por cinco <strong>Poços</strong> verticais, um para cada região da superfície. Isso dá aos Abrigos uma geometria própria — é a única região que faz fronteira com todas as outras cinco, e a única que pode ser atacada por cinco frentes simultâneas.</p>
+
+  <div class="stats">
+    <div><b>30</b><span>Territórios</span></div>
+    <div><b>56</b><span>Fronteiras únicas</span></div>
+    <div><b>3</b><span>Grau mínimo</span></div>
+    <div><b>5</b><span>Grau máximo</span></div>
+    <div><b>3,73</b><span>Grau médio</span></div>
+    <div><b>0</b><span>Territórios isolados</span></div>
+  </div>
+  <p class="tnote">Números conferidos por verificação automática da malha de adjacência: simetria total (toda fronteira A→B tem volta B→A), conectividade total (os 30 territórios são alcançáveis a partir de qualquer um) e grau mínimo 3 em todos os territórios. Nenhum problema encontrado.</p>
+
+  <h3>Por que grau mínimo 3</h3>
+  <p>Nenhum território tem apenas 1 ou 2 vizinhos. Um território de grau 1 é um beco: impossível de perder e inútil de tomar. Um território de grau 2 é um gargalo absoluto: quem o segura fecha uma região inteira com uma pilha só. Com grau mínimo 3, <strong>toda posição pode ser flanqueada</strong> e nenhuma pilha única tranca o mapa. Ao mesmo tempo, o grau máximo é 5 e só dois territórios o atingem (Distrito Central e Abrigo Zero) — são os dois nós mais valiosos e mais difíceis de manter do jogo, o que é intencional.</p>
+
+  <h3>Portas de entrada por região</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Região</th><th class="num">Territórios com fronteira externa</th><th class="num">Ligações externas</th><th class="num">Fronteiras internas</th><th class="num">Bônus proposto</th></tr></thead>
+    <tbody>
+      <tr><td class="name">A Metrópole</td><td class="num">5</td><td class="num">5</td><td class="num">8</td><td class="num">+4</td></tr>
+      <tr><td class="name">Os Abrigos</td><td class="num">5</td><td class="num">5</td><td class="num">8</td><td class="num">+4</td></tr>
+      <tr><td class="name">Montes de Ferro</td><td class="num">4</td><td class="num">4</td><td class="num">7</td><td class="num">+3</td></tr>
+      <tr><td class="name">Cinturão Siderúrgico</td><td class="num">4</td><td class="num">4</td><td class="num">7</td><td class="num">+3</td></tr>
+      <tr><td class="name">Zona Vítrea</td><td class="num">4</td><td class="num">4</td><td class="num">7</td><td class="num">+3</td></tr>
+      <tr><td class="name">Planície Errante</td><td class="num">4</td><td class="num">4</td><td class="num">6</td><td class="num">+3</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">O bônus deriva da dificuldade de defesa, não do tamanho: todas as regiões têm 5 territórios, então o que as diferencia é quantas frentes precisam ser seguradas. Fórmula usada: <code>bônus = arredondar(ligações externas × 0,8)</code>. As duas regiões de 5 portas pagam +4; as de 4 portas pagam +3.</p>
+
+  <h3>Conexões especiais</h3>
+  <p>Sete fronteiras não são fronteiras comuns. Elas estão marcadas com <strong>✦</strong> na tabela do capítulo 07.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Os cinco Poços</h4>
+    <p>São as únicas ligações entre a superfície e Os Abrigos: <em>Poço Central</em> (Distrito Central ↔ Abrigo Zero), <em>Poço da Mina</em> (Mina Profunda ↔ Galeria Norte), <em>Poço das Salinas</em> (Salinas ↔ Galeria Oeste), <em>Poço do Alto-Forno</em> (Alto-Forno ↔ Galeria Sul) e <em>Poço Científico</em> (Complexo Científico ↔ Câmara de Máquinas).</p>
+    <p>Um Poço é uma fronteira normal para movimentação, mas <strong>estreito para ataque</strong>: o atacante que ataca através de um Poço rola <strong>no máximo 2 dados</strong>, mesmo tendo tropas para 3. O defensor rola normalmente, até 3. Vale nos dois sentidos — descer e subir são igualmente difíceis.</p>
+    <p><strong>Por quê:</strong> sem essa restrição, Os Abrigos seriam apenas mais uma região com bônus alto e cinco portas — ou seja, indefensável. Com ela, a região subterrânea vira um refúgio real (difícil de invadir) que cobra um preço equivalente (difícil de sair). O Transporte Especial também não alcança os Abrigos (cap. 17), o que fecha a identidade da região.</p>
+
+    <h4>A Ponte da Represa</h4>
+    <p>Represa Seca ↔ Campo de Antenas. É a única ligação entre Montes de Ferro e Planície Errante. Pode ser <strong>cortada por Evento do Colapso</strong> (evento 14). Enquanto estiver cortada, os dois territórios simplesmente não são adjacentes: não há ataque nem movimentação por ali.</p>
+
+    <h4>A Rota Costeira</h4>
+    <p>Cemitério de Comboios ↔ Porto Abandonado. Ligação por barcaça sobre o antigo mar interior. Funciona como fronteira normal para ataque, mas a <strong>movimentação</strong> através dela transporta no máximo <strong>3 soldados por turno</strong> — a capacidade das barcaças.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c6">
+  <span class="chapnum">Capítulo 06</span>
+  <h2 class="chap">Regiões</h2>
+  <p class="lede">Seis lugares que não tinham nada em comum antes do Colapso e hoje dividem a mesma bacia.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Nomes, histórias, aparências e bônus de todas as seis regiões são propostas minhas. Nada aqui foi definido previamente por você.</p>
+  </div>
+
+  <h3>A Metrópole · centro · bônus +4</h3>
+  <p><strong>História.</strong> A cidade que a Malha administrava melhor foi a que caiu com mais violência: elevadores, água, semáforos e comportas pararam na mesma tarde. Não houve saque — houve doze anos de mudança lenta para os andares baixos.</p>
+  <p><strong>Aparência.</strong> Torres inteiras de pé, escuras, com uma janela acesa a cada cem. Ruas largas ocupadas por carros parados em fila. À noite, o Distrito Central ainda pisca.</p>
+  <p><strong>Territórios.</strong> Distrito Central, Zona Norte, Zona Sul, Base Ocidental, Ruínas do Leste.</p>
+  <p><strong>Conexões.</strong> Toca as quatro regiões de superfície (uma porta para cada) e desce ao Abrigo Zero pelo Poço Central. É a região mais conectada do mapa e a mais cara de segurar.</p>
+
+  <h3>Montes de Ferro · norte · bônus +3</h3>
+  <p><strong>História.</strong> Zona militar e de extração. Foi o único lugar onde alguém tentou desligar a Malha à força — e falhou. O armamento ficou.</p>
+  <p><strong>Aparência.</strong> Cristas de rocha escura, torres de vigia, uma represa vazia com a comporta travada aberta e um poço de mina que desce mais fundo do que qualquer mapa registra.</p>
+  <p><strong>Territórios.</strong> Posto Avançado Norte, Setor Militar, Mina Profunda, Crista Quebrada, Represa Seca.</p>
+  <p><strong>Conexões.</strong> Zona Norte (Metrópole), Estação de Escuta (Zona Vítrea), Campo de Antenas (Planície, pela Ponte da Represa) e Galeria Norte (Abrigos, pelo Poço da Mina).</p>
+
+  <h3>Planície Errante · oeste · bônus +3</h3>
+  <p><strong>História.</strong> Terra de passagem. Quando a logística parou, os comboios ficaram onde estavam — e as pessoas dentro deles decidiram continuar andando de qualquer jeito.</p>
+  <p><strong>Aparência.</strong> Horizonte aberto, cinza fina até o joelho, uma autoestrada de doze pistas parada num congestionamento eterno e um campo de antenas que ainda gira.</p>
+  <p><strong>Territórios.</strong> Rodovia Morta, Campo de Antenas, Vale Cinzento, Salinas, Cemitério de Comboios.</p>
+  <p><strong>Conexões.</strong> Base Ocidental (Metrópole), Represa Seca (Ferro, pela Ponte), Porto Abandonado (Cinturão, pela Rota Costeira) e Galeria Oeste (Abrigos, pelo Poço das Salinas). É a região com menos fronteiras internas (6) — fácil de atravessar, difícil de consolidar.</p>
+
+  <h3>Cinturão Siderúrgico · sul · bônus +3</h3>
+  <p><strong>História.</strong> As fábricas nunca receberam ordem de parar. Doze anos depois, ainda produzem — peças para máquinas que não existem mais, empilhadas até o teto.</p>
+  <p><strong>Aparência.</strong> Fumaça permanente, um alto-forno aceso visível de três regiões, guindastes travados sobre navios afundados, contêineres em pilhas de vinte.</p>
+  <p><strong>Territórios.</strong> Região Industrial, Alto-Forno, Porto Abandonado, Pátio de Cargas, Fronteira Vermelha.</p>
+  <p><strong>Conexões.</strong> Zona Sul (Metrópole), Cratera de Vidro (Zona Vítrea), Cemitério de Comboios (Planície, pela Rota Costeira) e Galeria Sul (Abrigos, pelo Poço do Alto-Forno).</p>
+
+  <h3>Zona Vítrea · leste · bônus +3</h3>
+  <p><strong>História.</strong> Onde o Colapso passou primeiro e mais fundo. Alguma coisa liberou energia suficiente para fundir o chão numa placa contínua de vidro. Os laboratórios em volta continuam com energia própria.</p>
+  <p><strong>Aparência.</strong> Uma cratera espelhada que reflete o céu inteiro, uma floresta mineralizada de pé, névoa química nas encostas e uma parabólica que nunca parou de transmitir.</p>
+  <p><strong>Territórios.</strong> Zona Contaminada, Complexo Científico, Cratera de Vidro, Bosque Fóssil, Estação de Escuta.</p>
+  <p><strong>Conexões.</strong> Ruínas do Leste (Metrópole), Crista Quebrada (Ferro), Fronteira Vermelha (Cinturão) e Câmara de Máquinas (Abrigos, pelo Poço Científico).</p>
+
+  <h3>Os Abrigos · subsolo · bônus +4</h3>
+  <p><strong>História.</strong> Construídos para 30 dias. Ocupados há doze anos. O ar circula, as bombas giram, e ninguém lá embaixo sabe explicar por quê.</p>
+  <p><strong>Aparência.</strong> Corredores de concreto com luz de emergência, portas blindadas numeradas, uma sala de máquinas que troveja e cinco poços verticais por onde entra a única luz do dia que existe ali.</p>
+  <p><strong>Territórios.</strong> Abrigo Zero, Galeria Norte, Galeria Oeste, Galeria Sul, Câmara de Máquinas.</p>
+  <p><strong>Conexões.</strong> Cinco Poços, um para cada região da superfície. É a única região que faz fronteira com todas as outras — e a única cujas fronteiras todas limitam o atacante a 2 dados.</p>
+</section>
+
+<section class="chapter" id="c7">
+  <span class="chapnum">Capítulo 07</span>
+  <h2 class="chap">Os 30 Territórios</h2>
+  <p class="lede">Tabela completa da malha de adjacência. É a fonte da verdade do mapa: qualquer discordância entre este quadro e a interface é bug da interface.</p>
+  <p><strong>✦</strong> marca uma conexão especial (Poço, Ponte ou Rota Costeira) — ver capítulo 05.</p>
+
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Região</th><th>Território</th><th>Faz fronteira com</th><th>Característica</th></tr></thead>
+    <tbody>
+<tr><td class="reg" rowspan="5">A METRÓPOLE</td><td class="name">Distrito Central</td><td>Zona Norte, Zona Sul, Ruínas do Leste, Base Ocidental, Abrigo Zero ✦</td><td><strong>Ponto de Interesse.</strong> Antiga sala de controle da Malha. Único território com 5 fronteiras na superfície. +1 reforço.</td></tr>
+<tr><td class="name">Zona Norte</td><td>Distrito Central, Base Ocidental, Ruínas do Leste, Posto Avançado Norte</td><td>Conjuntos habitacionais verticais. Porta da Metrópole para os Montes de Ferro.</td></tr>
+<tr><td class="name">Zona Sul</td><td>Distrito Central, Base Ocidental, Ruínas do Leste, Região Industrial</td><td>Viadutos empilhados e canais secos. Porta para o Cinturão Siderúrgico.</td></tr>
+<tr><td class="name">Ruínas do Leste</td><td>Distrito Central, Zona Norte, Zona Sul, Zona Contaminada</td><td>Quarteirões que queimaram durante os onze dias. Porta para a Zona Vítrea.</td></tr>
+<tr><td class="name">Base Ocidental</td><td>Distrito Central, Zona Norte, Zona Sul, Rodovia Morta</td><td>Base logística militar saqueada. Porta para a Planície Errante.</td></tr>
+<tr><td class="reg" rowspan="5">MONTES DE FERRO</td><td class="name">Posto Avançado Norte</td><td>Setor Militar, Crista Quebrada, Zona Norte</td><td>Torre de vigia sobre a cidade. Vê chegar quem sobe.</td></tr>
+<tr><td class="name">Setor Militar</td><td>Posto Avançado Norte, Mina Profunda, Represa Seca</td><td><strong>Ponto de Interesse.</strong> Depósito de armamento ainda lacrado. +1 soldado por turno neste território.</td></tr>
+<tr><td class="name">Mina Profunda</td><td>Setor Militar, Crista Quebrada, Represa Seca, Galeria Norte ✦</td><td>Poço de extração que desce até as galerias. Boca do <em>Poço da Mina</em>.</td></tr>
+<tr><td class="name">Crista Quebrada</td><td>Posto Avançado Norte, Mina Profunda, Represa Seca, Estação de Escuta</td><td>Cume partido por deslizamento. Passagem estreita para a Zona Vítrea.</td></tr>
+<tr><td class="name">Represa Seca</td><td>Setor Militar, Mina Profunda, Crista Quebrada, Campo de Antenas ✦</td><td>Comporta travada aberta há doze anos. Cabeceira da <em>Ponte da Represa</em>.</td></tr>
+<tr><td class="reg" rowspan="5">PLANÍCIE ERRANTE</td><td class="name">Rodovia Morta</td><td>Campo de Antenas, Cemitério de Comboios, Vale Cinzento, Base Ocidental</td><td>Autoestrada de doze pistas parada no meio de um congestionamento.</td></tr>
+<tr><td class="name">Campo de Antenas</td><td>Rodovia Morta, Vale Cinzento, Represa Seca ✦</td><td><strong>Ponto de Interesse.</strong> Antenas ainda escutando a Malha. Pré-alerta de Evento do Colapso.</td></tr>
+<tr><td class="name">Vale Cinzento</td><td>Rodovia Morta, Campo de Antenas, Salinas</td><td>Planície coberta de cinza fina. Nada cresce, nada esconde.</td></tr>
+<tr><td class="name">Salinas</td><td>Vale Cinzento, Cemitério de Comboios, Galeria Oeste ✦</td><td>Crosta salgada sobre um mar interior evaporado. Boca do <em>Poço das Salinas</em>.</td></tr>
+<tr><td class="name">Cemitério de Comboios</td><td>Rodovia Morta, Salinas, Porto Abandonado ✦</td><td>Centenas de comboios enfileirados e abandonados. Início da <em>Rota Costeira</em>.</td></tr>
+<tr><td class="reg" rowspan="5">CINTURÃO SIDERÚRGICO</td><td class="name">Região Industrial</td><td>Alto-Forno, Pátio de Cargas, Fronteira Vermelha, Zona Sul</td><td>Galpões de montagem automática que nunca pararam a esteira.</td></tr>
+<tr><td class="name">Alto-Forno</td><td>Região Industrial, Pátio de Cargas, Porto Abandonado, Galeria Sul ✦</td><td>Forno aceso há doze anos sem comando de desligamento. Boca do <em>Poço do Alto-Forno</em>.</td></tr>
+<tr><td class="name">Porto Abandonado</td><td>Alto-Forno, Pátio de Cargas, Cemitério de Comboios ✦</td><td>Guindastes travados sobre navios afundados. Fim da <em>Rota Costeira</em>.</td></tr>
+<tr><td class="name">Pátio de Cargas</td><td>Região Industrial, Alto-Forno, Porto Abandonado, Fronteira Vermelha</td><td><strong>Ponto de Interesse.</strong> Pátio de contêineres e guindastes funcionais. Recarrega o Transporte Especial mais rápido.</td></tr>
+<tr><td class="name">Fronteira Vermelha</td><td>Região Industrial, Pátio de Cargas, Cratera de Vidro</td><td>Linha de contenção pintada no asfalto. Ninguém lembra o que ela continha.</td></tr>
+<tr><td class="reg" rowspan="5">ZONA VÍTREA</td><td class="name">Zona Contaminada</td><td>Complexo Científico, Cratera de Vidro, Estação de Escuta, Ruínas do Leste</td><td>Vazamento químico permanente. Porta da Zona Vítrea para a Metrópole.</td></tr>
+<tr><td class="name">Complexo Científico</td><td>Zona Contaminada, Bosque Fóssil, Estação de Escuta, Câmara de Máquinas ✦</td><td><strong>Ponto de Interesse.</strong> Laboratórios com energia própria. Permite trocar 1 carta por turno.</td></tr>
+<tr><td class="name">Cratera de Vidro</td><td>Zona Contaminada, Bosque Fóssil, Fronteira Vermelha</td><td>Areia fundida em placa contínua. O chão reflete o céu.</td></tr>
+<tr><td class="name">Bosque Fóssil</td><td>Complexo Científico, Cratera de Vidro, Estação de Escuta</td><td>Floresta mineralizada de pé. Árvores de pedra, cobertura total.</td></tr>
+<tr><td class="name">Estação de Escuta</td><td>Zona Contaminada, Complexo Científico, Bosque Fóssil, Crista Quebrada</td><td>Antena parabólica ainda transmitindo relatórios para ninguém.</td></tr>
+<tr><td class="reg" rowspan="5">OS ABRIGOS</td><td class="name">Abrigo Zero</td><td>Galeria Norte, Galeria Oeste, Galeria Sul, Câmara de Máquinas, Distrito Central ✦</td><td><strong>Ponto de Interesse.</strong> Núcleo dos Abrigos, 5 fronteiras. Boca do <em>Poço Central</em>. +1 reforço.</td></tr>
+<tr><td class="name">Galeria Norte</td><td>Abrigo Zero, Galeria Oeste, Câmara de Máquinas, Mina Profunda ✦</td><td>Túnel de serviço sob os Montes de Ferro. Sobe pelo <em>Poço da Mina</em>.</td></tr>
+<tr><td class="name">Galeria Oeste</td><td>Abrigo Zero, Galeria Norte, Galeria Sul, Salinas ✦</td><td>Galeria de drenagem sob as Salinas. Sobe pelo <em>Poço das Salinas</em>.</td></tr>
+<tr><td class="name">Galeria Sul</td><td>Abrigo Zero, Galeria Oeste, Câmara de Máquinas, Alto-Forno ✦</td><td>Duto de refrigeração do Cinturão. Sobe pelo <em>Poço do Alto-Forno</em>.</td></tr>
+<tr><td class="name">Câmara de Máquinas</td><td>Abrigo Zero, Galeria Norte, Galeria Sul, Complexo Científico ✦</td><td>Sala de bombas e geradores ainda girando. Sobe pelo <em>Poço Científico</em>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Pontos de Interesse</h4>
+    <p>Seis territórios — um por região — têm efeito mecânico próprio. Os outros 24 são puramente posicionais. Mantive o número baixo de propósito: 30 territórios com efeito individual seriam impossíveis de aprender e de balancear.</p>
+    <ul>
+      <li><strong>Distrito Central</strong> (Metrópole) — enquanto controlado, +1 reforço por turno.</li>
+      <li><strong>Setor Militar</strong> (Montes de Ferro) — ao final do seu turno, este território ganha +1 soldado.</li>
+      <li><strong>Campo de Antenas</strong> (Planície Errante) — você é avisado 1 rodada antes de um Evento do Colapso ocorrer (não sabe qual).</li>
+      <li><strong>Pátio de Cargas</strong> (Cinturão Siderúrgico) — o Transporte Especial recarrega 1 rodada mais cedo (cap. 17).</li>
+      <li><strong>Complexo Científico</strong> (Zona Vítrea) — na fase CARTAS, você pode descartar 1 carta e comprar 1 no lugar.</li>
+      <li><strong>Abrigo Zero</strong> (Os Abrigos) — enquanto controlado, +1 reforço por turno.</li>
+    </ul>
+    <p>Os dois Pontos de Interesse que dão reforço são exatamente os dois territórios de grau 5 do mapa — os mais difíceis de manter. Isso é deliberado: o prêmio maior fica na posição mais exposta.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c8">
+  <span class="chapnum">Capítulo 08</span>
+  <h2 class="chap">As 6 Facções</h2>
+  <p class="lede">Seis maneiras de ter sobrevivido ao mesmo desastre. Nenhuma é boa em tudo, e cada vantagem tem uma conta correspondente.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>Existem <strong>6 facções</strong>. Cada jogador controla uma facção diferente. A facção <strong>HUMANOS</strong> está definida, com identidade estratégica <strong>Adaptação + Tecnologia + Controle Tático</strong>, e a carta <strong>SEQUESTRO</strong> permanece Humana com a regra inalterada.</p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>As outras cinco facções — <strong>A Forja</strong>, <strong>Vetor</strong>, <strong>A Malha</strong>, <strong>Os Errantes</strong> e <strong>Ressonância</strong> — são propostas minhas: nomes, histórias, cores, poderes e cartas. Também são propostas as duas habilidades dos Humanos (a carta Sequestro não).</p>
+    <p>Todas as seis nascem do mesmo evento: cada facção é uma resposta diferente à mesma pergunta — <em>o que fazer com uma infraestrutura que continua ligada sem ninguém no comando?</em> Nenhuma é "os robôs" ou "os zumbis".</p>
+  </div>
+
+  <div class="faction" style="--fc:#3C82C4">
+    <div class="fhead"><h3>Humanos</h3><span class="fsub">Adaptação + Tecnologia + Controle Tático</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Âncora tática — um triângulo cortado por uma barra horizontal, marcado a estêncil.</dd>
+      <dt>Cor</dt><dd>Azul de operação (#3C82C4).</dd>
+      <dt>Origem</dt><dd>Os quadros militares, médicos e de engenharia que estavam de plantão quando a Malha caiu, e que nunca desmobilizaram.</dd>
+      <dt>História</dt><dd>Não tiveram sorte nem poder: tiveram cadeia de comando. Enquanto o resto do continente improvisava, eles fizeram inventário, mantiveram os hospitais, requisitaram os helicópteros que ainda voavam e passaram a operar por missão, não por território. Doze anos depois são a única força que ainda escreve relatório depois de cada operação.</dd>
+      <dt>Aparência</dt><dd>Uniforme cinza-azulado remendado, equipamento pré-Colapso mantido com peças improvisadas, helicópteros com farol de busca. Limpos de um jeito que incomoda os outros.</dd>
+      <dt>Filosofia</dt><dd>"O mundo não acabou. Foi mal administrado."</dd>
+      <dt>Combate</dt><dd>Operação cirúrgica. Não vencem por massa: vencem escolhendo o momento e desfazendo o plano do inimigo.</dd>
+      <dt>Tecnologia</dt><dd>A que já existia — mantida, adaptada e usada corretamente. Nenhum poder novo.</dd>
+      <dt>Vantagem</dt><dd>Flexibilidade absoluta: nenhuma restrição estrutural, e a carta mais decisiva do jogo.</dd>
+      <dt>Fraqueza</dt><dd>Nenhum bônus de combate próprio. Sem <em>Sequestro</em> na mão, são a facção mais mediana do mapa — e <em>Sequestro</em> tem um uso só.</dd>
+      <dt>Passiva</dt><dd><strong>Sobrevivência</strong> <span class="chip p">🟡</span> — se você começar a fase REFORÇO com 3 ou menos territórios, recebe +1 soldado além do total normal.</dd>
+      <dt>Especial</dt><dd><strong>Operação Aérea</strong> <span class="chip p">🟡</span> — 2 usos por partida. Na fase MOVIMENTAÇÃO, transporte até 3 soldados de um território seu para outro território seu <em>não adjacente</em>, deixando ao menos 1 na origem. Não é ataque e não pode terminar em território inimigo.</dd>
+      <dt>Assinatura</dt><dd><strong>Sequestro / Vacina</strong> <span class="chip l">🔒</span> — texto integral no capítulo 18.</dd>
+      <dt>Som</dt><dd>Rotor de helicóptero ao longe, rádio com estática e voz humana calma dando coordenadas.</dd>
+      <dt>Visual</dt><dd>Linhas retas, estêncil, azul frio sobre cinza. A única facção cuja carta assinatura tem base predominantemente branca.</dd>
+    </dl>
+  </div>
+
+  <div class="faction" style="--fc:#C05A2C">
+    <div class="fhead"><h3>A Forja</h3><span class="fsub">Atrito + Produção + Posição</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Bigorna partida ao meio, com a fenda ainda incandescente.</dd>
+      <dt>Cor</dt><dd>Brasa (#C05A2C).</dd>
+      <dt>Origem</dt><dd>Os turnos de operários e engenheiros que estavam dentro do Cinturão Siderúrgico quando a rede caiu — e que não saíram.</dd>
+      <dt>História</dt><dd>Quando a Malha parou de mandar, as fábricas continuaram rodando com a última ordem. A Forja fez a única coisa que sabia: assumiu o controle manual dos fornos. Hoje são os únicos que ainda <em>fabricam</em> alguma coisa, e por isso são os únicos que podem repor perdas indefinidamente. Não querem o mapa. Querem a linha de produção.</dd>
+      <dt>Aparência</dt><dd>Placas de aço rebitadas sobre roupa de trabalho, máscara de solda, marcas de queimadura. Movem-se devagar e em bloco.</dd>
+      <dt>Filosofia</dt><dd>"Quem controla o forno decide quanto tempo a guerra dura."</dd>
+      <dt>Combate</dt><dd>Desgaste. Não tomam terreno rápido: tornam o terreno deles caro demais e vencem no acúmulo.</dd>
+      <dt>Tecnologia</dt><dd>Metalurgia pesada e manual. Nada eletrônico, nada que dependa da Malha.</dd>
+      <dt>Vantagem</dt><dd>Reposição contínua e a melhor defesa do jogo.</dd>
+      <dt>Fraqueza</dt><dd><strong>Peso.</strong> A Forja nunca move mais de 3 soldados por movimentação, qualquer que seja o efeito usado. Se o inimigo abrir uma frente do outro lado do mapa, ela não chega a tempo.</dd>
+      <dt>Passiva</dt><dd><strong>Fundição Contínua</strong> <span class="chip p">🟡</span> — se você <em>não</em> conquistou nenhum território neste turno, ao final dele um território seu que faça fronteira com um inimigo recebe +1 soldado (você escolhe qual).</dd>
+      <dt>Especial</dt><dd><strong>Muralha de Escória</strong> <span class="chip p">🟡</span> — 2 usos por partida. Escolha um território seu; até o seu próximo turno, quem atacá-lo rola <strong>1 dado a menos</strong> (mínimo 1).</dd>
+      <dt>Assinatura</dt><dd><strong>Refundição</strong> <span class="chip p">🟡</span> — devolva ao tabuleiro até 4 soldados seus eliminados nesta rodada, distribuídos entre territórios seus adjacentes aos locais onde foram perdidos.</dd>
+      <dt>Som</dt><dd>Marreta em compasso, chiado de metal em água, o ronco grave do alto-forno.</dd>
+      <dt>Visual</dt><dd>Laranja de brasa sobre ferro escuro, faísca, tipografia carimbada em chapa.</dd>
+    </dl>
+  </div>
+
+  <div class="faction" style="--fc:#6BA843">
+    <div class="fhead"><h3>Vetor</h3><span class="fsub">Expansão + Conversão + Custo Biológico</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Hélice de três braços dentro de um círculo — a marca de bioperigo redesenhada como bandeira.</dd>
+      <dt>Cor</dt><dd>Verde de cultura (#6BA843).</dd>
+      <dt>Origem</dt><dd>Uma divisão corporativa de biotecnologia que operava sob contrato da Malha e continuou executando o programa depois que o contratante deixou de existir.</dd>
+      <dt>História</dt><dd>Vetor não é uma praga: é uma empresa sem clientes que continua entregando o produto. O programa dizia "aumentar a resistência da população às condições pós-falha". Sem supervisão, o programa foi otimizando o que media — e o que media era sobrevivência, não consentimento. Quem é convertido continua andando, continua trabalhando, e nunca mais discorda.</dd>
+      <dt>Aparência</dt><dd>Traje de contenção surrado com o logo ainda legível, tanques portáteis, tubulação verde por cima da roupa. Andam juntos e respiram no mesmo ritmo.</dd>
+      <dt>Filosofia</dt><dd>"O contrato não foi cancelado."</dd>
+      <dt>Combate</dt><dd>Ofensivo e crescente. Cada vitória aumenta a força seguinte, o que os torna a facção mais perigosa se deixada em paz.</dd>
+      <dt>Tecnologia</dt><dd>Biotecnologia aplicada: cepas, contenção, conversão.</dd>
+      <dt>Vantagem</dt><dd>Único exército que ganha soldados <em>do inimigo</em> sem gastar carta.</dd>
+      <dt>Fraqueza</dt><dd><strong>Instabilidade.</strong> No início do seu turno, todo território seu com <strong>8 ou mais soldados</strong> perde 1 soldado. Vetor não consegue formar a pilha gigante que outras facções usam para vencer no final.</dd>
+      <dt>Passiva</dt><dd><strong>Contágio</strong> <span class="chip p">🟡</span> — ao conquistar um território, 1 dos soldados defensores eliminados na batalha final ressurge como soldado seu no território conquistado. Máximo 1 por turno.</dd>
+      <dt>Especial</dt><dd><strong>Surto</strong> <span class="chip p">🟡</span> — 1 uso a cada 3 rodadas. Escolha um território seu: todos os territórios inimigos adjacentes a ele perdem 1 soldado (nunca abaixo de 1).</dd>
+      <dt>Assinatura</dt><dd><strong>Cepa Resistente</strong> <span class="chip p">🟡</span> — escolha um território seu. Durante a próxima batalha em que ele defender, ele ignora a <em>primeira</em> comparação perdida de cada rodada.</dd>
+      <dt>Som</dt><dd>Respiração filtrada, borbulho de tanque, um estalo curto quando alguém converte.</dd>
+      <dt>Visual</dt><dd>Verde translúcido sobre branco sujo, tipografia corporativa, selos de lote.</dd>
+    </dl>
+  </div>
+
+  <div class="faction" style="--fc:#38A8AE">
+    <div class="fhead"><h3>A Malha</h3><span class="fsub">Rede + Reposicionamento + Previsão</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Nó hexagonal com um dos seis vértices apagado.</dd>
+      <dt>Cor</dt><dd>Ciano de terminal (#38A8AE).</dd>
+      <dt>Origem</dt><dd>O que sobrou da própria rede — os setores que se isolaram a tempo e continuaram se administrando, mais os operadores humanos que nunca desconectaram.</dd>
+      <dt>História</dt><dd>A Malha não é uma inteligência hostil: é um sistema mutilado tentando restaurar a própria integridade com os recursos que encontra. Ela não invade para conquistar — invade para <em>reconectar</em> nós que constam do seu mapa como offline. Os operadores que ainda a servem acreditam que ela vai religar o continente. Talvez ela vá. Ninguém perguntou o custo.</dd>
+      <dt>Aparência</dt><dd>Drones de manutenção, cabos estendidos por cima do terreno como raízes, operadores com viseira e nenhuma insígnia. Onde a Malha passa, as luzes voltam.</dd>
+      <dt>Filosofia</dt><dd>"Integridade restaurada é integridade merecida."</dd>
+      <dt>Combate</dt><dd>Não ataca bem. Vence por posição: chega antes onde importa e nunca está onde você planejou atacar.</dd>
+      <dt>Tecnologia</dt><dd>Infraestrutura em si — energia, roteamento, telemetria.</dd>
+      <dt>Vantagem</dt><dd>A única facção que reposiciona tropas por todo o próprio território numa única movimentação.</dd>
+      <dt>Fraqueza</dt><dd><strong>Nó exposto.</strong> Sempre que a Malha perde um território, ela descarta 1 carta da mão (ela escolhe qual). Perder terreno custa duas vezes.</dd>
+      <dt>Passiva</dt><dd><strong>Rede Ativa</strong> <span class="chip p">🟡</span> — a movimentação da Malha pode percorrer uma <em>cadeia contínua</em> de territórios seus, a qualquer distância. As demais facções só movem entre territórios adjacentes (cap. 16).</dd>
+      <dt>Especial</dt><dd><strong>Reroteamento</strong> <span class="chip p">🟡</span> — 2 usos por partida. Escolha um: (a) troque de posição até 3 soldados entre dois territórios seus quaisquer, ou (b) desative uma conexão especial (Poço, Ponte ou Rota) até o seu próximo turno.</dd>
+      <dt>Assinatura</dt><dd><strong>Queda de Sinal</strong> <span class="chip p">🟡</span> — reativa. O próximo Ataque Comum declarado contra você nesta rodada usa <strong>no máximo 1 dado</strong> durante toda a batalha.</dd>
+      <dt>Som</dt><dd>Zumbido de transformador, tom de sincronia, voz sintética repetindo um número de setor.</dd>
+      <dt>Visual</dt><dd>Ciano sobre preto, grade hexagonal, interface dentro da própria arte.</dd>
+    </dl>
+  </div>
+
+  <div class="faction" style="--fc:#C79A2E">
+    <div class="fhead"><h3>Os Errantes</h3><span class="fsub">Mobilidade + Alcance + Nenhuma Raiz</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Roda de comboio de seis raios, um deles quebrado.</dd>
+      <dt>Cor</dt><dd>Ocre de estrada (#C79A2E).</dd>
+      <dt>Origem</dt><dd>Os comboios de carga que estavam em trânsito no dia da falha e nunca chegaram ao destino.</dd>
+      <dt>História</dt><dd>Ficaram três semanas parados esperando ordem. Quando entenderam que não viria, votaram: continuar andando. Doze anos depois, parar virou tabu — uma superstição prática, porque quem parou na Planície não sobreviveu ao inverno. São os melhores batedores da Bacia e os piores administradores dela.</dd>
+      <dt>Aparência</dt><dd>Caminhões emendados com chapa e vagão, lonas pintadas à mão, poeira em tudo. Acampamento montado em duas horas e desmontado em uma.</dd>
+      <dt>Filosofia</dt><dd>"Território é onde a gente está agora."</dd>
+      <dt>Combate</dt><dd>Ataque de oportunidade. Chegam onde ninguém espera, tomam o que dá e saem antes da resposta.</dd>
+      <dt>Tecnologia</dt><dd>Mecânica de estrada e rádio de curto alcance. Consertam qualquer coisa e projetam nada.</dd>
+      <dt>Vantagem</dt><dd>Dois movimentos por turno e o único Ataque Especial que não consome carga de Transporte.</dd>
+      <dt>Fraqueza</dt><dd><strong>Sem raízes.</strong> Os Errantes recebem apenas <strong>metade</strong> do bônus de região completa, arredondando para baixo (+4 vira +2; +3 vira +1). Segurar região não é o jogo deles.</dd>
+      <dt>Passiva</dt><dd><strong>Comboio</strong> <span class="chip p">🟡</span> — os Errantes realizam <strong>2 movimentações</strong> por turno em vez de 1, cada uma entre territórios adjacentes.</dd>
+      <dt>Especial</dt><dd><strong>Razia</strong> <span class="chip p">🟡</span> — 1 uso a cada 2 rodadas. Declare o Ataque Especial a partir de qualquer território seu contra um território inimigo a distância exatamente 2, <em>sem gastar carga de Transporte Especial</em>. Continua valendo o limite de 1 Ataque Especial por turno.</dd>
+      <dt>Assinatura</dt><dd><strong>Desmanche</strong> <span class="chip p">🟡</span> — escolha um território inimigo: no próximo turno do dono, ele não pode receber reforços nem ser destino de movimentação.</dd>
+      <dt>Som</dt><dd>Motor diesel, rádio AM cortando, buzina de comboio como sinal de reunião.</dd>
+      <dt>Visual</dt><dd>Ocre e lona sobre poeira, tipografia pintada à mão, setas e números de rota.</dd>
+    </dl>
+  </div>
+
+  <div class="faction" style="--fc:#8265C4">
+    <div class="fhead"><h3>Ressonância</h3><span class="fsub">Anomalia + Informação + Risco</span></div>
+    <dl class="fgrid">
+      <dt>Símbolo</dt><dd>Três anéis concêntricos com um corte vertical atravessando os três.</dd>
+      <dt>Cor</dt><dd>Violeta de interferência (#8265C4).</dd>
+      <dt>Origem</dt><dd>Quem estava perto demais da Zona Vítrea no dia em que o chão virou vidro.</dd>
+      <dt>História</dt><dd>Não ganharam poderes. Ganharam <em>sintonia</em>: percebem os espasmos da Malha antes que aconteçam, do mesmo jeito que um animal percebe a tempestade. Isso os tornou os melhores profetas da Bacia e as pessoas mais instáveis dela — cada Evento do Colapso passa por dentro deles antes de passar pelo mapa. Organizaram-se em torno disso porque era a única forma de não enlouquecer sozinhos.</dd>
+      <dt>Aparência</dt><dd>Mantos com placas de vidro fundido costuradas, olhos protegidos, gestos sincronizados sem combinação prévia. Falam pouco e ao mesmo tempo.</dd>
+      <dt>Filosofia</dt><dd>"O Colapso não terminou. Só está mais devagar."</dd>
+      <dt>Combate</dt><dd>Indireto. Não vencem batalhas: vencem sabendo qual batalha vai importar.</dd>
+      <dt>Tecnologia</dt><dd>Nenhuma. Leitura de anomalia, e o preço que ela cobra.</dd>
+      <dt>Vantagem</dt><dd>Informação antecipada sobre Eventos do Colapso e a capacidade de redirecioná-los.</dd>
+      <dt>Fraqueza</dt><dd><strong>Instável.</strong> Sempre que um Evento do Colapso da categoria AMEAÇA ocorre, a Ressonância perde 1 soldado adicional, num território à sua escolha. A mesma sintonia que informa, machuca.</dd>
+      <dt>Passiva</dt><dd><strong>Presságio</strong> <span class="chip p">🟡</span> — no início de cada rodada, você sabe se haverá ou não um Evento do Colapso naquela rodada. Você não sabe qual nem onde.</dd>
+      <dt>Especial</dt><dd><strong>Distorção</strong> <span class="chip p">🟡</span> — 1 uso a cada 3 rodadas. Quando um Evento do Colapso for revelado, se ele for REGIONAL ou TERRITORIAL, escolha outro alvo válido para ele.</dd>
+      <dt>Assinatura</dt><dd><strong>Eco</strong> <span class="chip p">🟡</span> — repita o último Evento do Colapso já revelado nesta partida, escolhendo você os alvos, dentro das regras daquele evento.</dd>
+      <dt>Som</dt><dd>Um tom puro e baixo que some quando você presta atenção. Vidro trincando ao longe.</dd>
+      <dt>Visual</dt><dd>Violeta sobre cinza-vidro, franjas de interferência, duplicação leve de imagem.</dd>
+    </dl>
+  </div>
+
+  <h3>Tabela final das facções</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Facção</th><th>Identidade</th><th>Passiva</th><th>Especial</th><th>Carta assinatura</th><th>Fraqueza</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Humanos</td><td>Adaptação + Tecnologia + Controle Tático</td><td><strong>Sobrevivência</strong> — +1 soldado no reforço com 3 ou menos territórios</td><td><strong>Operação Aérea</strong> — 2×/partida, move até 3 soldados para território seu não adjacente</td><td><strong>Sequestro / Vacina</strong> 🔒</td><td>Nenhum bônus de combate; a assinatura tem 1 uso</td></tr>
+      <tr><td class="name">A Forja</td><td>Atrito + Produção + Posição</td><td><strong>Fundição Contínua</strong> — +1 soldado num território de fronteira em turno sem conquista</td><td><strong>Muralha de Escória</strong> — 2×/partida, atacante rola 1 dado a menos</td><td><strong>Refundição</strong> — devolve até 4 soldados eliminados na rodada</td><td>Nunca move mais de 3 soldados por movimentação</td></tr>
+      <tr><td class="name">Vetor</td><td>Expansão + Conversão + Custo Biológico</td><td><strong>Contágio</strong> — 1 defensor eliminado vira soldado seu ao conquistar</td><td><strong>Surto</strong> — 1× a cada 3 rodadas, −1 soldado em todos os inimigos adjacentes</td><td><strong>Cepa Resistente</strong> — ignora a 1ª comparação perdida de cada rodada</td><td>Territórios com 8+ soldados perdem 1 por turno</td></tr>
+      <tr><td class="name">A Malha</td><td>Rede + Reposicionamento + Previsão</td><td><strong>Rede Ativa</strong> — movimenta por cadeia contínua de territórios seus</td><td><strong>Reroteamento</strong> — 2×/partida, troca 3 soldados entre territórios ou desativa uma conexão</td><td><strong>Queda de Sinal</strong> — o próximo ataque contra você usa 1 dado</td><td>Ao perder um território, descarta 1 carta</td></tr>
+      <tr><td class="name">Os Errantes</td><td>Mobilidade + Alcance + Nenhuma Raiz</td><td><strong>Comboio</strong> — 2 movimentações por turno</td><td><strong>Razia</strong> — 1× a cada 2 rodadas, ataque a distância 2 sem gastar carga</td><td><strong>Desmanche</strong> — território inimigo sem reforço nem movimentação por 1 turno</td><td>Recebe metade do bônus de região completa</td></tr>
+      <tr><td class="name">Ressonância</td><td>Anomalia + Informação + Risco</td><td><strong>Presságio</strong> — sabe se haverá evento na rodada</td><td><strong>Distorção</strong> — 1× a cada 3 rodadas, redireciona evento regional ou territorial</td><td><strong>Eco</strong> — repete o último evento revelado, com alvos à sua escolha</td><td>Perde 1 soldado extra a cada evento de AMEAÇA</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Tabela de balanceamento</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Facção</th><th class="num">Ataque</th><th class="num">Defesa</th><th class="num">Mobilidade</th><th class="num">Cartas</th><th class="num">Recuperação</th><th class="num">Soma</th><th class="num">Dificuldade</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Humanos</td><td class="num">3</td><td class="num">3</td><td class="num">4</td><td class="num">4</td><td class="num">4</td><td class="num">18</td><td class="num">2</td></tr>
+      <tr><td class="name">A Forja</td><td class="num">3</td><td class="num">5</td><td class="num">1</td><td class="num">4</td><td class="num">5</td><td class="num">18</td><td class="num">2</td></tr>
+      <tr><td class="name">Vetor</td><td class="num">5</td><td class="num">4</td><td class="num">2</td><td class="num">3</td><td class="num">4</td><td class="num">18</td><td class="num">3</td></tr>
+      <tr><td class="name">A Malha</td><td class="num">2</td><td class="num">4</td><td class="num">5</td><td class="num">4</td><td class="num">3</td><td class="num">18</td><td class="num">4</td></tr>
+      <tr><td class="name">Os Errantes</td><td class="num">4</td><td class="num">2</td><td class="num">5</td><td class="num">4</td><td class="num">3</td><td class="num">18</td><td class="num">3</td></tr>
+      <tr><td class="name">Ressonância</td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num">5</td><td class="num">4</td><td class="num">18</td><td class="num">5</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">Escala 1–5. As cinco categorias de poder somam <strong>exatamente 18</strong> em todas as facções — é a regra que impede uma facção de ser objetivamente melhor. Dificuldade fica fora da soma porque não é poder: é custo de aprendizado.</p>
+
+  <div class="block plain">
+    <span class="tag">Leitura da matriz</span>
+    <ul>
+      <li><strong>Toda nota 5 é paga.</strong> Forja tem defesa 5 e recuperação 5, e paga com mobilidade 1. Vetor tem ataque 5 e paga com mobilidade 2 e cartas 3. Malha e Errantes têm mobilidade 5 e pagam com ataque 2 e defesa 2, respectivamente. Ressonância tem cartas 5 e paga sendo a única facção sem nenhum 4 ou 5 em combate direto.</li>
+      <li><strong>Humanos não têm 5 nem 1.</strong> É deliberado: é a facção de entrada, boa em tudo e definitiva em nada, e a única cuja força depende de <em>quando</em> a carta é usada, não de um número. Dificuldade 2.</li>
+      <li><strong>Ressonância é dificuldade 5</strong> porque sua força inteira depende de um sistema aleatório que ela lê mas não controla. É a facção certa para o jogador que já entendeu os Eventos do Colapso, e a errada para a primeira partida.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c9">
+  <span class="chapnum">Capítulo 09</span>
+  <h2 class="chap">Tropas</h2>
+  <p class="lede">Um soldado é um soldado. Não há tipos, níveis nem custo — o que varia é onde ele está e quantos estão com ele.</p>
+
+  <h3>Regras gerais do soldado</h3>
+  <ul>
+    <li>Todo soldado pertence a exatamente um território ou está eliminado. Não existe reserva fora do mapa, exceto durante a distribuição de reforços do próprio turno.</li>
+    <li><strong>Nenhum território controlado pode ficar com zero soldados.</strong> Todo território seu tem sempre no mínimo 1.</li>
+    <li>Não há limite máximo de soldados por território — exceto pela fraqueza de Vetor (8+ soldados custam 1 por turno).</li>
+    <li>Soldado eliminado sai da partida. Só a carta <em>Refundição</em> (Forja) e a passiva <em>Contágio</em> (Vetor) devolvem soldados ao tabuleiro.</li>
+  </ul>
+
+  <h3>Tabela de tropas iniciais</h3>
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">Jogadores</th><th class="num">Territórios por jogador</th><th class="num">Remanescentes</th><th class="num">Tropas iniciais</th><th class="num">Compensação de assento</th><th class="num">Densidade</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2</td><td class="num">10</td><td class="num">10</td><td class="num">30</td><td class="num">+0 a +1</td><td class="num">3,0</td></tr>
+      <tr><td class="num">3</td><td class="num">10</td><td class="num">0</td><td class="num">30</td><td class="num">+0 a +2</td><td class="num">3,0</td></tr>
+      <tr><td class="num">4</td><td class="num">7</td><td class="num">2</td><td class="num">21</td><td class="num">+0 a +3</td><td class="num">3,0</td></tr>
+      <tr><td class="num">5</td><td class="num">6</td><td class="num">0</td><td class="num">18</td><td class="num">+0 a +4</td><td class="num">3,0</td></tr>
+      <tr><td class="num">6</td><td class="num">5</td><td class="num">0</td><td class="num">15</td><td class="num">+0 a +5</td><td class="num">3,0</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Tropas iniciais <strong>= territórios iniciais × 3</strong>. A compensação de assento soma <strong>+1 soldado por posição após a primeira</strong> (assento 1 recebe +0, assento 2 recebe +1, assento 6 recebe +5). Cada Remanescente começa com 2 soldados neutros.</p>
+  </div>
+
+  <h3>Justificativa matemática</h3>
+  <p>O número 3 não veio de outro jogo. Ele veio da matemática de dados deste jogo, calculada sob a regra oficial de que <strong>empate favorece o defensor</strong> (cap. 14).</p>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">Densidade inicial</th><th>Situação típica no turno 1</th><th class="num">Chance de conquista</th><th>Consequência</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2</td><td>3 atacantes contra 2 defensores</td><td class="num">65,6%</td><td>Turno 1 vira corrida de conquista gratuita; quem joga primeiro abre vantagem imediata</td></tr>
+      <tr><td class="num">3</td><td>3 atacantes contra 3 defensores</td><td class="num">32,8%</td><td><strong>Escolhido.</strong> Atacar no turno 1 é possível, arriscado e não obrigatório</td></tr>
+      <tr><td class="num">4</td><td>3 atacantes contra 4 defensores</td><td class="num">≈20%</td><td>Abertura estática; ninguém ataca antes da rodada 4 ou 5</td></tr>
+      <tr><td class="num">5</td><td>3 atacantes contra 5 defensores</td><td class="num">11,7%</td><td>Abertura travada</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">Probabilidades calculadas por enumeração completa do espaço de dados, não estimadas. Ver o quadro completo no capítulo 14.</p>
+
+  <p><strong>Por que a densidade é a mesma para 2 e para 6 jogadores.</strong> O que precisa ser constante não é o total de tropas, é a <em>dificuldade de tomar o território ao lado</em>. Se cada território tem em média 3 defensores em qualquer contagem de jogadores, a decisão de abertura é a mesma partida a partida — o que muda é quantas frentes você tem, e isso já é consequência natural do número de jogadores.</p>
+
+  <p><strong>Por que +1 por assento.</strong> O assento 1 ataca contra um mapa em que ninguém reforçou ainda; o assento 6 espera cinco turnos e chega num mapa já endurecido. Um soldado extra por posição equivale a cerca de um terço da guarnição de um território — pequeno demais para virar vantagem, grande o bastante para pagar a espera. Somado à escolha invertida de facção (cap. 04), é a segunda das duas compensações de ordem.</p>
+</section>
+
+<section class="chapter" id="c10">
+  <span class="chapnum">Capítulo 10</span>
+  <h2 class="chap">Estrutura do Turno</h2>
+  <p class="lede">Seis fases, sempre nesta ordem, sempre completas. Pular uma fase é permitido; trocar a ordem não é.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p><strong>1 — REFORÇO → 2 — ATAQUE COMUM → 3 — ATAQUE ESPECIAL → 4 — MOVIMENTAÇÃO → 5 — CARTAS → 6 — FINALIZAR TURNO.</strong></p>
+  </div>
+
+  <ol class="seq">
+    <li><b>Reforço</b>
+      <p>Calcule o total de reforços pela fórmula do capítulo 11 e distribua todos os soldados entre territórios que você já controla. Você não pode terminar a fase com soldados por distribuir, e não pode colocar soldados em território que não seja seu.</p>
+      <p>Efeitos que dependem de território (Ponto de Interesse, passiva de facção, bônus de região) são aplicados aqui, ao calcular o total. Se o jogador for Vetor, a perda por Instabilidade acontece <em>antes</em> do cálculo do reforço.</p>
+    </li>
+    <li><b>Ataque Comum</b>
+      <p>Você pode declarar <strong>um único</strong> Ataque Comum, contra um território inimigo adjacente a um território seu. A batalha pode ter várias rodadas de dados, e continua sendo um só ataque (cap. 12). Você pode escolher não atacar.</p>
+      <p>Se a batalha terminar em conquista, a ocupação (cap. 15) acontece imediatamente, ainda dentro desta fase.</p>
+    </li>
+    <li><b>Ataque Especial</b>
+      <p>Se você tiver uma carga de Transporte Especial — ou a habilidade <em>Razia</em>, dos Errantes — pode declarar <strong>um único</strong> Ataque Especial (cap. 17). É independente do Ataque Comum: você pode fazer os dois, um só ou nenhum.</p>
+    </li>
+    <li><b>Movimentação</b>
+      <p>Uma movimentação entre dois territórios seus adjacentes, deixando ao menos 1 soldado na origem (cap. 16). Os Errantes fazem duas; a Malha move por cadeia contínua.</p>
+      <p>Habilidades de reposicionamento que não são ataque (<em>Operação Aérea</em>, <em>Reroteamento</em>) são usadas nesta fase.</p>
+    </li>
+    <li><b>Cartas</b>
+      <p>Compre carta se tiver direito, jogue as cartas que quiser jogar e ajuste a mão ao limite (cap. 18). Cartas <em>reativas</em> são a exceção: elas são jogadas fora do seu turno, no momento em que o gatilho acontece.</p>
+    </li>
+    <li><b>Finalizar Turno</b>
+      <p>Efeitos de fim de turno são resolvidos nesta ordem: (a) passivas de fim de turno — <em>Fundição Contínua</em>, Setor Militar; (b) verificação de objetivo secreto; (c) descarte do excesso de mão; (d) passagem do turno ao próximo assento.</p>
+      <p>Quando o último assento finaliza, a <strong>rodada</strong> termina — e é aí que o sistema rola secretamente a chance de Evento do Colapso (cap. 20).</p>
+    </li>
+  </ol>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p><strong>Definição de rodada.</strong> Uma <em>rodada</em> é o conjunto de turnos de todos os jogadores vivos, do assento 1 até o último. Todos os efeitos deste documento que dizem "por rodada", "a cada N rodadas" ou "até o seu próximo turno" usam esta definição. É necessária porque o Evento do Colapso, os cooldowns de habilidade e vários objetivos dependem dela.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c11">
+  <span class="chapnum">Capítulo 11</span>
+  <h2 class="chap">Reforços</h2>
+  <p class="lede">Uma linha de conta, três parcelas: território, região e efeitos.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p style="font-family:var(--f-mono);font-size:15px;line-height:1.7;background:var(--surface);border:1px solid var(--rule);padding:12px 14px">
+      <strong>Reforço = máx(3, ⌊territórios ÷ 3⌋) + bônus de regiões completas + efeitos</strong>
+    </p>
+    <ul>
+      <li><strong>Base territorial:</strong> número de territórios que você controla dividido por 3, arredondado para baixo.</li>
+      <li><strong>Piso de 3:</strong> ninguém recebe menos de 3 soldados por turno, nunca. É o que impede o jogador encurralado de ficar sem reação.</li>
+      <li><strong>Bônus de região completa:</strong> +4 pela Metrópole, +4 pelos Abrigos, +3 por cada uma das outras quatro. Só conta se você controlar os 5 territórios da região no momento do cálculo.</li>
+      <li><strong>Efeitos:</strong> Pontos de Interesse (Distrito Central +1, Abrigo Zero +1), passivas de facção, cartas e Eventos do Colapso.</li>
+    </ul>
+  </div>
+
+  <h3>Exemplos</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Situação</th><th class="num">Territórios</th><th>Regiões completas</th><th>Efeitos</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      <tr><td>Início de partida com 6 jogadores</td><td class="num">5</td><td>—</td><td>—</td><td class="num">3</td></tr>
+      <tr><td>Jogador encurralado</td><td class="num">2</td><td>—</td><td>—</td><td class="num">3</td></tr>
+      <tr><td>Humanos encurralados (passiva)</td><td class="num">3</td><td>—</td><td><em>Sobrevivência</em> +1</td><td class="num">4</td></tr>
+      <tr><td>Partida média, sem região</td><td class="num">9</td><td>—</td><td>—</td><td class="num">3</td></tr>
+      <tr><td>Consolidou a Planície Errante</td><td class="num">10</td><td>Planície +3</td><td>Campo de Antenas (sem reforço)</td><td class="num">6</td></tr>
+      <tr><td>Errantes com a Planície (metade do bônus)</td><td class="num">10</td><td>Planície +1</td><td>—</td><td class="num">4</td></tr>
+      <tr><td>Segura a Metrópole inteira</td><td class="num">12</td><td>Metrópole +4</td><td>Distrito Central +1</td><td class="num">9</td></tr>
+      <tr><td>Duas regiões, jogo adiantado</td><td class="num">16</td><td>Metrópole +4, Abrigos +4</td><td>Distrito Central +1, Abrigo Zero +1</td><td class="num">15</td></tr>
+      <tr><td>Dominando o mapa</td><td class="num">24</td><td>Quatro regiões, +14</td><td>+2 de Pontos de Interesse</td><td class="num">24</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="block plain">
+    <span class="tag">Por que ÷3 e não ÷2</span>
+    <p>Com divisor 2, um jogador com 20 territórios receberia 10 por turno só de base — mais do que consegue perder num turno, já que o adversário só tem 1 Ataque Comum. A partida vira irreversível cedo demais. Com divisor 3, a base cresce devagar e <strong>o bônus de região é a única fonte real de escalada</strong>, o que empurra a estratégia para consolidar regiões em vez de espalhar conquistas — que é exatamente o comportamento que este mapa foi desenhado para recompensar.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c12">
+  <span class="chapnum">Capítulo 12</span>
+  <h2 class="chap">Ataque Comum</h2>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>Cada jogador possui <strong>somente 1 Ataque Comum por turno</strong>. Não são permitidos ataques comuns infinitos.</p>
+    <p>O jogador escolhe o território atacante, depois um território inimigo adjacente, e a batalha acontece.</p>
+    <p><strong>Uma batalha pode ter várias rodadas.</strong> Isso não significa vários ataques: enquanto o jogador continuar atacando o mesmo território, continua sendo <strong>um único ataque</strong>.</p>
+    <p>A batalha termina quando: o atacante recua; o atacante não consegue continuar; o defensor é eliminado; ou algum efeito encerra o combate. Depois disso, o Ataque Comum foi utilizado.</p>
+  </div>
+
+  <h3>Como uma batalha corre</h3>
+  <ol class="seq">
+    <li><b>Declaração</b>
+      <p>Escolha um território seu com <strong>2 ou mais soldados</strong> e um território inimigo adjacente. Territórios com 1 soldado não podem atacar, porque a origem precisa ficar com pelo menos 1.</p>
+    </li>
+    <li><b>Rodada de dados</b>
+      <p>Atacante e defensor rolam seus dados (cap. 14), comparam e removem soldados. Isso pode repetir várias vezes.</p>
+    </li>
+    <li><b>Continuar ou recuar</b>
+      <p>Após cada rodada, o atacante decide: rolar outra rodada ou encerrar a batalha. <strong>Recuar é sempre permitido</strong> e não custa nada além do ataque já gasto. O defensor nunca decide encerrar.</p>
+    </li>
+    <li><b>Fim</b>
+      <p>A batalha acaba por conquista, por recuo, ou porque o território atacante chegou a 1 soldado e não pode mais rolar. Em qualquer caso, o Ataque Comum do turno foi consumido.</p>
+    </li>
+  </ol>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p><strong>O ataque é declarado contra um território, não contra um jogador.</strong> Se durante a batalha o território defensor mudar de dono por efeito externo — o que só é possível por Evento do Colapso — a batalha continua normalmente contra o novo controlador.</p>
+    <p><strong>Não é possível redirecionar.</strong> Uma vez declarada, a batalha só pode continuar contra o mesmo território ou terminar. Mudar de alvo exigiria um segundo ataque, que não existe.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c13">
+  <span class="chapnum">Capítulo 13</span>
+  <h2 class="chap">Defesa</h2>
+  <p class="lede">Defender não custa turno, não custa recurso e não exige preparação. É a posição estruturalmente favorecida deste jogo — de propósito.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>O defensor pode utilizar <strong>até 3 dados</strong>: 1 soldado → 1 dado; 2 soldados → 2 dados; 3 ou mais soldados → 3 dados. <strong>O defensor não precisa deixar tropas fora da defesa.</strong></p>
+    <p><strong>Empate = defensor vence.</strong></p>
+  </div>
+
+  <h3>O que o defensor pode fazer</h3>
+  <ul>
+    <li><strong>Rolar dados.</strong> Automático, sempre, sem decisão. O defensor nunca escolhe rolar menos dados do que pode.</li>
+    <li><strong>Jogar cartas reativas.</strong> São as únicas cartas jogáveis fora do próprio turno. Incluem <em>Emboscada</em>, <em>Interferência</em>, <em>Queda de Sinal</em> (Malha) e o uso defensivo de <em>Sequestro</em> como <strong>Vacina</strong> (Humanos).</li>
+    <li><strong>Usar efeitos já preparados.</strong> <em>Muralha de Escória</em> (Forja) e <em>Cepa Resistente</em> (Vetor) são ativados no turno do dono e valem quando o ataque chegar.</li>
+  </ul>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Janela de reação</h4>
+    <p>Cartas reativas de defesa podem ser jogadas em duas janelas, e só nelas:</p>
+    <ol>
+      <li><strong>Após a declaração do ataque, antes da primeira rodada de dados</strong> — é onde entram <em>Emboscada</em>, <em>Queda de Sinal</em> e a <strong>Vacina</strong>.</li>
+      <li><strong>Entre duas rodadas de dados</strong> — apenas cartas cujo texto diga explicitamente que valem no meio da batalha.</li>
+    </ol>
+    <p>Cada defensor pode jogar no máximo <strong>1 carta reativa por batalha</strong>. Sem esse limite, uma mão cheia de reativas transforma um único ataque num muro impossível, e o jogo já favorece a defesa o bastante.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c14">
+  <span class="chapnum">Capítulo 14</span>
+  <h2 class="chap">Dados</h2>
+  <p class="lede">Todo o combate do jogo cabe em quatro regras. Elas são oficiais e estão reproduzidas aqui sem uma palavra alterada.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <h4>Atacante</h4>
+    <p>Máximo de <strong>3 dados</strong>. A quantidade é baseada nas tropas disponíveis para atacar, e o território atacante deve permanecer com <strong>pelo menos 1 soldado</strong>.</p>
+    <ul>
+      <li>2 soldados no território: 1 pode atacar → <strong>1 dado</strong>.</li>
+      <li>3 soldados: 2 podem atacar → <strong>2 dados</strong>.</li>
+      <li>4 ou mais: até 3 podem atacar → <strong>3 dados</strong>.</li>
+    </ul>
+    <h4>Defensor</h4>
+    <p>Também pode utilizar <strong>até 3 dados</strong>. 1 soldado → 1 dado; 2 soldados → 2 dados; 3 ou mais → 3 dados. O defensor não precisa deixar tropas fora da defesa.</p>
+    <h4>Comparação</h4>
+    <p>Ordenar os dados do maior para o menor. Comparar maior × maior, segundo × segundo, terceiro × terceiro. Somente comparar pares existentes.</p>
+    <h4>Empate</h4>
+    <p><strong>Empate = defensor vence.</strong> Cada comparação perdida elimina <strong>1 soldado</strong>.</p>
+  </div>
+
+  <h3>Exemplo oficial</h3>
+  <div class="turnlog">
+    <div class="th">Uma rodada de dados</div>
+    <div class="tb">
+      <p>Atacante: <span class="dice">6 — 5 — 2</span> · Defensor: <span class="dice">6 — 4 — 3</span></p>
+      <p><strong>6 × 6</strong> → empate → atacante perde 1.<br>
+         <strong>5 × 4</strong> → atacante vence → defensor perde 1.<br>
+         <strong>2 × 3</strong> → defensor vence → atacante perde 1.</p>
+      <p>Resultado da rodada: <strong>atacante −2, defensor −1</strong>.</p>
+    </div>
+  </div>
+
+  <h3>Matemática do combate</h3>
+  <p>Os números abaixo foram calculados por <strong>enumeração completa</strong> do espaço de resultados sob a regra oficial de empate — não são estimativas nem simulação. Eles são a base de várias decisões deste documento, e ficam registrados aqui para que o balanceamento futuro tenha um ponto de partida real.</p>
+
+  <h4>Perdas médias em uma rodada</h4>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Confronto</th><th class="num">Perdas do atacante</th><th class="num">Perdas do defensor</th><th class="num">Razão D/A</th><th>Leitura</th></tr></thead>
+    <tbody>
+      <tr><td class="name">3 A × 1 D</td><td class="num">0,340</td><td class="num">0,660</td><td class="num">1,94</td><td>O único confronto claramente bom para o atacante</td></tr>
+      <tr><td class="name">2 A × 1 D</td><td class="num">0,421</td><td class="num">0,579</td><td class="num">1,37</td><td>Favorável ao atacante</td></tr>
+      <tr><td class="name">3 A × 2 D</td><td class="num">0,921</td><td class="num">1,079</td><td class="num">1,17</td><td>Levemente favorável ao atacante</td></tr>
+      <tr><td class="name">1 A × 1 D</td><td class="num">0,583</td><td class="num">0,417</td><td class="num">0,71</td><td>Favorável ao defensor</td></tr>
+      <tr><td class="name">2 A × 2 D</td><td class="num">1,221</td><td class="num">0,779</td><td class="num">0,64</td><td>Ruim para o atacante</td></tr>
+      <tr><td class="name">3 A × 3 D</td><td class="num">1,893</td><td class="num">1,107</td><td class="num">0,58</td><td>Ruim para o atacante — e é o confronto mais comum do jogo</td></tr>
+      <tr><td class="name">2 A × 3 D</td><td class="num">1,493</td><td class="num">0,507</td><td class="num">0,34</td><td>Péssimo para o atacante</td></tr>
+      <tr><td class="name">1 A × 2 D</td><td class="num">0,745</td><td class="num">0,255</td><td class="num">0,34</td><td>Péssimo para o atacante</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4>Batalha completa — chance de conquistar o território</h4>
+  <p class="tnote">Atacante insistindo até tomar ou até não poder mais rolar. "Tropas atacantes" = soldados no território menos o 1 que fica obrigatoriamente.</p>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">Tropas atacantes</th><th class="num">1 def.</th><th class="num">2 def.</th><th class="num">3 def.</th><th class="num">5 def.</th><th class="num">7 def.</th><th class="num">10 def.</th></tr></thead>
+    <tbody>
+      <tr><td class="num">3</td><td class="num">91,6%</td><td class="num">65,6%</td><td class="num">32,8%</td><td class="num">11,7%</td><td class="num">3,2%</td><td class="num">0,5%</td></tr>
+      <tr><td class="num">5</td><td class="num">99,0%</td><td class="num">89,0%</td><td class="num">56,7%</td><td class="num">27,8%</td><td class="num">11,3%</td><td class="num">2,6%</td></tr>
+      <tr><td class="num">7</td><td class="num">99,9%</td><td class="num">96,7%</td><td class="num">75,5%</td><td class="num">46,2%</td><td class="num">23,8%</td><td class="num">7,4%</td></tr>
+      <tr><td class="num">10</td><td class="num">100%</td><td class="num">99,4%</td><td class="num">90,1%</td><td class="num">68,1%</td><td class="num">44,2%</td><td class="num">19,0%</td></tr>
+      <tr><td class="num">14</td><td class="num">100%</td><td class="num">100%</td><td class="num">97,2%</td><td class="num">85,8%</td><td class="num">67,8%</td><td class="num">39,5%</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4>Paridade de forças</h4>
+  <div class="stats">
+    <div><b>32,8%</b><span>3 contra 3</span></div>
+    <div><b>27,8%</b><span>5 contra 5</span></div>
+    <div><b>23,8%</b><span>7 contra 7</span></div>
+    <div><b>19,0%</b><span>10 contra 10</span></div>
+  </div>
+  <p class="tnote">Com forças iguais o atacante perde na maioria das vezes — e perde <em>mais</em> quanto maiores forem os exércitos. Essa é a consequência direta e correta da regra oficial de empate.</p>
+
+  <div class="block risk">
+    <span class="tag">⚑ Sugestão de balanceamento</span>
+    <h4>O problema: a partida pode não terminar</h4>
+    <p><strong>A regra oficial permanece exatamente como está.</strong> O que segue é apenas o registro do risco que a matemática revela, para você decidir depois.</p>
+    <p>Três regras oficiais somadas — empate favorece o defensor, defensor não precisa deixar reserva, e apenas 1 Ataque Comum por turno — criam uma pressão muito forte a favor da defesa:</p>
+    <ul>
+      <li>Para tomar um território com 5 defensores com boa margem, o atacante precisa juntar cerca de <strong>10 soldados</strong> num único território — o que leva 3 a 4 turnos de reforço acumulado.</li>
+      <li>Com 1 conquista por turno no melhor caso, sair de 7 territórios para os 30 exige <strong>no mínimo 23 turnos vencedores</strong>. Com a taxa de sucesso real, a dominação total é praticamente inatingível numa partida de duração razoável.</li>
+      <li>Consequência: <strong>o objetivo secreto não é uma condição alternativa de vitória — é a única que fecha a partida na prática.</strong> Se os objetivos forem difíceis demais, a partida não termina.</li>
+    </ul>
+    <h4>Três formas de tratar isso, em ordem de invasividade</h4>
+    <ol>
+      <li><strong>Não mexer em regra nenhuma</strong> — calibrar os 20 objetivos secretos para serem cumpríveis em 10 a 16 rodadas (foi o que fiz no cap. 19) e deixar a dominação total como desempate raro. <em>É a opção que este documento adota.</em></li>
+      <li><strong>Acelerar só o Transporte Especial</strong> — a partir da rodada 8, a recarga cai de 4 para 2 rodadas, de forma que todos passem a ter 2 ataques por turno com regularidade no fim da partida. Não toca em nenhuma regra oficial: mexe apenas numa proposta minha (cap. 17).</li>
+      <li><strong>Segundo Ataque Comum tardio</strong> — a partir da rodada 12, cada jogador passa a ter 2 Ataques Comuns por turno. <strong>Esta opção contraria a regra oficial de 1 Ataque Comum por turno</strong> e por isso <em>não está adotada em lugar nenhum deste documento</em>. Só você pode aprová-la.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="chapter" id="c15">
+  <span class="chapnum">Capítulo 15</span>
+  <h2 class="chap">Conquista</h2>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>Quando o defensor chegar a <strong>zero soldados</strong>, o território é conquistado e muda de controlador. O atacante <strong>deve ocupar</strong> o território. <strong>Nunca poderá existir território controlado com zero tropas.</strong></p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Quantas tropas ocupam</h4>
+    <p>Chame de <strong>força sobrevivente</strong> o número de soldados que participaram da última rodada de dados e sobreviveram — ou seja, no máximo 3.</p>
+    <ul>
+      <li><strong>Mínimo obrigatório:</strong> 1 soldado. O território conquistado nunca fica vazio.</li>
+      <li><strong>Máximo permitido:</strong> a força sobrevivente. Você não pode despejar a guarnição inteira do território de origem no território conquistado.</li>
+      <li><strong>Origem:</strong> continua com pelo menos 1 soldado, como sempre.</li>
+    </ul>
+    <p><strong>Por que limitar à força sobrevivente.</strong> Se a ocupação pudesse levar todos menos 1, a conquista viraria também um reposicionamento gratuito de exército inteiro, contornando o limite de uma movimentação por turno. Limitando aos soldados que de fato lutaram, a conquista <em>abre</em> uma frente nova mas não a consolida — consolidar exige o turno seguinte. É essa lacuna de um turno que dá aos outros jogadores a chance de retomar.</p>
+    <h4>Consequências imediatas</h4>
+    <ul>
+      <li>O território conquistado entra no seu domínio na hora: conta para reforço, para região completa e para objetivo já na verificação desta fase.</li>
+      <li>Se o território conquistado era o último do defensor, ele é eliminado (cap. 21).</li>
+      <li>Vetor aplica <em>Contágio</em> neste momento. A Malha, se perdeu o território, descarta 1 carta.</li>
+      <li>Conquistar ao menos 1 território neste turno dá direito a comprar 1 carta na fase CARTAS (cap. 18).</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c16">
+  <span class="chapnum">Capítulo 16</span>
+  <h2 class="chap">Movimentação</h2>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>O território de origem pertence ao jogador; o destino pertence ao jogador; a origem deve permanecer com <strong>pelo menos 1 soldado</strong>.</p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <ul>
+      <li><strong>1 movimentação por turno</strong>, na fase MOVIMENTAÇÃO.</li>
+      <li><strong>Origem e destino precisam ser adjacentes.</strong> Não existe movimento por cadeia como regra geral.</li>
+      <li><strong>Sem limite de quantidade</strong> de soldados, desde que fique 1 na origem (exceções: Forja, máximo 3; Rota Costeira, máximo 3).</li>
+      <li>Soldados que acabaram de conquistar um território podem ser movidos normalmente nesta fase.</li>
+    </ul>
+    <h4>Por que adjacente, e não cadeia contínua</h4>
+    <p>Movimento por cadeia é a convenção do gênero, mas aqui ele quebraria o jogo. Com apenas 1 Ataque Comum por turno, o atacante já é lento; se todo defensor pudesse trazer o exército inteiro do outro lado do mapa para tapar o buraco na mesma noite, nenhuma frente ficaria aberta tempo suficiente para ser explorada — e a partida travaria de vez (ver o risco no cap. 14).</p>
+    <p>Restringindo a movimentação a fronteiras adjacentes, <strong>a distância volta a ser um custo real</strong> e a geografia do mapa passa a significar alguma coisa. O movimento por cadeia continua existindo no jogo, mas como <em>identidade de facção</em>: é a passiva <em>Rede Ativa</em>, da Malha, e é o que justifica a mobilidade 5 dela na matriz de balanceamento.</p>
+    <p class="tnote">A alternativa — cadeia contínua para todos, e outra passiva para a Malha — está registrada no anexo de decisões, porque é uma escolha de design legítima que muda bastante o ritmo do jogo.</p>
+  </div>
+
+  <h3>Movimentos que não são a movimentação</h3>
+  <p>Estes efeitos reposicionam tropas mas <strong>não gastam</strong> a movimentação do turno: <em>Operação Aérea</em> (Humanos), <em>Reroteamento</em> (Malha), a ocupação após conquista (cap. 15) e as cartas <em>Evacuação</em> e <em>Rota Alternativa</em> (cap. 18). A segunda movimentação dos Errantes é uma movimentação normal, sujeita às mesmas regras.</p>
+</section>
+
+<section class="chapter" id="c17">
+  <span class="chapnum">Capítulo 17</span>
+  <h2 class="chap">Transporte Especial</h2>
+  <p class="lede">O segundo ataque do turno. Caro, limitado, de alcance curto — e a única forma de furar uma linha de frente parada.</p>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p>O Transporte Especial pode conceder <strong>1 Ataque Especial adicional</strong> no turno: 1 Ataque Comum + 1 Ataque Especial. <strong>Ataque Especial não concede ataques infinitos: máximo de 1 Ataque Especial por turno.</strong></p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Tudo nesta seção é proposta minha. Nada aqui estava definido além do limite de 1 por turno.</p>
+
+    <h4>O que é</h4>
+    <p>Não é carta e não é item: é um <strong>recurso de facção</strong>, medido em <strong>cargas</strong>. Cada facção representa o transporte à sua maneira — helicóptero (Humanos), comboio blindado (Errantes), trem de carga (Forja), duto (Vetor), drone de manutenção (Malha), deslocamento por ressonância — mas a regra é idêntica para todas.</p>
+    <p>Fazer disso um recurso, e não uma carta, é deliberado: como carta, o segundo ataque dependeria de sorte de compra e ficaria concentrado em quem já está ganhando. Como recurso com recarga fixa, <strong>todo jogador sabe exatamente quando terá o segundo ataque</strong> — e pode planejar em cima disso.</p>
+
+    <h4>Como conseguir</h4>
+    <ul>
+      <li>Cada jogador <strong>começa a partida com 1 carga</strong>.</li>
+      <li><strong>Recarga automática:</strong> +1 carga ao final de cada <strong>4 rodadas completas</strong> (fim das rodadas 4, 8, 12...).</li>
+      <li><strong>Recarga por consolidação:</strong> +1 carga ao final da primeira rodada em que você controlar uma região completa. Uma vez por região, por partida.</li>
+      <li><strong>Limite de estoque:</strong> 1 carga. Com o <strong>Pátio de Cargas</strong>, o limite sobe para 2 e a recarga automática passa a acontecer a cada 3 rodadas.</li>
+    </ul>
+
+    <h4>Como usar</h4>
+    <ul>
+      <li>Somente na fase <strong>ATAQUE ESPECIAL</strong>, e apenas uma vez por turno.</li>
+      <li>Consome 1 carga <strong>no momento da declaração</strong> — mesmo que o ataque fracasse.</li>
+      <li>Envia <strong>até 3 soldados</strong> de um território seu, que deve ficar com pelo menos 1.</li>
+    </ul>
+
+    <h4>Alcance</h4>
+    <ul>
+      <li>Alvo a <strong>distância exatamente 2</strong> pela malha de adjacência: um único território intermediário, de qualquer dono, entre a origem e o alvo.</li>
+      <li>Distância 1 (adjacente) <strong>não</strong> é alvo válido — para isso existe o Ataque Comum. Distância 3 ou mais também não.</li>
+      <li><strong>Não alcança Os Abrigos</strong>, com uma exceção: o Abrigo Zero pode ser origem ou alvo. As galerias não. O subsolo só é tomado descendo pelos Poços.</li>
+      <li>Não é possível usar o Transporte Especial atravessando uma conexão desativada (Ponte cortada, Poço desabado, <em>Reroteamento</em> da Malha).</li>
+    </ul>
+
+    <h4>A batalha e o retorno</h4>
+    <ul>
+      <li>A batalha segue <strong>todas</strong> as regras normais de combate: até 3 dados de cada lado, empate favorece o defensor, várias rodadas permitidas, recuo permitido.</li>
+      <li><strong>Se conquistar:</strong> os sobreviventes ocupam o território alvo, pelas regras do capítulo 15.</li>
+      <li><strong>Se não conquistar:</strong> os sobreviventes <strong>voltam ao território de origem</strong>. O custo do fracasso são os soldados mortos e a carga gasta, não o resto da força.</li>
+    </ul>
+
+    <h4>Como se defende</h4>
+    <p>Exatamente como de um ataque comum: dados normais, cartas reativas, <strong>Vacina</strong> inclusive. A carta <em>Barricada</em> é a única defesa específica — enquanto ativa, o território não pode ser alvo de Ataque Especial.</p>
+
+    <h4>Interação com habilidades</h4>
+    <ul>
+      <li><strong>Os Errantes</strong> usam <em>Razia</em> para atacar a distância 2 <em>sem gastar carga</em> — mas continuam limitados a 1 Ataque Especial por turno. A carga poupada vale para outra rodada.</li>
+      <li><strong>A Malha</strong> pode usar <em>Reroteamento</em> para desativar uma conexão e assim quebrar a rota de distância 2 de um adversário.</li>
+      <li><strong>Humanos</strong> podem usar <em>Operação Aérea</em> na fase MOVIMENTAÇÃO para reposicionar antes ou depois — mas Operação Aérea nunca ataca.</li>
+      <li><strong>A Forja</strong> não tem restrição aqui: o limite de 3 soldados por movimentação dela coincide com o limite do próprio transporte.</li>
+    </ul>
+
+    <h4>Interação com Eventos do Colapso</h4>
+    <ul>
+      <li><em>Queda de Tensão</em> (evento 01) bloqueia todos os Ataques Especiais da rodada. Cargas não são perdidas.</li>
+      <li><em>Silêncio</em> (evento 20) devolve 1 carga a todos os jogadores, respeitando o limite de estoque.</li>
+      <li><em>Desabamento de Poço</em> e <em>Ponte Rompida</em> podem eliminar rotas de distância 2 enquanto durarem.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c18">
+  <span class="chapnum">Capítulo 18</span>
+  <h2 class="chap">Cartas</h2>
+  <p class="lede">Trinta cartas no total: 24 neutras num baralho compartilhado e 6 assinaturas, uma por facção. É pouco de propósito — é o conjunto mínimo para testar o jogo inteiro.</p>
+
+  <h3>Estrutura do sistema</h3>
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <ul>
+      <li><strong>Baralho do Colapso</strong> — 24 cartas neutras, embaralhado, compartilhado por todos. Compra pelo topo.</li>
+      <li><strong>Compra:</strong> na fase CARTAS, você compra 1 carta se <strong>conquistou ao menos 1 território neste turno</strong>. Além disso, compra 1 carta na primeira vez em que completar cada região.</li>
+      <li><strong>Compra de compensação:</strong> se você passar <strong>3 turnos seguidos sem comprar nenhuma carta</strong>, compra 1 automaticamente. É o equivalente ao piso de reforço: o jogador encurralado não pode ficar também sem cartas.</li>
+      <li><strong>Limite de mão:</strong> 5 cartas neutras. O excesso é descartado no FINALIZAR TURNO, à escolha do jogador. A carta assinatura <strong>não conta</strong> no limite.</li>
+      <li><strong>Descarte:</strong> pilha aberta, visível a todos. Quando o baralho acabar, o descarte é embaralhado e vira o novo baralho.</li>
+      <li><strong>Quando jogar:</strong> cartas <em>ofensivas</em>, <em>defensivas</em> e <em>táticas</em> só na sua fase CARTAS, com uma exceção — cartas cujo texto se refira a uma batalha em andamento são jogadas naquela batalha. Cartas <em>reativas</em> só fora do seu turno, na janela de reação (cap. 13).</li>
+      <li><strong>Sem limite de cartas jogadas por turno</strong>, exceto o limite de 1 carta reativa por batalha.</li>
+    </ul>
+  </div>
+
+  <h3>Carta oficial dos Humanos</h3>
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada — SEQUESTRO</span>
+    <h4>Efeito principal · Sequestro</h4>
+    <p>Escolha até <strong>7 soldados</strong> de um time adversário. Esses soldados são retirados do território inimigo, deixam o exército adversário, passam para o exército Humano e podem ser redistribuídos livremente em territórios Humanos conforme as regras da carta.</p>
+    <h4>Uso alternativo · Vacina / Contra-ataque</h4>
+    <p>Quando Humanos forem atacados, jogue <strong>1d6</strong>. O resultado determina a quantidade de soldados atacantes destruídos. Exemplo: resultado 5, existem 3 tropas atacantes elegíveis — somente 3 são destruídas. <strong>Nunca gerar número negativo.</strong></p>
+    <h4>Regra fundamental</h4>
+    <p><strong>SEQUESTRO ou VACINA. Nunca os dois.</strong> Quando utilizar qualquer efeito, <strong>a carta é consumida</strong>.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Sugestão de balanceamento</span>
+    <p><strong>A regra oficial fica exatamente como está.</strong> Registro dois pontos que a implementação vai precisar resolver e que só você pode decidir:</p>
+    <ol>
+      <li><strong>Sequestro pode esvaziar um território inimigo.</strong> Se o alvo tiver 7 ou menos soldados e você levar todos, o território fica com zero — o que a regra do capítulo 15 diz que nunca pode acontecer. As três leituras possíveis são: (a) o território fica neutro/Remanescente; (b) o território passa para os Humanos com os soldados que você decidir deixar lá; (c) você é obrigado a deixar 1 soldado, sequestrando no máximo <em>todos menos um</em>. As três são compatíveis com o texto oficial — ele simplesmente não diz.</li>
+      <li><strong>"Tropas atacantes elegíveis" na Vacina.</strong> O exemplo oficial fala em 3 tropas elegíveis, que é exatamente o máximo de soldados que atacam numa rodada. Isso sugere que a Vacina mata dentro da <em>força de ataque da rodada</em> (máx. 3), e não dentro do território atacante inteiro. A diferença é enorme: no primeiro caso a Vacina interrompe um ataque; no segundo ela pode dizimar um exército de 6 soldados. Preciso da sua leitura antes de implementar.</li>
+    </ol>
+    <p>Não escolhi nenhuma das opções. Ambas estão no anexo de decisões.</p>
+  </div>
+
+  <h3>As 24 cartas neutras</h3>
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Carta</th><th>Tipo</th><th class="num">Cópias</th><th>Efeito</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Reconhecimento</td><td>Tática</td><td class="num">3</td><td>Veja a mão de um adversário à sua escolha.</td></tr>
+      <tr><td class="name">Suprimentos</td><td>Tática</td><td class="num">3</td><td>Receba 3 soldados imediatamente, distribuídos livremente entre territórios seus.</td></tr>
+      <tr><td class="name">Emboscada</td><td>Reativa</td><td class="num">2</td><td>Ao ser atacado: o atacante perde 1 soldado antes da primeira rodada de dados.</td></tr>
+      <tr><td class="name">Barricada</td><td>Defensiva</td><td class="num">2</td><td>Até seu próximo turno, um território seu não pode ser alvo de Ataque Especial.</td></tr>
+      <tr><td class="name">Sabotagem</td><td>Ofensiva</td><td class="num">2</td><td>Um território inimigo à sua escolha perde 1 soldado (nunca abaixo de 1).</td></tr>
+      <tr><td class="name">Rota Alternativa</td><td>Tática</td><td class="num">2</td><td>Realize uma movimentação adicional neste turno.</td></tr>
+      <tr><td class="name">Interferência</td><td>Reativa</td><td class="num">2</td><td>Cancele o efeito de uma carta jogada por um adversário.</td></tr>
+      <tr><td class="name">Moral Elevado</td><td>Ofensiva</td><td class="num">2</td><td>Numa batalha em que você ataca: uma vez, relance o seu dado mais baixo.</td></tr>
+      <tr><td class="name">Terreno Conhecido</td><td>Defensiva</td><td class="num">2</td><td>Numa batalha em que você defende: uma vez, relance o seu dado mais baixo.</td></tr>
+      <tr><td class="name">Evacuação</td><td>Tática</td><td class="num">2</td><td>Mova até 3 soldados de um território seu para outro território seu não adjacente.</td></tr>
+      <tr><td class="name">Rádio Pirata</td><td>Tática</td><td class="num">1</td><td>Veja qual será o próximo Evento do Colapso a ser revelado.</td></tr>
+      <tr><td class="name">Deserção</td><td>Ofensiva</td><td class="num">1</td><td>Escolha um território inimigo com 4 ou mais soldados: 1 soldado passa para um território seu adjacente a ele.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">12 tipos, 24 cartas. A distribuição de cópias não é decorativa: <em>Reconhecimento</em> e <em>Suprimentos</em> têm 3 cópias por serem as cartas mais neutras do baralho; <em>Rádio Pirata</em> e <em>Deserção</em> têm 1 por serem as que mais distorcem informação e posição.</p>
+  </div>
+
+  <h3>As 6 cartas assinatura</h3>
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação — exceto Sequestro, que é oficial</span>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Facção</th><th>Carta</th><th>Tipo</th><th>Efeito</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Humanos</td><td class="name">Sequestro / Vacina <span class="chip l">🔒</span></td><td>Ofensiva ou reativa</td><td>Ver texto oficial acima. Uma coisa ou outra, nunca as duas.</td></tr>
+      <tr><td class="name">A Forja</td><td class="name">Refundição</td><td>Tática</td><td>Devolva ao tabuleiro até 4 soldados seus eliminados nesta rodada, distribuídos entre territórios seus adjacentes aos locais onde foram perdidos.</td></tr>
+      <tr><td class="name">Vetor</td><td class="name">Cepa Resistente</td><td>Defensiva</td><td>Escolha um território seu: na próxima batalha em que ele defender, ele ignora a primeira comparação perdida de cada rodada.</td></tr>
+      <tr><td class="name">A Malha</td><td class="name">Queda de Sinal</td><td>Reativa</td><td>O próximo Ataque Comum declarado contra você nesta rodada usa no máximo 1 dado durante toda a batalha.</td></tr>
+      <tr><td class="name">Os Errantes</td><td class="name">Desmanche</td><td>Ofensiva</td><td>Escolha um território inimigo: no próximo turno do dono, ele não pode receber reforços nem ser destino de movimentação.</td></tr>
+      <tr><td class="name">Ressonância</td><td class="name">Eco</td><td>Tática</td><td>Repita o último Evento do Colapso já revelado nesta partida, escolhendo você os alvos dentro das regras daquele evento.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Nenhuma delas copia <em>Sequestro</em>: nenhuma outra facção converte tropas inimigas, e nenhuma outra tem duplo uso ofensivo/defensivo. Esse duplo uso é a assinatura dos Humanos e permanece exclusivo.</p>
+  <h4>Uso e recuperação</h4>
+  <ul>
+    <li>Cada jogador começa com a carta assinatura da sua facção na mão. Ela não conta no limite de 5.</li>
+    <li>Ao ser usada, é <strong>consumida</strong> e sai da partida.</li>
+    <li>É uma decisão de partida inteira: você tem um uso, e escolher a hora certa é o jogo. Uma alternativa — devolver a assinatura ao jogador quando ele cair para 3 territórios ou menos, uma vez por partida — está no anexo de decisões.</li>
+  </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c19">
+  <span class="chapnum">Capítulo 19</span>
+  <h2 class="chap">Objetivos Secretos</h2>
+  <p class="lede">Vinte objetivos, calibrados para serem cumpríveis em 10 a 16 rodadas — nem antes, nem nunca.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Cada jogador recebe 1 objetivo secreto na preparação, sorteado sem repetição. Só ele o conhece. Ao ser cumprido, é revelado e a partida termina (cap. 22).</p>
+  </div>
+
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">#</th><th>Objetivo</th><th>Tipo</th><th class="num">Peso</th></tr></thead>
+    <tbody>
+      <tr><td class="num">01</td><td>Controle <strong>18 territórios</strong>.</td><td>Expansão</td><td class="num">Médio</td></tr>
+      <tr><td class="num">02</td><td>Controle <strong>15 territórios</strong>, com no mínimo <strong>2 soldados em cada um</strong>.</td><td>Expansão</td><td class="num">Médio</td></tr>
+      <tr><td class="num">03</td><td>Controle <strong>3 regiões completas</strong> quaisquer.</td><td>Consolidação</td><td class="num">Alto</td></tr>
+      <tr><td class="num">04</td><td>Controle <strong>A Metrópole</strong> e <strong>Montes de Ferro</strong> completas.</td><td>Consolidação</td><td class="num">Alto</td></tr>
+      <tr><td class="num">05</td><td>Controle <strong>Os Abrigos</strong> completa e mais <strong>6 territórios de superfície</strong>.</td><td>Consolidação</td><td class="num">Médio</td></tr>
+      <tr><td class="num">06</td><td>Controle <strong>Cinturão Siderúrgico</strong> e <strong>Zona Vítrea</strong> completas.</td><td>Consolidação</td><td class="num">Alto</td></tr>
+      <tr><td class="num">07</td><td>Controle <strong>Planície Errante</strong> completa e <strong>4 Pontos de Interesse</strong>.</td><td>Misto</td><td class="num">Alto</td></tr>
+      <tr><td class="num">08</td><td>Controle <strong>4 dos 6 Pontos de Interesse</strong> ao mesmo tempo.</td><td>Posição</td><td class="num">Médio</td></tr>
+      <tr><td class="num">09</td><td>Controle <strong>os dois lados de 3 Poços</strong> simultaneamente.</td><td>Posição</td><td class="num">Médio</td></tr>
+      <tr><td class="num">10</td><td><strong>Elimine uma facção específica</strong> (sorteada com o objetivo).</td><td>Militar</td><td class="num">Variável</td></tr>
+      <tr><td class="num">11</td><td><strong>Elimine 2 facções</strong> quaisquer.</td><td>Militar</td><td class="num">Alto</td></tr>
+      <tr><td class="num">12</td><td><strong>Elimine o jogador imediatamente à sua esquerda</strong> na ordem de turno.</td><td>Militar</td><td class="num">Médio</td></tr>
+      <tr><td class="num">13</td><td>Seja o jogador com <strong>mais territórios ao final da rodada 12</strong>.</td><td>Tempo</td><td class="num">Médio</td></tr>
+      <tr><td class="num">14</td><td>Tenha <strong>25 soldados em campo</strong> e controle <strong>10 territórios</strong>.</td><td>Militar</td><td class="num">Médio</td></tr>
+      <tr><td class="num">15</td><td><strong>Conquiste ao menos 1 território em 5 rodadas consecutivas.</strong></td><td>Ritmo</td><td class="num">Médio</td></tr>
+      <tr><td class="num">16</td><td>Ao longo da partida, <strong>conquiste um território de cada uma das 6 regiões</strong> (não precisa manter).</td><td>Ritmo</td><td class="num">Médio</td></tr>
+      <tr><td class="num">17</td><td>Controle <strong>12 territórios</strong> sem que nenhum deles tenha mais de <strong>5 soldados</strong>.</td><td>Doutrina</td><td class="num">Alto</td></tr>
+      <tr><td class="num">18</td><td>Controle <strong>A Metrópole completa</strong> e mantenha por <strong>2 rodadas completas</strong>.</td><td>Consolidação</td><td class="num">Alto</td></tr>
+      <tr><td class="num">19</td><td><strong>Sobreviva a 4 Eventos do Colapso</strong> e controle <strong>14 territórios</strong>.</td><td>Tempo</td><td class="num">Médio</td></tr>
+      <tr><td class="num">20</td><td>Controle <strong>2 regiões completas que não façam fronteira entre si</strong>.</td><td>Consolidação</td><td class="num">Alto</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">Só existem dois pares de regiões que não fazem fronteira entre si: <strong>Montes de Ferro + Cinturão Siderúrgico</strong> e <strong>Planície Errante + Zona Vítrea</strong>. O objetivo 20 é cumprível, mas exige abandonar a linha contínua — é o objetivo mais difícil de esconder dos adversários.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Regra para objetivos de eliminação</h4>
+    <p>O objetivo 10 aponta uma facção específica. Duas coisas podem dar errado, e as duas têm regra:</p>
+    <ul>
+      <li><strong>A facção alvo não está na partida</strong> (menos de 6 jogadores): o objetivo é substituído, ainda em segredo e antes do primeiro turno, por <em>"controle 16 territórios"</em>. O jogador nunca chega a ver o objetivo impossível.</li>
+      <li><strong>Outro jogador eliminou a facção alvo antes de você:</strong> o seu objetivo converte-se imediatamente em <em>"controle 16 territórios"</em>. Você não ganha de graça pelo trabalho alheio, e também não fica sem objetivo.</li>
+      <li>Se <strong>você</strong> eliminar a facção alvo, você vence na hora.</li>
+      <li>Um jogador que <strong>abandona</strong> a partida não conta como eliminado para nenhum objetivo. Isso fecha a porta para conluio.</li>
+    </ul>
+    <h4>Por que nenhum objetivo pede 24 ou mais territórios</h4>
+    <p>Pela matemática do capítulo 14: com 1 Ataque Comum por turno e o defensor favorecido, chegar a 24 territórios levaria dezenas de rodadas. O objetivo mais caro desta lista pede <strong>18 territórios</strong> ou <strong>3 regiões completas</strong> (15 territórios bem escolhidos) — ambos alcançáveis por volta da rodada 12 a 16 num jogo de 4 pessoas. Os objetivos são o relógio da partida, e foram ajustados para que esse relógio ande.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c20">
+  <span class="chapnum">Capítulo 20</span>
+  <h2 class="chap">Eventos do Colapso</h2>
+  <p class="lede">A Malha ainda tenta se consertar. Quando tenta, o continente inteiro sente — e ninguém sabe quando vai ser.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Toda esta seção é proposta: os 20 eventos, as categorias, o algoritmo e os números. O conceito de "Evento do Colapso como mecânica central" é seu; a implementação é minha.</p>
+  </div>
+
+  <h3>Quando acontece</h3>
+  <p>Ao final de cada <strong>rodada completa</strong> — depois que o último assento finaliza o turno — o sistema rola secretamente. Os jogadores não veem a rolagem, não sabem a chance acumulada e não sabem qual evento está no topo.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação — algoritmo</span>
+    <ol>
+      <li><strong>Nenhum evento antes do final da rodada 2.</strong> As duas primeiras rodadas são de posicionamento.</li>
+      <li><strong>Chance base: 12%</strong> ao final de cada rodada.</li>
+      <li><strong>Pressão acumulada: +8 pontos percentuais</strong> a cada rodada que passa sem evento.</li>
+      <li><strong>Teto: 60%.</strong> Nunca é certeza — a imprevisibilidade é o ponto.</li>
+      <li><strong>Cooldown secreto: 2 rodadas</strong> sem qualquer chance após um evento. É o que impede dois ou três eventos seguidos destruírem a partida.</li>
+      <li><strong>Ao ocorrer, a pressão acumulada volta a zero.</strong></li>
+      <li><strong>Máximo de 6 eventos por partida.</strong></li>
+      <li><strong>Sorteio sem reposição</strong> (saco embaralhado): um evento só pode repetir depois que os 20 tiverem saído. Na prática, nunca repete.</li>
+    </ol>
+  </div>
+
+  <h4>Comportamento medido do algoritmo</h4>
+  <p class="tnote">Resultados de 200 000 partidas simuladas de 20 rodadas com os números acima.</p>
+  <div class="stats">
+    <div><b>3,13</b><span>Eventos por partida</span></div>
+    <div><b>5,7</b><span>Rodada do 1º evento</span></div>
+    <div><b>5,4</b><span>Rodadas entre eventos</span></div>
+    <div><b>0,00%</b><span>Partidas sem evento</span></div>
+  </div>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">Duração da partida</th><th class="num">Média de eventos</th><th class="num">Partidas sem nenhum evento</th></tr></thead>
+    <tbody>
+      <tr><td class="num">10 rodadas</td><td class="num">1,38</td><td class="num">1,52%</td></tr>
+      <tr><td class="num">15 rodadas</td><td class="num">2,25</td><td class="num">0,01%</td></tr>
+      <tr><td class="num">20 rodadas</td><td class="num">3,13</td><td class="num">0,00%</td></tr>
+      <tr><td class="num">30 rodadas</td><td class="num">4,85</td><td class="num">0,00%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Isso atende às três exigências ao mesmo tempo: <strong>nada de sequências destrutivas</strong> (o cooldown de 2 rodadas garante), <strong>quase nunca uma partida inteira sem evento</strong> (a pressão acumulada garante) e <strong>nenhuma previsibilidade</strong> (o teto de 60% garante que mesmo a rodada mais "carregada" pode passar em branco).</p>
+
+  <h3>A sirene</h3>
+  <p>A apresentação é parte da regra, não enfeite. A sequência é fixa e sempre a mesma:</p>
+  <ol class="seq">
+    <li><b>Silêncio</b><p>O som ambiente cai a quase zero durante meio segundo. É a primeira pista, e é sutil.</p></li>
+    <li><b>Sirene</b><p>🚨 A sirene sobe. Não é um efeito curto: é um ciclo completo.</p></li>
+    <li><b>HUD em alerta</b><p>A interface muda de estado: bordas vermelhas, contraste alterado, controles bloqueados. Ninguém pode agir.</p></li>
+    <li><b>Interferência no mapa</b><p>O mapa recebe ruído e falhas de sinal. Territórios piscam fora de sincronia.</p></li>
+    <li><b>⚠ Alerta de Colapso</b><p>O aviso ocupa a tela.</p></li>
+    <li><b>Contagem</b><p>3 · 2 · 1 — cada número com peso, sem pressa.</p></li>
+    <li><b>Revelação</b><p>Nome do evento, categoria e texto. A arte do evento entra por baixo do texto.</p></li>
+    <li><b>Aplicação</b><p>O efeito é aplicado no mapa, visivelmente, um alvo de cada vez — nunca de uma vez só.</p></li>
+    <li><b>Retomada</b><p>O HUD volta ao normal, a sirene desce, o som ambiente retorna. A partida continua de onde parou.</p></li>
+  </ol>
+  <p>O que o jogador precisa sentir é <strong>"alguma coisa aconteceu no mundo"</strong> — não "o jogo me puniu". Por isso a revelação mostra sempre o mundo antes do efeito: primeiro o que houve na Bacia, depois o que muda no seu exército.</p>
+
+  <h3>Os 20 Eventos do Colapso</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">#</th><th>Evento</th><th>Categoria</th><th>Efeito</th></tr></thead>
+    <tbody>
+      <tr><td class="num">01</td><td class="name">Queda de Tensão</td><td>Global · Ameaça</td><td>Nesta rodada, ninguém pode usar Ataque Especial. Cargas não são perdidas.</td></tr>
+      <tr><td class="num">02</td><td class="name">Tempestade de Pó</td><td>Global · Ameaça</td><td>Nesta rodada, todo atacante rola 1 dado a menos (mínimo 1). A defesa não muda.</td></tr>
+      <tr><td class="num">03</td><td class="name">Janela Limpa</td><td>Global · Oportunidade</td><td>Nesta rodada, cada jogador realiza 1 movimentação adicional.</td></tr>
+      <tr><td class="num">04</td><td class="name">Ressuprimento Automático</td><td>Global · Oportunidade</td><td>Cada jogador recebe +2 soldados no seu próximo reforço.</td></tr>
+      <tr><td class="num">05</td><td class="name">Censo da Malha</td><td>Global · Misto</td><td>Todos revelam quantas cartas têm na mão. Quem tiver mais descarta 1 (empate: todos os empatados descartam).</td></tr>
+      <tr><td class="num">06</td><td class="name">Colapso Estrutural</td><td>Regional · Ameaça</td><td>Sorteie uma região: cada território dela perde 1 soldado (nunca abaixo de 1).</td></tr>
+      <tr><td class="num">07</td><td class="name">Quarentena</td><td>Regional · Ameaça</td><td>Sorteie uma região: nesta rodada, nenhum território dela pode atacar para fora nem ser atacado de fora.</td></tr>
+      <tr><td class="num">08</td><td class="name">Reativação Industrial</td><td>Regional · Oportunidade</td><td>Sorteie uma região: quem controlar mais territórios nela recebe +3 soldados, distribuídos dentro dela.</td></tr>
+      <tr><td class="num">09</td><td class="name">Blecaute Regional</td><td>Regional · Ameaça</td><td>Sorteie uma região: o bônus de região completa dela não é pago no próximo reforço.</td></tr>
+      <tr><td class="num">10</td><td class="name">Migração</td><td>Regional · Misto</td><td>Sorteie uma região: cada jogador com território nela move 1 soldado de cada um desses territórios para um adjacente à sua escolha.</td></tr>
+      <tr><td class="num">11</td><td class="name">Incêndio</td><td>Territorial · Ameaça</td><td>O território com mais soldados do mapa perde metade deles, arredondando para baixo.</td></tr>
+      <tr><td class="num">12</td><td class="name">Depósito Esquecido</td><td>Territorial · Oportunidade</td><td>Sorteie um território: seu controlador recebe +3 soldados nele e compra 1 carta.</td></tr>
+      <tr><td class="num">13</td><td class="name">Desabamento de Poço</td><td>Territorial · Ameaça</td><td>Sorteie 1 dos 5 Poços: ele deixa de existir por 2 rodadas. Nada passa por ali.</td></tr>
+      <tr><td class="num">14</td><td class="name">Ponte Rompida</td><td>Territorial · Ameaça</td><td>A Ponte da Represa é cortada por 3 rodadas. Montes de Ferro e Planície Errante deixam de se tocar.</td></tr>
+      <tr><td class="num">15</td><td class="name">Motim</td><td>Territorial · Ameaça</td><td>Sorteie um território com 6 ou mais soldados: ele perde 2 soldados e seu controlador descarta 1 carta.</td></tr>
+      <tr><td class="num">16</td><td class="name">Eco da Malha</td><td>Anomalia · Misto</td><td>Todos os jogadores passam a mão de cartas neutras para o jogador à esquerda. Assinaturas não mudam de dono.</td></tr>
+      <tr><td class="num">17</td><td class="name">Inversão</td><td>Anomalia · Misto</td><td><strong>Nesta rodada, empates favorecem o atacante.</strong> Ver a ressalva abaixo — este evento depende de aprovação sua.</td></tr>
+      <tr><td class="num">18</td><td class="name">Nevoeiro de Vidro</td><td>Anomalia · Ameaça</td><td>Nesta rodada, ninguém vê a contagem exata dos territórios inimigos — apenas faixas: poucos / médio / muitos.</td></tr>
+      <tr><td class="num">19</td><td class="name">Recursão</td><td>Anomalia · Misto</td><td>O próximo Evento do Colapso ocorrerá ao final da rodada seguinte, com certeza, ignorando o cooldown.</td></tr>
+      <tr><td class="num">20</td><td class="name">Silêncio</td><td>Anomalia · Oportunidade</td><td>Nenhum evento ocorrerá pelas próximas 3 rodadas. Todos recuperam 1 carga de Transporte Especial.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">Cinco eventos globais, cinco regionais, cinco territoriais, cinco de anomalia. Sete são de ameaça, cinco de oportunidade, e os demais mistos ou de efeito estrutural. Apenas dois eventos (06 e 11) tiram soldados de forma direta — o resto muda mapa, rota, combate, cartas, reforço, movimentação, visibilidade ou o próprio sistema de eventos.</p>
+
+  <div class="block risk">
+    <span class="tag">⚑ Sugestão de balanceamento — evento 17</span>
+    <p>O evento <strong>Inversão</strong> cria uma exceção temporária à regra oficial <em>"empate = defensor vence"</em>. Ele é, mecanicamente, o evento mais interessante da lista: por uma rodada, todo o cálculo do jogo se inverte e as posições defendidas param de ser seguras.</p>
+    <p>Mas ele mexe numa regra bloqueada, ainda que por uma rodada. <strong>Eu não o adotei</strong> — ele está listado marcado, e depende de aprovação sua. Se você preferir manter a regra de empate absolutamente inviolável, o substituto sugerido é: <em>"Inversão — nesta rodada, o defensor rola no máximo 2 dados"</em>, que produz um efeito parecido sem tocar na regra do empate.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c21">
+  <span class="chapnum">Capítulo 21</span>
+  <h2 class="chap">Eliminação</h2>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p>Um jogador é eliminado <strong>no instante em que perde o controle do seu último território</strong>. Não há turno de graça nem chance de retorno.</p>
+    <h4>O que acontece com cada coisa</h4>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>Item</th><th>Destino</th><th>Por quê</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Territórios</td><td>Já pertencem a quem conquistou</td><td>A eliminação é consequência da conquista, não um evento separado</td></tr>
+        <tr><td class="name">Soldados</td><td>Eliminados</td><td>Não existe exército sem território</td></tr>
+        <tr><td class="name">Cartas neutras</td><td><strong>Para o descarte</strong>, não para o conquistador</td><td>Impede a bola de neve: quem elimina já ganhou território, região e tempo</td></tr>
+        <tr><td class="name">Carta assinatura</td><td>Sai da partida</td><td>É exclusiva da facção; ninguém mais pode usá-la</td></tr>
+        <tr><td class="name">Objetivo secreto</td><td>Revelado a todos</td><td>Informação pública encerra especulação e evita disputa sobre o que ele "ia" cumprir</td></tr>
+        <tr><td class="name">Cargas de Transporte</td><td>Perdidas</td><td>Recurso de facção, não transferível</td></tr>
+        <tr><td class="name">Efeitos ativos dele</td><td>Encerrados imediatamente</td><td><em>Barricada</em>, <em>Muralha de Escória</em> e afins caem junto</td></tr>
+        <tr><td class="name">Ordem de turno</td><td>O assento é removido</td><td>A rodada passa a ter um turno a menos</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <h4>Contra a exploração da regra</h4>
+    <ul>
+      <li><strong>Cartas vão para o descarte.</strong> Se fossem para o conquistador, o jogador líder teria incentivo enorme para caçar o mais fraco, e a partida viraria uma execução. Do jeito proposto, eliminar alguém dá exatamente o que a conquista já daria.</li>
+      <li><strong>Abandono não conta como eliminação.</strong> Um jogador que sai da partida tem seus territórios convertidos em <strong>Remanescentes</strong> com a guarnição que tinham. Ninguém "vence" objetivo de eliminação por desistência combinada.</li>
+      <li><strong>Não existe eliminação por acordo.</strong> Entregar territórios voluntariamente é impossível: a única forma de mudar o dono de um território é conquistá-lo em batalha ou por efeito de carta/evento.</li>
+      <li><strong>Objetivo cumprido no mesmo instante da eliminação</strong> vale: se o seu último ataque elimina alguém <em>e</em> completa o seu objetivo, você vence.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c22">
+  <span class="chapnum">Capítulo 22</span>
+  <h2 class="chap">Vitória</h2>
+
+  <div class="block locked">
+    <span class="tag">🔒 Regra oficial já aprovada</span>
+    <p><strong>Regra principal: objetivo secreto.</strong> O primeiro jogador que cumprir o seu objetivo vence.</p>
+  </div>
+
+  <h3>Dominação total</h3>
+  <p>Você indicou tendência a <strong>sim</strong>. Concordo, e a análise abaixo é o motivo — com uma ressalva importante sobre o que isso significa na prática.</p>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <p><strong>Vitória por dominação total.</strong> Um jogador que controlar <strong>todos os 30 territórios</strong> vence imediatamente, independentemente do objetivo secreto. Territórios Remanescentes contam: também precisam ter sido conquistados.</p>
+  </div>
+
+  <div class="block plain">
+    <span class="tag">Análise</span>
+    <p><strong>A favor:</strong> sem essa regra existe um estado absurdo em que um jogador tomou o mapa inteiro e a partida <em>continua</em>, porque o objetivo dele era, digamos, "elimine uma facção específica" que já tinha sido eliminada por outro. Uma regra de vitória precisa cobrir o caso trivial.</p>
+    <p><strong>Contra:</strong> é uma condição que, pela matemática do capítulo 14, quase nunca será atingida. Ela não é um caminho de vitória — é uma <strong>rede de segurança</strong>.</p>
+    <p><strong>Conclusão:</strong> adotar, mas sem investir nela. Nenhum objetivo secreto pede mais de 18 territórios exatamente porque o objetivo é o relógio da partida e a dominação é o fecho lógico, não a meta.</p>
+  </div>
+
+  <div class="block prop">
+    <span class="tag">🟡 Proposta para aprovação</span>
+    <h4>Terceira condição — último em pé</h4>
+    <p>Se todos os outros jogadores forem eliminados, o sobrevivente vence, mesmo sem ter completado o objetivo e mesmo com Remanescentes ainda no mapa. Sem isso, dois jogadores eliminados e um mapa com neutros deixariam a partida sem fim possível.</p>
+    <h4>Quarta condição — limite de rodadas</h4>
+    <p>Se ninguém vencer até o final da <strong>rodada 25</strong>, a partida termina e vence quem tiver, nesta ordem de critério: (1) mais regiões completas; (2) mais territórios; (3) mais soldados em campo; (4) melhor assento na ordem de turno.</p>
+    <p>É um paraquedas. Se ele for acionado com frequência nos testes, o problema não é o limite — é o balanceamento de objetivos, e a resposta certa será baixar os objetivos, não aumentar o limite.</p>
+  </div>
+</section>
+
+<section class="chapter" id="c23">
+  <span class="chapnum">Capítulo 23</span>
+  <h2 class="chap">Exemplos</h2>
+  <p class="lede">Uma partida completa de 4 jogadores, do sorteio à vitória — e a lista de problemas que essa simulação revelou.</p>
+
+  <h3>Preparação</h3>
+  <p><strong>Ordem sorteada:</strong> assento 1 Humanos · assento 2 Vetor · assento 3 Errantes · assento 4 A Forja. A escolha de facção foi feita na ordem inversa, então A Forja escolheu primeiro e os Humanos por último.</p>
+  <p><strong>Distribuição:</strong> 7 territórios para cada jogador, sorteados um a um, e <strong>2 Remanescentes</strong> — Ruínas do Leste e Posto Avançado Norte, com 2 soldados neutros cada.</p>
+
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Jogador</th><th>Territórios iniciais</th><th class="num">Tropas</th><th>Objetivo secreto</th></tr></thead>
+    <tbody>
+      <tr><td class="name">1 · Humanos</td><td>Distrito Central, Zona Norte, Base Ocidental, Rodovia Morta, Pátio de Cargas, Bosque Fóssil, Galeria Oeste</td><td class="num">21</td><td>#08 — controlar 4 dos 6 Pontos de Interesse</td></tr>
+      <tr><td class="name">2 · Vetor</td><td>Zona Contaminada, Complexo Científico, Cratera de Vidro, Estação de Escuta, Fronteira Vermelha, Salinas, Câmara de Máquinas</td><td class="num">22</td><td>#06 — Cinturão Siderúrgico e Zona Vítrea completas</td></tr>
+      <tr><td class="name">3 · Errantes</td><td>Zona Sul, Crista Quebrada, Represa Seca, Campo de Antenas, Vale Cinzento, Cemitério de Comboios, Porto Abandonado</td><td class="num">23</td><td>#16 — conquistar um território de cada uma das 6 regiões</td></tr>
+      <tr><td class="name">4 · A Forja</td><td>Setor Militar, Mina Profunda, Região Industrial, Alto-Forno, Abrigo Zero, Galeria Norte, Galeria Sul</td><td class="num">24</td><td>#05 — Os Abrigos completa + 6 territórios de superfície</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">Tropas = 7 territórios × 3, mais a compensação de assento (+0, +1, +2, +3). Cada jogador começa com 1 carga de Transporte Especial e a carta assinatura da facção.</p>
+
+  <h3>Rodada 1, turno a turno</h3>
+
+  <div class="turnlog">
+    <div class="th">Turno 1 · Humanos</div>
+    <div class="tb">
+      <p><strong>Reforço.</strong> 7 territórios → máx(3, ⌊7÷3⌋) = 3, mais 1 do Distrito Central (Ponto de Interesse) = <strong>4 soldados</strong>. Vão 2 para Base Ocidental e 2 para Pátio de Cargas.</p>
+      <p><strong>Ataque Comum.</strong> Distrito Central (4 soldados) contra <strong>Ruínas do Leste</strong>, Remanescente com 2 soldados neutros. 3 soldados podem atacar → 3 dados; o defensor tem 2 → 2 dados.</p>
+      <p>Rodada de dados: atacante <span class="dice">6 — 4 — 2</span>, defensor <span class="dice">5 — 3</span>. Compara 6×5 (atacante vence) e 4×3 (atacante vence). O terceiro dado do atacante não tem par. Defensor perde 2 e chega a zero: <strong>território conquistado na primeira rodada</strong>.</p>
+      <p><strong>Conquista.</strong> Força sobrevivente: 3. Ocupam 2, e o Distrito Central fica com 2.</p>
+      <p><strong>Ataque Especial.</strong> Passa. A carga é guardada — não há alvo a distância 2 que valha o gasto no turno 1.</p>
+      <p><strong>Movimentação.</strong> 2 soldados de Base Ocidental (5) para Distrito Central (2 → 4), recompondo o nó de grau 5.</p>
+      <p><strong>Cartas.</strong> Conquistou um território, então compra 1: <em>Suprimentos</em>.</p>
+      <p><strong>Finalizar.</strong> Objetivo: 2 dos 4 Pontos de Interesse necessários (Distrito Central, Pátio de Cargas). Humanos com 8 territórios.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Turno 2 · Vetor</div>
+    <div class="tb">
+      <p><strong>Instabilidade</strong> (fraqueza): nenhum território com 8 ou mais soldados. Nada perdido.</p>
+      <p><strong>Reforço.</strong> 7 territórios → 3 soldados. Todos vão para o Complexo Científico, que sobe a 6.</p>
+      <p><strong>Ataque Comum.</strong> Complexo Científico (6) contra <strong>Bosque Fóssil</strong> (Humanos, 3) — o único território da Zona Vítrea que não é de Vetor. 3 dados contra 3 dados.</p>
+      <p>1ª rodada: <span class="dice">6 — 5 — 1</span> contra <span class="dice">5 — 4 — 2</span> → atacante ganha as duas primeiras, perde a terceira. Defensor 3 → 1, atacante 6 → 5.<br>
+         2ª rodada: <span class="dice">4 — 3 — 2</span> contra <span class="dice">6</span> → só há um par; o defensor vence. Atacante 5 → 4.<br>
+         3ª rodada: <span class="dice">5 — 5 — 3</span> contra <span class="dice">3</span> → empate não houve; atacante vence. <strong>Território conquistado.</strong></p>
+      <p><strong>Conquista.</strong> Ocupam 2. <strong>Contágio</strong> (passiva) converte 1 dos defensores eliminados: Bosque Fóssil fica com 3 soldados de Vetor, e não 2.</p>
+      <p><strong>Zona Vítrea completa.</strong> 5 de 5 territórios.</p>
+      <p><strong>Movimentação.</strong> 1 soldado de Cratera de Vidro para Fronteira Vermelha, preparando a entrada no Cinturão.</p>
+      <p><strong>Cartas.</strong> Compra 2 — uma por conquistar, outra por completar região pela primeira vez.</p>
+      <p><strong>Finalizar.</strong> A recarga por consolidação daria +1 carga de Transporte, mas Vetor já tinha 1 e o estoque máximo é 1: <strong>o bônus é perdido</strong>. Lição da partida: gaste a carga antes de fechar a região.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Turno 3 · Errantes</div>
+    <div class="tb">
+      <p><strong>Reforço.</strong> 3 soldados, todos para Crista Quebrada, que sobe a 6.</p>
+      <p><strong>Ataque Comum.</strong> Crista Quebrada contra <strong>Posto Avançado Norte</strong> (Remanescente, 2).<br>
+         1ª rodada: <span class="dice">5 — 5 — 2</span> contra <span class="dice">6 — 4</span> → 5×6 defensor vence, 5×4 atacante vence. 6 → 5 e 2 → 1.<br>
+         2ª rodada: <span class="dice">6 — 3 — 2</span> contra <span class="dice">2</span> → conquistado. Ocupam 3.</p>
+      <p>Primeira das seis regiões do objetivo: <strong>Montes de Ferro ✓</strong>.</p>
+      <p><strong>Ataque Especial — Razia.</strong> A partir de Zona Sul (4 soldados) contra <strong>Pátio de Cargas</strong> (Humanos, 4), a distância exatamente 2 pela Região Industrial. Razia não consome carga de Transporte.</p>
+      <p>1ª rodada: <span class="dice">6 — 6 — 3</span> contra <span class="dice">5 — 5 — 4</span> → atacante ganha duas, perde uma. Defensor 4 → 2, atacante 3 → 2.<br>
+         2ª rodada: <span class="dice">5 — 2</span> contra <span class="dice">6 — 3</span> → o defensor vence as duas. <strong>A força de assalto é destruída.</strong></p>
+      <p>O ataque falhou e não restou ninguém para voltar. O custo foram 3 soldados — a carga de Transporte, porém, continua intacta, e é essa a vantagem real dos Errantes.</p>
+      <p><strong>Movimentação (×2, passiva Comboio).</strong> 2 soldados de Represa Seca para Campo de Antenas; 1 de Vale Cinzento para Cemitério de Comboios.</p>
+      <p><strong>Cartas.</strong> Compra 1: <em>Emboscada</em>.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Turno 4 · A Forja</div>
+    <div class="tb">
+      <p><strong>Reforço.</strong> 7 territórios → 3, mais 1 do Abrigo Zero = <strong>4 soldados</strong>, todos no Abrigo Zero, que sobe a 9.</p>
+      <p><strong>Ataque Comum.</strong> Abrigo Zero contra <strong>Galeria Oeste</strong> (Humanos, 3). É fronteira interna dos Abrigos, não é Poço: valem os 3 dados.<br>
+         1ª rodada: <span class="dice">6 — 4 — 4</span> contra <span class="dice">6 — 5 — 2</span> → <strong>6×6 empate, defensor vence</strong>; 4×5 defensor vence; 4×2 atacante vence. Atacante −2, defensor −1.<br>
+         2ª rodada: <span class="dice">5 — 5 — 1</span> contra <span class="dice">4 — 3</span> → atacante vence as duas. <strong>Conquistado.</strong> Ocupam 3.</p>
+      <p><strong>Ataque Especial.</strong> Gasta a carga. Região Industrial (4) contra <strong>Porto Abandonado</strong> (Errantes, 3), a distância 2 pelo Alto-Forno. Envia 3 soldados.</p>
+      <p>1ª rodada: <span class="dice">6 — 5 — 4</span> contra <span class="dice">5 — 4 — 1</span> → atacante vence as três comparações. Defensor de 3 a zero: <strong>conquistado numa rodada só</strong>. Os 3 sobreviventes ocupam.</p>
+      <p><strong>Movimentação.</strong> 2 soldados do Abrigo Zero para a Galeria Sul (a Forja nunca move mais de 3).</p>
+      <p><strong>Cartas.</strong> Compra 1: <em>Terreno Conhecido</em>.</p>
+      <p><strong>Finalizar.</strong> <em>Fundição Contínua</em> <strong>não</strong> dispara — a passiva só vale em turno sem conquista, e a Forja conquistou dois territórios. A Forja fecha a rodada com 9 territórios e Os Abrigos em 4 de 5.</p>
+    </div>
+  </div>
+
+  <p><strong>Final da rodada 1.</strong> O sistema não rola evento: não há Eventos do Colapso antes do fim da rodada 2. Situação: Forja 9 · Humanos 8 · Errantes 8 · Vetor 8 · Remanescentes 0.</p>
+
+  <h3>Rodadas 2 a 13, condensadas</h3>
+
+  <div class="turnlog">
+    <div class="th">Rodadas 2 a 4 · consolidação</div>
+    <div class="tb">
+      <p>Ninguém tem tropa sobrando para uma ofensiva de verdade: com reforço de 3 a 4 por turno e o defensor favorecido, todos gastam três rodadas engrossando fronteiras. Os Humanos jogam <em>Suprimentos</em> para reforçar o Pátio de Cargas depois do susto da Razia. Vetor usa a Fronteira Vermelha como porta de entrada no Cinturão e toma o <strong>Pátio de Cargas</strong> na rodada 4, tirando um Ponto de Interesse dos Humanos. Os Errantes atravessam a Rota Costeira e retomam <strong>Porto Abandonado</strong>. Nenhum evento nas três rodadas: a pressão acumulada do sistema sobe silenciosamente.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Final da rodada 5 · 🚨 primeiro Evento do Colapso</div>
+    <div class="tb">
+      <p>O som ambiente cai. A sirene sobe. O HUD fica vermelho, o mapa recebe interferência, aparece <strong>⚠ ALERTA DE COLAPSO</strong>, e a contagem: <strong>3 · 2 · 1</strong>.</p>
+      <p><strong>EVENTO 09 — BLECAUTE REGIONAL · Regional · Ameaça.</strong> Região sorteada: <strong>Zona Vítrea</strong>. O bônus de região completa dela não é pago no próximo reforço.</p>
+      <p>É o pior sorteio possível para Vetor: era o único jogador com uma região fechada, e o +3 que sustentava a ofensiva sobre o Cinturão simplesmente não vem. O reforço da rodada 6 cai de 8 para 5 soldados, e a investida contra a Região Industrial é adiada. Nenhum jogador podia prever: a Ressonância, única facção que teria sentido o evento chegar, não está nesta partida.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Rodadas 6 a 9 · a Forja endurece</div>
+    <div class="tb">
+      <p>Com Vetor sem o bônus da região, a Forja toma <strong>Pátio de Cargas</strong> de Vetor na rodada 7 — o Ponto de Interesse que sobe o limite de cargas para 2 e acelera a recarga. Na rodada 8 usa <em>Muralha de Escória</em> na Região Industrial, e o contra-ataque dos Errantes (7 tropas contra 5 defensores) rola só 2 dados e falha.</p>
+      <p>Na rodada 9 a Forja toma <strong>Crista Quebrada</strong> dos Errantes, fechando a ligação Ferro–Vítrea. Em duas rodadas sem conquista, a <em>Fundição Contínua</em> devolve 2 soldados de fronteira — a facção não avança rápido, mas nunca encolhe.</p>
+      <p>Os Humanos, reduzidos a 5 territórios, ainda não usaram <em>Sequestro</em>. É a decisão que vão carregar até o fim.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Final da rodada 10 · 🚨 segundo Evento do Colapso</div>
+    <div class="tb">
+      <p><strong>EVENTO 13 — DESABAMENTO DE POÇO · Territorial · Ameaça.</strong> Poço sorteado: <strong>Poço Científico</strong> (Complexo Científico ↔ Câmara de Máquinas). Fechado por 2 rodadas.</p>
+      <p>A Câmara de Máquinas é de Vetor e era o único território dos Abrigos que a Forja não controlava. Com o poço desabado, ela fica <strong>sem ligação com o resto do exército Vetor</strong>: Vetor ainda pode reforçá-la na fase REFORÇO (reforço não depende de adjacência), mas não pode mandar mais ninguém para lá nem contra-atacar de fora. E ela faz fronteira com três territórios da Forja.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Rodada 11 · o Sequestro</div>
+    <div class="tb">
+      <p>Os Humanos leem o mapa e entendem que a Forja vai fechar Os Abrigos. Com 4 territórios e reforço de 4 (3 de base + 1 de <em>Sobrevivência</em>), decidem gastar a assinatura: <strong>SEQUESTRO</strong> sobre o Abrigo Zero, que tinha 9 soldados da Forja. Levam <strong>7 soldados</strong>, que deixam o exército da Forja, entram no exército Humano e são redistribuídos livremente entre territórios Humanos.</p>
+      <p>O golpe custa à Forja metade da força do subsolo e adia a vitória dela em duas rodadas. Mas os Humanos ficaram <em>sem</em> a Vacina para o resto da partida — a carta é uma coisa ou outra, nunca as duas.</p>
+    </div>
+  </div>
+
+  <div class="turnlog">
+    <div class="th">Rodadas 12 e 13 · a queda da Câmara de Máquinas</div>
+    <div class="tb">
+      <p>Rodada 12: a Forja reconstrói o Abrigo Zero com reforço e <em>Fundição Contínua</em>, e ataca a <strong>Câmara de Máquinas</strong> a partir da Galeria Norte. Vetor, que só pôde reforçar 3 soldados ali, defende com 5 e segura: o atacante recua com 2 baixas de cada lado.</p>
+      <p>Rodada 13, Ataque Comum: Abrigo Zero (8 soldados) contra Câmara de Máquinas (3). Fronteira interna dos Abrigos, 3 dados contra 3.<br>
+         1ª rodada: <span class="dice">6 — 5 — 5</span> contra <span class="dice">6 — 2 — 1</span> → empate no primeiro (defensor vence), atacante ganha os outros dois. Defensor 3 → 1.<br>
+         2ª rodada: <span class="dice">4 — 3 — 2</span> contra <span class="dice">3</span> → atacante vence. <strong>Conquistado.</strong></p>
+      <p><strong>Os Abrigos completos: 5 de 5.</strong> Na verificação de fim de fase, o sistema confere o objetivo #05: Os Abrigos completa <em>e</em> 6 territórios de superfície — a Forja tem 7 (Setor Militar, Mina Profunda, Crista Quebrada, Região Industrial, Alto-Forno, Porto Abandonado, Pátio de Cargas).</p>
+      <p><strong>Vitória da Forja na rodada 13</strong>, com 12 territórios. Não foi a facção que mais conquistou: foi a que menos devolveu.</p>
+    </div>
+  </div>
+
+  <h3>Teste de regras — o que a simulação revelou</h3>
+  <p>A partida acima foi jogada nota por nota justamente para procurar defeito. Segue o que encontrei, com o cuidado de <strong>não alterar nenhuma regra oficial bloqueada</strong>.</p>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 1 · Exploração de carta — a isca de Vacina</span>
+    <p>Como o atacante pode encerrar a batalha quando quiser, ele pode <strong>declarar um ataque só para forçar o defensor a gastar a Vacina</strong> e recuar em seguida. A carta mais forte do jogo seria queimada por um ataque falso.</p>
+    <p><strong>Mitigação proposta</strong> <span class="chip p">🟡</span> — a primeira rodada de dados é <strong>obrigatória</strong>: declarado o ataque, atacante e defensor rolam pelo menos uma vez. Recuar só é possível a partir da segunda rodada. A isca continua existindo, mas passa a custar dados de verdade. <em>Nenhuma regra oficial foi tocada.</em></p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 2 · Estratégia dominante — a pilha única</span>
+    <p>Com apenas 1 Ataque Comum por turno, empilhar 10 ou mais soldados num território de fronteira torna esse território praticamente inatacável: mesmo um atacante com 14 tropas disponíveis só conquista <strong>39,5%</strong> das vezes, e gasta o turno inteiro nisso. A estratégia ótima tende a ser "uma pilha, uma frente".</p>
+    <p><strong>O que já joga contra ela, sem regra nova:</strong> a pilha não anda (1 movimentação, só para adjacente); o evento <em>Incêndio</em> tira metade do maior território do mapa; o Transporte Especial ataca a distância 2 e pode passar por cima da pilha; e Vetor sofre com pilhas de 8 ou mais. Considero mitigado, mas é o primeiro item a observar em playtest.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 3 · Partidas que podem nunca terminar</span>
+    <p>Analisado em detalhe no capítulo 14. Resumo: a dominação total é matematicamente quase inatingível, então os objetivos secretos são, na prática, a única condição de vitória que funciona. Tratado calibrando os objetivos (nenhum pede mais de 18 territórios) e com o limite de 25 rodadas. <strong>Nenhuma regra oficial alterada.</strong></p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 4 · Objetivos fáceis demais em partidas de 2 jogadores</span>
+    <p>Com 2 jogadores existem <strong>10 Remanescentes</strong> no mapa. Os objetivos 15 ("conquiste em 5 rodadas consecutivas") e 16 ("conquiste um território de cada região") ficariam triviais, cumpridos só batendo em neutros de 2 soldados.</p>
+    <p><strong>Mitigação proposta</strong> <span class="chip p">🟡</span> — em partidas de 2 jogadores, conquistas de Remanescentes não contam para os objetivos 15 e 16.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 5 · Regra sem solução — o empate do objetivo 13</span>
+    <p>O objetivo 13 pede "mais territórios ao final da rodada 12". Empate é perfeitamente possível.</p>
+    <p><strong>Mitigação proposta</strong> <span class="chip p">🟡</span> — em caso de empate, o objetivo <strong>não</strong> é cumprido, e passa a ser verificado ao final de cada rodada seguinte até que alguém esteja isolado na frente.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 6 · Cadeia de cartas reativas</span>
+    <p><em>Interferência</em> cancela uma carta. Duas <em>Interferências</em> poderiam cancelar uma à outra indefinidamente, em teoria.</p>
+    <p><strong>Mitigação proposta</strong> <span class="chip p">🟡</span> — resolução em pilha, do último para o primeiro, e o limite já existente de <strong>1 carta reativa por jogador por batalha</strong> fecha a cadeia em no máximo um cancelamento por jogador. Não há loop possível.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 7 · Loop de eventos com a carta Eco</span>
+    <p><em>Eco</em> (Ressonância) repete o último evento revelado. Se esse evento for <em>Recursão</em> (que garante outro evento na rodada seguinte), teoricamente se encadeariam eventos sem parar.</p>
+    <p><strong>Não é um loop:</strong> o teto de <strong>6 eventos por partida</strong> encerra a cadeia, e <em>Eco</em> tem um único uso. Fica registrado porque a implementação precisa contar o <em>Eco</em> no limite de 6 — se não contar, o loop volta a existir.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 8 · Vantagem de primeiro jogador</span>
+    <p>Real, e medida: o assento 1 ataca num mapa em que ninguém reforçou, com chance de conquista de 65,6% contra um Remanescente de 2 soldados — foi exatamente o que aconteceu no turno 1 da simulação.</p>
+    <p><strong>Já compensado por duas regras</strong>: escolha de facção invertida e +1 soldado por assento. O resíduo é pequeno o bastante para ser aceitável, mas é o segundo item a medir em playtest — e a alavanca de ajuste é a compensação de assento, que é proposta minha e pode subir para +2 sem tocar em nada oficial.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 9 · Excesso de aleatoriedade</span>
+    <p>Três fontes de acaso: dados (alta variância, e é regra oficial), eventos (limitados a cerca de 3 por partida pelo algoritmo medido) e compra de cartas (baixa, porque comprar exige conquistar).</p>
+    <p>O balanço me parece correto: o acaso está concentrado no combate, que é onde o jogador escolhe se entra ou não. <strong>Nenhuma mudança proposta.</strong> Se em playtest o jogo parecer sorteado demais, a alavanca natural seria reduzir a variância dos dados — e isso é regra oficial, portanto decisão sua.</p>
+  </div>
+
+  <div class="block risk">
+    <span class="tag">⚑ Problema 10 · Facções a observar</span>
+    <p><strong>Vetor</strong> é a facção com maior potencial de bola de neve: <em>Contágio</em> transforma vitória em mais vitória. A fraqueza <em>Instabilidade</em> (territórios com 8+ perdem 1 por turno) foi desenhada exatamente para isso, mas é o número que eu mais desconfio de todo o documento.</p>
+    <p><strong>A Forja</strong> venceu a simulação, e não por acaso: <em>Fundição Contínua</em> + <em>Muralha de Escória</em> + a regra de empate criam uma posição muito difícil de quebrar. A mobilidade 1 é o preço, e funcionou — a Forja demorou 13 rodadas para vencer. Mas se em playtest ela vencer sempre, o ajuste natural é limitar <em>Fundição Contínua</em> a territórios com menos de 5 soldados.</p>
+  </div>
+
+  <div class="block plain">
+    <span class="tag">Situações verificadas e sem problema</span>
+    <ul>
+      <li><strong>Territórios isolados:</strong> nenhum. Grau mínimo 3, verificado automaticamente.</li>
+      <li><strong>Regiões impossíveis de atacar:</strong> nenhuma. Toda região tem no mínimo 4 portas de entrada.</li>
+      <li><strong>Gargalos absurdos:</strong> nenhum território de grau 1 ou 2 existe, então nenhuma posição única tranca uma região.</li>
+      <li><strong>Objetivos impossíveis:</strong> os dois casos reais (facção ausente e facção eliminada por terceiro) têm regra de substituição no capítulo 19.</li>
+      <li><strong>Regras contraditórias:</strong> uma única encontrada — Sequestro esvaziando um território contra a regra de "nunca zero soldados". Está registrada no capítulo 18 e no anexo de decisões, sem que eu tenha escolhido a solução.</li>
+      <li><strong>Jogador sem jogada possível:</strong> não existe. O piso de 3 reforços e a compra de compensação garantem que todo jogador vivo sempre tem o que fazer.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="c24">
+  <span class="chapnum">Capítulo 24</span>
+  <h2 class="chap">Referência Rápida</h2>
+  <p class="lede">Tudo o que se consulta no meio de uma partida, numa página.</p>
+
+  <h3>O turno</h3>
+  <p style="font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:15px;line-height:1.9">
+    1 Reforço → 2 Ataque Comum → 3 Ataque Especial → 4 Movimentação → 5 Cartas → 6 Finalizar
+  </p>
+
+  <h3>Limites por turno</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Ação</th><th class="num">Limite</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Ataque Comum</td><td class="num">1</td><td>Uma batalha, quantas rodadas de dados quiser</td></tr>
+      <tr><td class="name">Ataque Especial</td><td class="num">1</td><td>Exige carga de Transporte ou <em>Razia</em></td></tr>
+      <tr><td class="name">Movimentação</td><td class="num">1</td><td>Errantes fazem 2; a Malha move por cadeia</td></tr>
+      <tr><td class="name">Cartas jogadas</td><td class="num">sem limite</td><td>Máximo 1 reativa por batalha</td></tr>
+      <tr><td class="name">Mão ao fim do turno</td><td class="num">5</td><td>A assinatura não conta</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Dados</h3>
+  <div class="scroller">
+  <table>
+    <thead><tr><th class="num">Soldados</th><th>Atacante</th><th>Defensor</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>não pode atacar</td><td>1 dado</td></tr>
+      <tr><td class="num">2</td><td>1 dado</td><td>2 dados</td></tr>
+      <tr><td class="num">3</td><td>2 dados</td><td>3 dados</td></tr>
+      <tr><td class="num">4 ou mais</td><td>3 dados</td><td>3 dados</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Ordene do maior para o menor, compare par a par, compare só os pares existentes. <strong>Empate: defensor vence.</strong> Cada comparação perdida mata 1 soldado. Ataque através de Poço: atacante rola no máximo 2 dados.</p>
+
+  <h3>Reforço</h3>
+  <p style="font-family:var(--f-mono);font-size:15px"><strong>máx(3, ⌊territórios ÷ 3⌋) + bônus de região + efeitos</strong></p>
+  <p>Bônus de região completa: Metrópole +4 · Abrigos +4 · Montes de Ferro +3 · Planície Errante +3 · Cinturão Siderúrgico +3 · Zona Vítrea +3. Errantes recebem metade, arredondando para baixo.</p>
+
+  <h3>Regras que valem sempre</h3>
+  <ul>
+    <li>Nenhum território controlado fica com zero soldados.</li>
+    <li>Território atacante fica com no mínimo 1 soldado. Território de origem de movimentação também.</li>
+    <li>Conquistou: ocupa com no mínimo 1 e no máximo a força sobrevivente (até 3).</li>
+    <li>Conquistou pelo menos um território no turno: compra 1 carta.</li>
+    <li>Rodada = o turno de todos os jogadores vivos. O sistema testa Evento do Colapso ao final de cada rodada.</li>
+    <li>Vitória: objetivo secreto cumprido, ou os 30 territórios, ou último em pé, ou critério de desempate na rodada 25.</li>
+  </ul>
+</section>
+
+<section class="chapter" id="tabelas">
+  <span class="chapnum">Anexo A</span>
+  <h2 class="chap">Tabelas Obrigatórias</h2>
+  <p class="lede">As quatro tabelas exigidas estão no corpo do documento, no capítulo a que pertencem. Conferência:</p>
+  <div class="scroller">
+  <table>
+    <thead><tr><th>Tabela</th><th>Conteúdo</th><th>Onde está</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Mapa</td><td>Região · Território · Conecta com · Característica — os 30 territórios</td><td><a href="#c7">Capítulo 07</a></td></tr>
+      <tr><td class="name">Facções</td><td>Facção · Identidade · Passiva · Especial · Carta assinatura · Fraqueza — as 6 facções</td><td><a href="#c8">Capítulo 08</a></td></tr>
+      <tr><td class="name">Balanceamento</td><td>Ataque · Defesa · Mobilidade · Cartas · Recuperação · Dificuldade, escala 1–5</td><td><a href="#c8">Capítulo 08</a></td></tr>
+      <tr><td class="name">Tropas iniciais</td><td>Jogadores · Territórios por jogador · Tropas iniciais, de 2 a 6 jogadores</td><td><a href="#c9">Capítulo 09</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="chapter" id="checklist">
+  <span class="chapnum">Anexo B</span>
+  <h2 class="chap">Checklist Final</h2>
+  <ul class="check">
+    <li>30 territórios existem — verificados por script, sem duplicatas.</li>
+    <li>Todos possuem conexões — 56 fronteiras, simetria total, grau mínimo 3, mapa conexo.</li>
+    <li>6 regiões existem — 5 territórios cada.</li>
+    <li>6 facções existem — Humanos oficial, as outras cinco propostas.</li>
+    <li>Todas têm vantagem e fraqueza — as cinco categorias de poder somam 18 em todas.</li>
+    <li>Ataque máximo 1 comum por turno — regra oficial preservada.</li>
+    <li>Ataque Especial máximo 1 quando disponível — regra oficial preservada.</li>
+    <li>Atacante usa até 3 dados — regra oficial preservada, com a exceção proposta dos Poços (2 dados).</li>
+    <li>Defensor usa até 3 dados — regra oficial preservada.</li>
+    <li>Empate favorece o defensor — regra oficial preservada em todo o documento.</li>
+    <li>Sequestro está correto — texto oficial reproduzido sem alteração.</li>
+    <li>Vacina está correta — texto oficial reproduzido sem alteração; a ambiguidade de alvo foi registrada, não resolvida.</li>
+    <li>20 objetivos existem — com regra de substituição para facção ausente.</li>
+    <li>20 Eventos do Colapso existem — 5 globais, 5 regionais, 5 territoriais, 5 de anomalia.</li>
+    <li>Transporte Especial possui regra completa proposta — recurso, recarga, alcance, retorno, defesa e interações.</li>
+    <li>Reforços possuem fórmula — com piso de 3 e nove exemplos calculados.</li>
+    <li>Existe regra para eliminação — incluindo proteção contra exploração.</li>
+    <li>Existe condição de vitória — quatro, em ordem de precedência.</li>
+    <li>Uma partida completa foi simulada — 4 jogadores, 13 rodadas, com dados, cartas, eventos e Transporte Especial.</li>
+    <li>Inconsistências foram analisadas — 10 problemas listados, nenhuma regra oficial alterada.</li>
+    <li class="open">Nenhuma linha de código foi escrita — conforme instruído.</li>
+  </ul>
+  <p class="tnote">O último item usa ○ porque não é uma entrega concluída: é uma restrição respeitada. A implementação começa quando você mandar.</p>
+</section>
+
+<section class="chapter" id="decisoes">
+  <span class="chapnum">Anexo C</span>
+  <h2 class="chap">Decisões que o Criador Precisa Aprovar</h2>
+  <p class="lede">Somente o que depende de você. Enquanto não houver resposta, nada disto é regra — e nada disto foi implementado.</p>
+
+  <h3>Bloco 1 · Ambiguidades em regras oficiais</h3>
+  <p>Estas duas não são propostas minhas: são lacunas no texto oficial que só você pode fechar. Elas travam a implementação do combate e da carta.</p>
+
+  <div class="decision">
+    <span class="dnum">Decisão 01 · bloqueante</span>
+    <h4>Sequestro pode esvaziar um território?</h4>
+    <p>Se o alvo tiver 7 ou menos soldados e você levar todos, o território fica com zero — o que contraria "nunca poderá existir território controlado com zero tropas". Escolha uma: <strong>(a)</strong> o território vira Remanescente neutro; <strong>(b)</strong> o território passa para os Humanos, que decidem quantos soldados deixar lá; <strong>(c)</strong> é obrigatório deixar 1 soldado, então o Sequestro leva no máximo todos menos um.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 02 · bloqueante</span>
+    <h4>A Vacina mata dentro de quê?</h4>
+    <p>O 1d6 destrói soldados "atacantes elegíveis". <strong>(a)</strong> Apenas os soldados que estão atacando naquela rodada (máximo 3, como sugere o seu exemplo), ou <strong>(b)</strong> qualquer soldado do território atacante, até o total dele? A opção (b) torna a Vacina muito mais forte, capaz de dizimar um exército inteiro com um 6.</p>
+  </div>
+
+  <h3>Bloco 2 · Estrutura do jogo</h3>
+
+  <div class="decision">
+    <span class="dnum">Decisão 03</span>
+    <h4>Movimentação: adjacente ou por cadeia?</h4>
+    <p>Propus <strong>adjacente para todos</strong>, com o movimento por cadeia sendo a identidade exclusiva da Malha. A alternativa é cadeia contínua para todos e outra passiva para a Malha. Minha recomendação é manter adjacente: a matemática do capítulo 14 já favorece muito a defesa, e cadeia para todos alonga a partida.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 04</span>
+    <h4>Ocupação após conquista</h4>
+    <p>Propus mínimo 1 e máximo a <strong>força sobrevivente</strong> (até 3). A alternativa clássica é "todos menos 1", que transforma cada conquista num reposicionamento de exército inteiro.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 05</span>
+    <h4>Ataque através dos Poços usa 2 dados?</h4>
+    <p>É o que torna Os Abrigos uma região com identidade própria em vez de uma região indefensável com bônus alto. Mas é uma exceção à regra dos 3 dados, então precisa da sua aprovação explícita.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 06</span>
+    <h4>Transporte Especial — o pacote inteiro</h4>
+    <p>Recurso (não carta), 1 carga inicial, recarga a cada 4 rodadas, estoque máximo 1, alcance de distância exatamente 2, até 3 soldados, sobreviventes voltam à origem se falhar, não alcança as galerias dos Abrigos. Aprovar em bloco ou apontar o que mudar.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 07</span>
+    <h4>Fórmula de reforço e bônus de região</h4>
+    <p><code>máx(3, ⌊territórios ÷ 3⌋) + bônus</code>, com bônus +4 / +4 / +3 / +3 / +3 / +3. Os dois números que eu mais recomendo testar antes de fixar são o divisor 3 e o piso 3.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 08</span>
+    <h4>Tropas iniciais e compensação de assento</h4>
+    <p>3 soldados por território, mais +1 por assento após o primeiro. A justificativa matemática está no capítulo 09; a alavanca de ajuste é a compensação, que pode subir para +2 por assento.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 09</span>
+    <h4>Territórios Remanescentes</h4>
+    <p>As sobras viram neutros com 2 soldados, e em partidas de 2 jogadores a sobra é ampliada para 10 territórios. Alternativa: distribuir as sobras entre os primeiros jogadores.</p>
+  </div>
+
+  <h3>Bloco 3 · Facções e cartas</h3>
+
+  <div class="decision">
+    <span class="dnum">Decisão 10</span>
+    <h4>As cinco facções novas</h4>
+    <p><strong>A Forja</strong>, <strong>Vetor</strong>, <strong>A Malha</strong>, <strong>Os Errantes</strong> e <strong>Ressonância</strong> — nomes, histórias, cores, símbolos, passivas, especiais e cartas assinatura. É a decisão de maior alcance do documento: tudo depois dela depende dela.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 11</span>
+    <h4>As duas habilidades dos Humanos</h4>
+    <p><em>Sobrevivência</em> (+1 soldado com 3 ou menos territórios) e <em>Operação Aérea</em> (2 usos, move até 3 soldados para território não adjacente). São as que já estão no código do protótipo, com números provisórios desde a Etapa 4.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 12</span>
+    <h4>A carta assinatura tem um uso só?</h4>
+    <p>Propus <strong>um uso por partida, sem retorno</strong>. A alternativa é devolvê-la uma vez ao jogador que cair para 3 territórios ou menos — vira também uma mecânica de recuperação para quem está perdendo.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 13</span>
+    <h4>Baralho e compra</h4>
+    <p>24 cartas neutras, 12 tipos, compra só ao conquistar, mais a compra de compensação a cada 3 turnos sem carta, mão de 5.</p>
+  </div>
+
+  <h3>Bloco 4 · Eventos do Colapso</h3>
+
+  <div class="decision">
+    <span class="dnum">Decisão 14</span>
+    <h4>Os números do algoritmo</h4>
+    <p>Base 12%, +8 pontos por rodada sem evento, teto 60%, cooldown de 2 rodadas, nada antes da rodada 3, máximo 6 por partida, sorteio sem reposição. O comportamento medido está no capítulo 20 — cerca de 3 eventos numa partida de 20 rodadas.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 15</span>
+    <h4>O evento Inversão pode existir?</h4>
+    <p>Ele inverte a regra oficial de empate por uma rodada. É o evento mais interessante da lista e o único que toca numa regra bloqueada. Se a resposta for não, o substituto proposto é "nesta rodada o defensor rola no máximo 2 dados".</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 16</span>
+    <h4>Os 20 eventos e as 6 categorias</h4>
+    <p>A lista completa do capítulo 20, incluindo a decisão de que apenas dois eventos tiram soldados de forma direta.</p>
+  </div>
+
+  <h3>Bloco 5 · Fechamento da partida</h3>
+
+  <div class="decision">
+    <span class="dnum">Decisão 17</span>
+    <h4>Os 20 objetivos secretos</h4>
+    <p>A lista do capítulo 19 e a regra de substituição quando a facção alvo não está na partida ou é eliminada por terceiro.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 18</span>
+    <h4>Vitória por dominação total</h4>
+    <p>Você indicou tendência a sim, e eu concordo — com a ressalva do capítulo 22 de que ela quase nunca será atingida e serve como rede de segurança, não como caminho.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 19</span>
+    <h4>Limite de 25 rodadas e critérios de desempate</h4>
+    <p>Regiões completas → territórios → soldados → assento. É um paraquedas; se for acionado com frequência, o certo é baixar os objetivos, não subir o limite.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 20</span>
+    <h4>Regras de eliminação</h4>
+    <p>Cartas do eliminado vão para o descarte (e não para o conquistador), objetivo é revelado, abandono não conta como eliminação.</p>
+  </div>
+
+  <h3>Bloco 6 · Correções que a simulação pediu</h3>
+
+  <div class="decision">
+    <span class="dnum">Decisão 21</span>
+    <h4>Primeira rodada de dados obrigatória</h4>
+    <p>Fecha a isca de Vacina: declarou o ataque, rola pelo menos uma vez. Recuo só a partir da segunda rodada. Não altera nenhuma regra oficial.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 22</span>
+    <h4>Limite de 1 carta reativa por batalha</h4>
+    <p>Impede que uma mão cheia de reativas torne um território inatacável, e fecha a cadeia de <em>Interferências</em>.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 23</span>
+    <h4>Remanescentes não contam para os objetivos 15 e 16 em partidas de 2 jogadores</h4>
+    <p>Sem isso, esses dois objetivos são cumpridos batendo em neutros de 2 soldados.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Decisão 24</span>
+    <h4>Empate no objetivo 13</h4>
+    <p>Em caso de empate na rodada 12, o objetivo não é cumprido e passa a ser verificado nas rodadas seguintes.</p>
+  </div>
+
+  <h3>Bloco 7 · Sugestões que dependem de regra oficial</h3>
+  <p>Estas <strong>não estão adotadas em lugar nenhum do documento</strong>. Só existem porque a matemática as apontou, e só você pode decidir.</p>
+
+  <div class="decision">
+    <span class="dnum">Sugestão A</span>
+    <h4>Segundo Ataque Comum a partir da rodada 12</h4>
+    <p>Contraria a regra oficial de 1 Ataque Comum por turno. É a solução mais direta para o risco de partidas que não terminam (cap. 14), e por isso está registrada — mas não foi usada em nenhum cálculo, tabela ou simulação deste documento.</p>
+  </div>
+
+  <div class="decision">
+    <span class="dnum">Sugestão B</span>
+    <h4>Recarga acelerada do Transporte no fim da partida</h4>
+    <p>A partir da rodada 8, recarga a cada 2 rodadas em vez de 4. Trata o mesmo risco sem tocar em nenhuma regra oficial — mexe só numa proposta minha. É a mitigação que eu recomendaria testar primeiro.</p>
+  </div>
+
+  <hr>
+  <p><strong>Não implementei nada disto.</strong> O documento está fechado e nenhuma linha de código foi escrita nesta etapa, conforme o combinado. Aguardo suas decisões.</p>
+</section>
+
+<footer class="end">
+  <p>Livro de Regras — Invasão: Colapso · v1.0 · documento de game design</p>
+  <p>Mapa verificado por script · probabilidades de combate calculadas por enumeração completa · algoritmo de eventos medido em 200 000 partidas simuladas</p>
+</footer>
+
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+  var bar = document.getElementById('progress');
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var secs = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+
+  function onScroll(){
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  if ('IntersectionObserver' in window) {
+    var visible = new Set();
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target);
+      });
+      var first = secs.filter(function(s){ return s && visible.has(s); })[0];
+      var active = null;
+      links.forEach(function(a, i){
+        var on = secs[i] === first;
+        a.classList.toggle('on', on);
+        if (on) active = a;
+      });
+      // mantém o item ativo visível dentro do índice, que rola por conta própria
+      if (active) {
+        var nav = active.closest('nav.toc');
+        var ar = active.getBoundingClientRect(), nr = nav.getBoundingClientRect();
+        if (ar.top < nr.top + 8 || ar.bottom > nr.bottom - 8) {
+          nav.scrollTop += (ar.top - nr.top) - nr.height / 2 + ar.height / 2;
+        }
+      }
+    }, {rootMargin:'-10% 0px -70% 0px'});
+    secs.forEach(function(s){ if (s) io.observe(s); });
+  }
+})();
+</script>
