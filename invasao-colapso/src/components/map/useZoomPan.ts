@@ -37,7 +37,12 @@ export function useZoomPan() {
   const pinchStart = useRef<{ distance: number; scale: number } | null>(null);
   const dragged = useRef(false);
 
-  const reset = useCallback(() => setViewport(initialViewport()), []);
+  /**
+   * "Ver tudo": leva o mapa ao enquadramento completo, não ao zoom inicial.
+   * Em celular o jogo abre aproximado (rótulos legíveis), e este botão é a
+   * forma garantida de voltar a enxergar os 30 territórios.
+   */
+  const reset = useCallback(() => setViewport({ scale: 1, x: 0, y: 0 }), []);
 
   // O ponteiro pode ser solto fora do mapa (ou o gesto ser cancelado pelo
   // sistema). Sem isso, o pan continuaria "grudado" no cursor.

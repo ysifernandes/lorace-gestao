@@ -1,15 +1,14 @@
 import type { FactionDefinition } from '../types/faction.types';
 import type { FactionId } from '../types/ids';
 import { HUMANOS } from './humanos';
-import { INSURGENTES } from './insurgentes';
-import { FACTION_SLOTS } from './placeholders';
+import { REMANESCENTES, ROSTER } from './roster';
 
 /**
  * Registry de facções. Adicionar uma nova facção = adicionar aqui.
  * Nada na UI conhece facções por nome; tudo passa por este registry.
  */
 const REGISTRY = new Map<string, FactionDefinition>(
-  [HUMANOS, INSURGENTES, ...FACTION_SLOTS].map((f) => [f.id as string, f]),
+  [HUMANOS, ...ROSTER, REMANESCENTES].map((f) => [f.id as string, f]),
 );
 
 export function registerFaction(faction: FactionDefinition): void {
@@ -30,7 +29,7 @@ export function listFactions(): FactionDefinition[] {
   return [...REGISTRY.values()];
 }
 
-/** Facções realmente jogáveis hoje (oficiais + as de teste). */
+/** Facções que podem ser escolhidas na preparação. */
 export function playableFactions(): FactionDefinition[] {
   return listFactions().filter((f) => f.status === 'ACTIVE' || f.status === 'TEST_ONLY');
 }

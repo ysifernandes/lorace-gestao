@@ -8,10 +8,22 @@ const PIPS: Record<number, [number, number][]> = {
 };
 
 /** Dado estilizado. Usado na prévia de batalha e no resultado da Vacina. */
-export function Die({ value, tone = 'neutral' }: { value: number; tone?: 'attack' | 'defense' | 'neutral' }) {
-  const pips = PIPS[Math.min(6, Math.max(1, Math.round(value)))] ?? PIPS[1];
+export function Die({
+  value,
+  tone = 'neutral',
+}: {
+  /** null = dado ainda não rolado (prévia). */
+  value: number | null;
+  tone?: 'attack' | 'defense' | 'neutral';
+}) {
+  const pips = value === null ? [] : (PIPS[Math.min(6, Math.max(1, Math.round(value)))] ?? PIPS[1]);
   return (
-    <svg className={`die is-${tone}`} viewBox="0 0 100 100" role="img" aria-label={`Dado ${value}`}>
+    <svg
+      className={`die is-${tone}${value === null ? ' die--blank' : ''}`}
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label={value === null ? 'Dado a rolar' : `Dado ${value}`}
+    >
       <rect className="die__body" x="6" y="6" width="88" height="88" rx="18" />
       <rect className="die__edge" x="6" y="6" width="88" height="88" rx="18" />
       {pips.map(([cx, cy]) => (

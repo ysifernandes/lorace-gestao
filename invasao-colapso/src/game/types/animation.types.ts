@@ -19,7 +19,11 @@ export type AnimationBeatKind =
   | 'DICE_APPEAR'
   | 'DICE_ROLL'
   | 'DICE_RESULT'
-  | 'TROOPS_ELIMINATED';
+  | 'TROOPS_ELIMINATED'
+  | 'HIGHLIGHT'
+  | 'ALERT_SIREN'
+  | 'COUNTDOWN'
+  | 'REVEAL';
 
 export interface AnimationBeat {
   kind: AnimationBeatKind;

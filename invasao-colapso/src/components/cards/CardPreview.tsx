@@ -18,11 +18,7 @@ export function CardPreview({ state, card, onUse, onClose }: CardPreviewProps) {
   const definition = getCardDefinition(card.definitionId);
   const faction = definition.factionId ? getFaction(definition.factionId) : null;
   const isSequestro = definition.id === SEQUESTRO_CARD_ID;
-  const isTest = (definition.id as string).startsWith('card.teste.');
-  const rawPrimary = canUseCard(state, card.instanceId, 'PRIMARY');
-  const primary = isTest
-    ? { allowed: false, reason: 'Carta de teste — efeito ainda não definido.' }
-    : rawPrimary;
+  const primary = canUseCard(state, card.instanceId, 'PRIMARY');
   const alternate = definition.alternateEffect
     ? canUseCard(state, card.instanceId, 'ALTERNATE')
     : { allowed: false, reason: 'Esta carta não possui efeito alternativo.' };
@@ -37,11 +33,7 @@ export function CardPreview({ state, card, onUse, onClose }: CardPreviewProps) {
           >
             <span>{faction?.name ?? 'Neutra'}</span>
             <span className="preview__kind">
-              {isSequestro
-                ? 'Carta Especial'
-                : isTest
-                  ? 'Carta de teste'
-                  : CARD_CATEGORY_LABELS[definition.category]}
+              {isSequestro ? 'Carta Assinatura' : CARD_CATEGORY_LABELS[definition.category]}
             </span>
           </header>
 

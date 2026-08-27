@@ -1,7 +1,8 @@
 import type { CardCategory, CardDefinition } from '../types/card.types';
 import type { CardDefinitionId } from '../types/ids';
 import { SEQUESTRO_CARD } from './sequestro.card';
-import { TESTE_CARDS } from './teste.cards';
+import { NEUTRAL_CARDS } from './neutral.cards';
+import { SIGNATURE_CARDS } from './signature.cards';
 
 export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
   OPERACAO: 'Operação',
@@ -12,7 +13,7 @@ export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
 
 /** Registry de cartas: adicionar uma carta nova = registrar aqui. */
 const REGISTRY = new Map<string, CardDefinition>(
-  [SEQUESTRO_CARD, ...TESTE_CARDS].map((card) => [card.id as string, card]),
+  [SEQUESTRO_CARD, ...SIGNATURE_CARDS, ...NEUTRAL_CARDS].map((card) => [card.id as string, card]),
 );
 
 export function registerCard(card: CardDefinition): void {
@@ -27,4 +28,14 @@ export function getCardDefinition(id: CardDefinitionId): CardDefinition {
 
 export function listCardDefinitions(): CardDefinition[] {
   return [...REGISTRY.values()];
+}
+
+/** Cartas neutras do Baralho do Colapso. */
+export function neutralCardDefinitions(): CardDefinition[] {
+  return listCardDefinitions().filter((card) => card.factionId === null);
+}
+
+/** Cartas assinatura (uma por facção). */
+export function signatureCardDefinitions(): CardDefinition[] {
+  return listCardDefinitions().filter((card) => card.factionId !== null);
 }

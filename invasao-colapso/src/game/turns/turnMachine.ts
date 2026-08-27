@@ -3,6 +3,15 @@ import type { PlayerId } from '../types/ids';
 import { isLastPhase, nextPhase } from './phases';
 import { BALANCE } from '../config/balance';
 import { resetTurnCounters } from '../abilities/abilityEngine';
+import { getFaction } from '../factions/faction.registry';
+import { completedRegions, regionOfTerritory } from '../map/regions';
+import { territoriesOf } from '../map/territory';
+import { TERRITORY_SEEDS } from '../../data/territories.seed';
+import {
+  blackedOutRegions,
+  collapseReinforcementBonus,
+  extraMoves,
+} from '../collapse/collapseEngine';
 
 /**
  * Máquina de estados do turno. Pura: recebe o rascunho do estado e o avança.
@@ -29,17 +38,76 @@ export function turnStartedKey(turnNumber: number, player: PlayerId): string {
   return `TURN_STARTED:${turnNumber}:${player}`;
 }
 
-/** Reforços base do turno. Valores em `BALANCE.reinforcements` (provisórios). */
-export function reinforcementsFor(state: GameState, player: PlayerId): number {
-  const owned = Object.values(state.territories).filter((t) => t.controllerId === player).length;
+const POI_REINFORCEMENT_IDS = TERRITORY_SEEDS.filter(
+  (t) => t.poi?.kind === 'REINFORCEMENT',
+).map((t) => t.id);
+
+export interface ReinforcementBreakdown {
+  base: number;
+  regionBonus: number;
+  poiBonus: number;
+  collapseBonus: number;
+  total: number;
+  regions: string[];
+}
+
+/**
+ * Reforço = máx(3, ⌊territórios ÷ 3⌋) + bônus de região + efeitos.
+ * Os números vivem em `BALANCE.reinforcements`.
+ */
+export function reinforcementBreakdown(
+  state: GameState,
+  player: PlayerId,
+): ReinforcementBreakdown {
+  const owned = territoriesOf(state, player).length;
   const { minimum, territoriesPerExtraTroop } = BALANCE.reinforcements;
-  return Math.max(minimum, Math.floor(owned / territoriesPerExtraTroop));
+  const base = Math.max(minimum, Math.floor(owned / territoriesPerExtraTroop));
+
+  const faction = getFaction(state.players[player as string].factionId);
+  const multiplier = faction.rules.regionBonusMultiplier ?? 1;
+  const blackedOut = blackedOutRegions(state);
+  const regions = completedRegions(state, player).filter((r) => !blackedOut.includes(r.id));
+  const rawBonus = regions.reduce((sum, r) => sum + r.bonus, 0);
+  const regionBonus = multiplier === 1 ? rawBonus : Math.floor(rawBonus * multiplier);
+
+  const poiBonus = POI_REINFORCEMENT_IDS.filter(
+    (id) => state.territories[id as string]?.controllerId === player,
+  ).length;
+
+  const collapseBonus = collapseReinforcementBonus(state, player);
+
+  return {
+    base,
+    regionBonus,
+    poiBonus,
+    collapseBonus,
+    total: base + regionBonus + poiBonus + collapseBonus,
+    regions: regions.map((r) => r.name),
+  };
+}
+
+/** Total de reforços do turno. */
+export function reinforcementsFor(state: GameState, player: PlayerId): number {
+  return reinforcementBreakdown(state, player).total;
+}
+
+/** Movimentações permitidas ao jogador neste turno. */
+export function movesAllowedFor(state: GameState, player: PlayerId): number {
+  const faction = getFaction(state.players[player as string].factionId);
+  return (faction.rules.movesPerTurn ?? BALANCE.movement.perTurn) + extraMoves(state);
 }
 
 function startTurnFor(draft: GameState, player: PlayerId): void {
   draft.turn.currentPlayerId = player;
   draft.turn.currentIndex = draft.turn.order.indexOf(player);
-  draft.turn.phase = 'INICIO';
+  draft.turn.phase = 'REFORCO';
+  draft.turn.commonAttackUsed = false;
+  draft.turn.specialAttackUsed = false;
+  draft.turn.movesUsed = 0;
+  draft.turn.movesAllowed = movesAllowedFor(draft, player);
+  draft.turn.drewCard = false;
+  draft.turn.conquestsThisTurn = 0;
+  draft.turn.turnsPlayed += 1;
   draft.turn.pendingReinforcements = reinforcementsFor(draft, player);
   // Limites "por turno" das habilidades valem para a vez que está começando.
   resetTurnCounters(draft, player);
@@ -50,25 +118,28 @@ function startTurnFor(draft: GameState, player: PlayerId): void {
   }
 }
 
-/** Passa a vez para o próximo jogador ativo, incrementando o número do turno. */
-export function endTurn(draft: GameState): { previous: PlayerId; next: PlayerId } {
+/** Passa a vez para o próximo jogador ativo. */
+export function endTurn(draft: GameState): {
+  previous: PlayerId;
+  next: PlayerId;
+  roundEnded: boolean;
+} {
   const previous = draft.turn.currentPlayerId;
   const next = peekNextPlayerId(draft);
-  const wrapped = draft.turn.order.indexOf(next) <= draft.turn.currentIndex;
+  const roundEnded = draft.turn.order.indexOf(next) <= draft.turn.currentIndex;
   startTurnFor(draft, next);
-  if (wrapped || previous === next) draft.turn.number += 1;
-  return { previous, next };
+  return { previous, next, roundEnded };
 }
 
-/**
- * Avança uma fase. Ao sair de FIM, troca de jogador.
- * Retorna se houve troca de jogador.
- */
-export function advancePhase(draft: GameState): { changedPlayer: boolean } {
+/** Avança uma fase. Ao sair de FIM_TURNO, troca de jogador. */
+export function advancePhase(draft: GameState): { changedPlayer: boolean; roundEnded: boolean } {
   if (isLastPhase(draft.turn.phase)) {
-    endTurn(draft);
-    return { changedPlayer: true };
+    const { roundEnded } = endTurn(draft);
+    return { changedPlayer: true, roundEnded };
   }
   draft.turn.phase = nextPhase(draft.turn.phase);
-  return { changedPlayer: false };
+  return { changedPlayer: false, roundEnded: false };
 }
+
+/** A qual região pertence um território — reexportado para conveniência. */
+export { regionOfTerritory };

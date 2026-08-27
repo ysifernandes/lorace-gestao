@@ -54,6 +54,45 @@ export type FactionStatus =
   | 'LOCKED';
 
 /**
+ * REGRAS MECÂNICAS DA FACÇÃO — declarativas.
+ *
+ * O motor lê estes campos; nenhum `if (facção === 'zumbis')` existe fora daqui.
+ * Campo ausente = comportamento padrão do jogo.
+ */
+export interface FactionRules {
+  /** Movimentações por turno. Padrão: 1. */
+  movesPerTurn?: number;
+  /** Máximo de soldados por movimentação. Padrão: sem limite. */
+  maxSoldiersPerMove?: number;
+  /** Movimentação por cadeia contínua de territórios próprios. */
+  chainMovement?: boolean;
+  /** Multiplicador do bônus de região completa. Padrão: 1. */
+  regionBonusMultiplier?: number;
+  /** Defensores eliminados convertidos ao conquistar (máx. por turno). */
+  conquestConversion?: number;
+  /** Territórios com N+ soldados perdem 1 no início do turno. */
+  overcrowdThreshold?: number;
+  /** Descarta 1 carta ao perder um território. */
+  discardOnTerritoryLost?: boolean;
+  /** Sabe se haverá Evento do Colapso na rodada (não sabe qual). */
+  collapseForesight?: boolean;
+  /** Perde 1 soldado extra a cada Evento do Colapso de AMEAÇA. */
+  collapseFragility?: boolean;
+  /** Ataque Especial sem consumir carga de Transporte. */
+  freeSpecialAttack?: boolean;
+  /** Em turno sem conquista, +N soldados num território de fronteira. */
+  borderReinforceOnQuietTurn?: number;
+  /** Notas 1–5 da matriz de balanceamento. */
+  balance?: {
+    ataque: number;
+    defesa: number;
+    mobilidade: number;
+    cartas: number;
+    recuperacao: number;
+  };
+}
+
+/**
  * Definição estática de uma facção (conteúdo, não estado de partida).
  * Nenhum campo aqui depende da interface — a UI só lê.
  */
@@ -89,6 +128,8 @@ export interface FactionDefinition {
   animationIds: string[];
   /** Modificadores numéricos globais da facção. */
   modifiers: Record<string, number>;
+  /** Regras mecânicas lidas pelo motor. */
+  rules: FactionRules;
   status: FactionStatus;
   /** true quando a identidade ainda não foi aprovada pelo criador. */
   provisional?: boolean;

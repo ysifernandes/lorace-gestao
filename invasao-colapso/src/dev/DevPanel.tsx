@@ -1,279 +1,363 @@
 import { useState } from 'react';
-import type { GameState } from '../game/types/game.types';
-import type { GameAction } from '../game/engine/actions';
-import type { PlayerId, TerritoryId } from '../game/types/ids';
-import { SEQUESTRO_CARD_ID } from '../game/cards/sequestro.card';
-import { abilityViews, allPlayers, allTerritories, pendingEffects } from '../game/engine/selectors';
-import { OPERACAO_AEREA_ID } from '../game/abilities/humanos/operacaoAerea';
-import { BALANCE } from '../game/config/balance';
+import { useGame } from '../hooks/useGame';
+import { getFaction } from '../game/factions/faction.registry';
+import { seatedPlayers } from '../game/engine/selectors';
+import { listCollapseEvents, currentChance } from '../game/collapse/collapseEngine';
+import { listMissions } from '../game/missions/missionEngine';
+import { listCardDefinitions } from '../game/cards/card.registry';
+import { TURN_PHASES } from '../game/types/turn.types';
+import { PHASE_LABELS } from '../game/turns/phases';
 import { territoriesOf } from '../game/map/territory';
+import { validateState } from '../game/engine/invariants';
+import type { CardDefinitionId, PlayerId, TerritoryId } from '../game/types/ids';
+
+type Tab = 'PARTIDA' | 'MAPA' | 'CARTAS' | 'MISSOES' | 'COLAPSO' | 'ESTADO';
 
 /**
- * ⚠️ PAINEL DE DESENVOLVIMENTO — TEMPORÁRIO ⚠️
+ * PAINEL DEV — isolado e removível.
  *
- * Isolado de propósito: só fala com o motor por AÇÕES, exatamente como a UI
- * normal. Nenhum outro arquivo importa este módulo além do ponto de montagem,
- * então apagar a pasta `src/dev` remove o painel sem quebrar o jogo.
+ * Nenhuma regra vive aqui: tudo passa pelas mesmas ações do motor. Remover
+ * este componente do MatchScreen desativa o modo DEV por inteiro.
  */
-export interface DevPanelProps {
-  state: GameState;
-  dispatch: (action: GameAction) => boolean;
-}
-
-export function DevPanel({ state, dispatch }: DevPanelProps) {
+export function DevPanel() {
+  const { state, dispatch, forcedDice, setForcedDice } = useGame();
   const [open, setOpen] = useState(false);
-  const [territoryId, setTerritoryId] = useState<TerritoryId>(
-    allTerritories(state)[0]?.id as TerritoryId,
-  );
-  const [amount, setAmount] = useState(1);
-  const territories = allTerritories(state);
-  const players = allPlayers(state);
-  const territory = state.territories[territoryId as string] ?? territories[0];
-  const abilities = abilityViews(state, state.turn.currentPlayerId);
-  const pending = pendingEffects(state);
+  const [tab, setTab] = useState<Tab>('PARTIDA');
+  const [target, setTarget] = useState<TerritoryId | ''>('');
 
-  /**
-   * Entrega territórios ao adversário até o jogador atual cair no limiar
-   * da Sobrevivência, e passa o turno para o início seguinte.
-   */
-  function forceSurvival() {
-    const limite = BALANCE.abilities.sobrevivencia.maxTerritories;
-    const opponent = players.find((p) => p.id !== state.turn.currentPlayerId);
-    if (!opponent) return;
-    const owned = territoriesOf(state, state.turn.currentPlayerId);
-    for (const extra of owned.slice(limite)) {
-      dispatch({ type: 'SET_CONTROLLER', territoryId: extra.id, playerId: opponent.id });
-    }
-    // Dois fins de turno devolvem a vez ao mesmo jogador.
-    dispatch({ type: 'END_TURN' });
-    dispatch({ type: 'END_TURN' });
-  }
-
-  /** Leva o jogo até a fase da Operação Aérea e garante tropas na origem. */
-  function testAirlift() {
-    const owned = territoriesOf(state, state.turn.currentPlayerId);
-    const origin = owned[0];
-    if (!origin) return;
-    dispatch({ type: 'ADD_SOLDIERS', territoryId: origin.id, amount: 3 });
-    for (let i = 0; i < 6; i += 1) {
-      dispatch({ type: 'ADVANCE_PHASE' });
-    }
-    dispatch({ type: 'DEV_RESET_ABILITY', playerId: state.turn.currentPlayerId, abilityId: OPERACAO_AEREA_ID });
-  }
+  const players = seatedPlayers(state);
+  const current = state.turn.currentPlayerId;
+  const problems = validateState(state);
 
   if (!open) {
     return (
-      <button type="button" className="dev-toggle" onClick={() => setOpen(true)}>
+      <button type="button" className="dev-toggle" onClick={() => setOpen(true)} title="Modo DEV">
         DEV
       </button>
     );
   }
 
   return (
-    <aside className="dev-panel" aria-label="Painel de desenvolvimento">
-      <header className="dev-panel__header">
-        <strong>PAINEL DEV</strong>
-        <span className="dev-panel__note">temporário</span>
-        <button type="button" className="btn btn--icon" onClick={() => setOpen(false)} aria-label="Fechar painel DEV">
+    <div className="dev">
+      <header className="dev__head">
+        <strong>Modo DEV</strong>
+        <button type="button" className="btn btn--icon" onClick={() => setOpen(false)}>
           ✕
         </button>
       </header>
 
-      <div className="dev-panel__row">
-        <label htmlFor="dev-territory">Território</label>
-        <select
-          id="dev-territory"
-          value={territoryId as string}
-          onChange={(event) => setTerritoryId(event.target.value as TerritoryId)}
-        >
-          {territories.map((t) => (
-            <option key={t.id as string} value={t.id as string}>
-              {t.name} ({t.garrison.length})
-            </option>
-          ))}
-        </select>
-      </div>
+      <nav className="dev__tabs">
+        {(['PARTIDA', 'MAPA', 'CARTAS', 'MISSOES', 'COLAPSO', 'ESTADO'] as Tab[]).map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={`dev__tab${tab === item ? ' is-on' : ''}`}
+            onClick={() => setTab(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
 
-      <div className="dev-panel__row">
-        <label htmlFor="dev-amount">Quantidade</label>
-        <input
-          id="dev-amount"
-          type="number"
-          min={1}
-          max={20}
-          value={amount}
-          onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))}
-        />
-      </div>
+      <div className="dev__body">
+        {tab === 'PARTIDA' ? (
+          <>
+            <h4>Jogador do turno</h4>
+            <div className="dev__row">
+              {players.map((player) => (
+                <button
+                  key={player.id as string}
+                  type="button"
+                  className={`chip${player.id === current ? ' chip--on' : ''}`}
+                  onClick={() => dispatch({ type: 'SET_CURRENT_PLAYER', playerId: player.id })}
+                  disabled={player.status !== 'ACTIVE'}
+                >
+                  {getFaction(player.factionId).symbol} {player.name}
+                </button>
+              ))}
+            </div>
 
-      <div className="dev-panel__grid">
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'ADD_SOLDIERS', territoryId, amount })}
-        >
-          + tropas
-        </button>
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'REMOVE_SOLDIERS', territoryId, amount })}
-        >
-          − tropas
-        </button>
-        <button type="button" onClick={() => dispatch({ type: 'ADVANCE_PHASE' })}>
-          Avançar fase
-        </button>
-        <button type="button" onClick={() => dispatch({ type: 'END_TURN' })}>
-          Avançar turno
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            dispatch({
-              type: 'GRANT_CARD',
-              playerId: state.turn.currentPlayerId,
-              definitionId: SEQUESTRO_CARD_ID,
-            })
-          }
-        >
-          + carta Sequestro
-        </button>
-        <button
-          type="button"
-          className="is-danger"
-          onClick={() => dispatch({ type: 'DEV_WIN_ATTACK' })}
-          disabled={state.pendingAttack?.status !== 'DECLARED'}
-        >
-          Vencer ataque
-        </button>
-      </div>
+            <h4>Fase</h4>
+            <div className="dev__row">
+              {TURN_PHASES.map((phase) => (
+                <button
+                  key={phase}
+                  type="button"
+                  className={`chip${state.turn.phase === phase ? ' chip--on' : ''}`}
+                  onClick={() => dispatch({ type: 'DEV_SET_PHASE', phase })}
+                >
+                  {PHASE_LABELS[phase]}
+                </button>
+              ))}
+            </div>
 
-      <div className="dev-panel__row">
-        <label htmlFor="dev-controller">Controlador de {territory?.name}</label>
-        <select
-          id="dev-controller"
-          value={(territory?.controllerId as string) ?? ''}
-          onChange={(event) =>
-            dispatch({
-              type: 'SET_CONTROLLER',
-              territoryId,
-              playerId: (event.target.value || null) as PlayerId | null,
-            })
-          }
-        >
-          <option value="">Neutro</option>
-          {players.map((p) => (
-            <option key={p.id as string} value={p.id as string}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+            <div className="dev__row">
+              <button type="button" className="btn btn--sm" onClick={() => dispatch({ type: 'ADVANCE_PHASE' })}>
+                Avançar fase
+              </button>
+              <button type="button" className="btn btn--sm" onClick={() => dispatch({ type: 'END_TURN' })}>
+                Encerrar turno
+              </button>
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => dispatch({ type: 'NEW_GAME', options: { playerCount: players.length } })}
+              >
+                Resetar partida
+              </button>
+            </div>
 
-      <div className="dev-panel__row">
-        <label htmlFor="dev-current">Jogador atual</label>
-        <select
-          id="dev-current"
-          value={state.turn.currentPlayerId as string}
-          onChange={(event) =>
-            dispatch({ type: 'SET_CURRENT_PLAYER', playerId: event.target.value as PlayerId })
-          }
-        >
-          {players.map((p) => (
-            <option key={p.id as string} value={p.id as string}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+            <h4>Transporte Especial</h4>
+            <div className="dev__row">
+              {players.map((player) => (
+                <button
+                  key={player.id as string}
+                  type="button"
+                  className="chip"
+                  onClick={() =>
+                    dispatch({
+                      type: 'DEV_SET_TRANSPORT',
+                      playerId: player.id,
+                      charges: player.transportCharges > 0 ? 0 : 1,
+                    })
+                  }
+                >
+                  {player.name}: {player.transportCharges}
+                </button>
+              ))}
+            </div>
 
-      <hr className="dev-panel__rule" />
-      <strong className="dev-panel__section">Habilidades</strong>
+            <h4>Dados forçados</h4>
+            <div className="dev__row">
+              {[1, 2, 3, 4, 5, 6].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`chip${forcedDice?.[0] === value ? ' chip--on' : ''}`}
+                  onClick={() => setForcedDice([value])}
+                >
+                  {value}
+                </button>
+              ))}
+              <button type="button" className="chip" onClick={() => setForcedDice(null)}>
+                aleatório
+              </button>
+            </div>
 
-      {abilities.length === 0 ? (
-        <p className="dev-panel__note">A facção do jogador atual não tem habilidades.</p>
-      ) : (
-        abilities.map((view) => (
-          <div key={view.definition.id} className="dev-panel__ability">
-            <label>
-              <input
-                type="checkbox"
-                checked={view.runtime.enabled}
-                onChange={(event) =>
-                  dispatch({
-                    type: 'DEV_SET_ABILITY_ENABLED',
-                    playerId: state.turn.currentPlayerId,
-                    abilityId: view.definition.id,
-                    enabled: event.target.checked,
-                  })
-                }
-              />
-              {view.definition.name}
-            </label>
-            <span className="dev-panel__note">
-              {view.status}
-              {view.chargesRemaining >= 0 ? ` · ${view.chargesRemaining} carga(s)` : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
+            <h4>Eliminação e vitória</h4>
+            <div className="dev__row">
+              {players.map((player) => (
+                <button
+                  key={player.id as string}
+                  type="button"
+                  className="chip"
+                  disabled={player.status !== 'ACTIVE'}
+                  onClick={() => dispatch({ type: 'DEV_ELIMINATE_PLAYER', playerId: player.id })}
+                >
+                  Eliminar {player.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="chip"
+                onClick={() => dispatch({ type: 'DEV_COMPLETE_MISSION', playerId: current })}
+              >
+                Forçar vitória do turno
+              </button>
+            </div>
+          </>
+        ) : null}
+
+        {tab === 'MAPA' ? (
+          <>
+            <h4>Território</h4>
+            <select
+              className="dev__select"
+              value={target}
+              onChange={(event) => setTarget(event.target.value as TerritoryId)}
+            >
+              <option value="">Selecione…</option>
+              {Object.values(state.territories).map((territory) => (
+                <option key={territory.id as string} value={territory.id as string}>
+                  {territory.name} ({territory.garrison.length})
+                </option>
+              ))}
+            </select>
+            {target ? (
+              <>
+                <div className="dev__row">
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() => dispatch({ type: 'ADD_SOLDIERS', territoryId: target, amount: 1, ownerId: undefined })}
+                  >
+                    +1 tropa
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() => dispatch({ type: 'REMOVE_SOLDIERS', territoryId: target, amount: 1 })}
+                  >
+                    −1 tropa
+                  </button>
+                </div>
+                <h4>Trocar controlador</h4>
+                <div className="dev__row">
+                  {players.map((player) => (
+                    <button
+                      key={player.id as string}
+                      type="button"
+                      className="chip"
+                      onClick={() =>
+                        dispatch({ type: 'SET_CONTROLLER', territoryId: target, playerId: player.id })
+                      }
+                    >
+                      {player.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            <p className="dev__note">
+              Territórios: {Object.keys(state.territories).length} · Conexões desativadas:{' '}
+              {state.disabledLinks.length}
+            </p>
+          </>
+        ) : null}
+
+        {tab === 'CARTAS' ? (
+          <>
+            <h4>Dar carta ao jogador do turno</h4>
+            <div className="dev__row dev__row--wrap">
+              {listCardDefinitions().map((definition) => (
+                <button
+                  key={definition.id as string}
+                  type="button"
+                  className="chip"
+                  onClick={() =>
+                    dispatch({
+                      type: 'GRANT_CARD',
+                      playerId: current,
+                      definitionId: definition.id as CardDefinitionId,
+                    })
+                  }
+                >
+                  {definition.name}
+                </button>
+              ))}
+            </div>
+            <p className="dev__note">
+              Baralho: {state.deck.length} · Descarte: {state.discard.length}
+            </p>
+          </>
+        ) : null}
+
+        {tab === 'MISSOES' ? (
+          <>
+            <h4>Objetivos por jogador</h4>
+            <ul className="dev__list">
+              {players.map((player) => {
+                const entry = state.missions[player.id as string];
+                return (
+                  <li key={player.id as string}>
+                    <b>{player.name}</b>: {entry?.replacedBy ?? entry?.missionId ?? '—'}{' '}
+                    {entry?.completed ? '✔' : ''}
+                    <small> · {territoriesOf(state, player.id).length} territórios</small>
+                  </li>
+                );
+              })}
+            </ul>
+            <h4>Trocar objetivo do jogador do turno</h4>
+            <select
+              className="dev__select"
+              onChange={(event) =>
                 dispatch({
-                  type: 'DEV_RESET_ABILITY',
-                  playerId: state.turn.currentPlayerId,
-                  abilityId: view.definition.id,
+                  type: 'DEV_SET_MISSION',
+                  playerId: current,
+                  missionId: event.target.value,
                 })
               }
+              defaultValue=""
             >
-              Restaurar cargas/recarga
+              <option value="" disabled>
+                Selecione…
+              </option>
+              {listMissions().map((mission) => (
+                <option key={mission.id} value={mission.id}>
+                  {mission.name}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
+
+        {tab === 'COLAPSO' ? (
+          <>
+            <p className="dev__note">
+              Chance atual: {(currentChance(state) * 100).toFixed(0)}% · pressão{' '}
+              {state.collapse.pressure} · cooldown {state.collapse.cooldown} · disparados{' '}
+              {state.collapse.triggered}
+            </p>
+            <h4>Forçar evento</h4>
+            <select
+              className="dev__select"
+              onChange={(event) =>
+                dispatch({ type: 'DEV_FORCE_COLLAPSE', eventId: event.target.value })
+              }
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Selecione…
+              </option>
+              {listCollapseEvents().map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.name} ({event.categories.join('/')})
+                </option>
+              ))}
+            </select>
+            <h4>Histórico</h4>
+            <ul className="dev__list">
+              {state.collapse.history.map((entry, index) => (
+                <li key={index}>
+                  R{entry.round}: {entry.eventId} — {entry.summary}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+
+        {tab === 'ESTADO' ? (
+          <>
+            <h4>Invariantes</h4>
+            {problems.length === 0 ? (
+              <p className="dev__ok">Estado íntegro: nenhum problema encontrado.</p>
+            ) : (
+              <ul className="dev__list dev__list--bad">
+                {problems.map((problem, index) => (
+                  <li key={index}>{problem}</li>
+                ))}
+              </ul>
+            )}
+            <h4>Resumo</h4>
+            <ul className="dev__list">
+              <li>Soldados vivos: {Object.values(state.soldiers).filter((s) => s.alive).length}</li>
+              <li>Cartas em jogo: {Object.keys(state.cards).length}</li>
+              <li>Efeitos na fila: {state.effectQueue.length}</li>
+              <li>Modificadores ativos: {state.territoryModifiers.length}</li>
+              <li>Status: {state.status}</li>
+            </ul>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => dispatch({ type: 'DEV_CLEAR_EFFECTS' })}
+            >
+              Limpar fila de efeitos
             </button>
-          </div>
-        ))
-      )}
-
-      <div className="dev-panel__grid">
-        <button type="button" onClick={forceSurvival} title="Reduz seus territórios até a habilidade ativar">
-          Forçar Sobrevivência
-        </button>
-        <button type="button" onClick={testAirlift}>
-          Testar Op. Aérea
-        </button>
+          </>
+        ) : null}
       </div>
-
-      <hr className="dev-panel__rule" />
-      <strong className="dev-panel__section">
-        Fila de efeitos ({pending.length} pendente{pending.length === 1 ? '' : 's'})
-      </strong>
-      <ol className="dev-panel__queue">
-        {pending.map((entry) => (
-          <li key={entry.id}>
-            <code>{entry.priority}</code> {entry.effect.kind} ← {entry.source.label ?? entry.source.id}
-          </li>
-        ))}
-        {state.effectHistory.slice(0, 5).map((entry) => (
-          <li key={entry.id} className={`is-${entry.status.toLowerCase()}`}>
-            <code>{entry.status === 'RESOLVED' ? '✓' : '✕'}</code> {entry.effect.kind}
-            {entry.result ? ` — ${entry.result}` : ''}
-          </li>
-        ))}
-        {pending.length === 0 && state.effectHistory.length === 0 && (
-          <li className="dev-panel__note">Fila vazia.</li>
-        )}
-      </ol>
-      <button type="button" onClick={() => dispatch({ type: 'DEV_CLEAR_EFFECTS' })}>
-        Limpar efeitos pendentes
-      </button>
-
-      <hr className="dev-panel__rule" />
-      <button
-        type="button"
-        className="dev-panel__reset"
-        onClick={() => {
-          if (window.confirm('Resetar a partida? O save local será apagado.')) {
-            dispatch({ type: 'NEW_GAME' });
-          }
-        }}
-      >
-        Resetar partida
-      </button>
-    </aside>
+    </div>
   );
 }
+
+export type { PlayerId };

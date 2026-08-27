@@ -76,6 +76,7 @@ export function eliminateSoldier(draft: GameState, id: SoldierId): void {
   soldier.alive = false;
   soldier.status = 'ELIMINATED';
   soldier.location = { kind: 'ELIMINATED' };
+  soldier.lostAtRound = draft.turn.number;
 }
 
 /** Transfere um soldado para outra facção/jogador (usado pelo Sequestro). */

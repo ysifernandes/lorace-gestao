@@ -66,5 +66,8 @@ export const HUMANOS: FactionDefinition = {
   visualEffects: ['searchlight', 'rotor-dust', 'medical-glow'],
   animationIds: ['anim.sequestro', 'anim.vacina', 'anim.sobrevivencia', 'anim.operacao-aerea'],
   modifiers: {},
+  rules: {
+    balance: { ataque: 3, defesa: 3, mobilidade: 4, cartas: 4, recuperacao: 4 },
+  },
   status: 'ACTIVE',
 };

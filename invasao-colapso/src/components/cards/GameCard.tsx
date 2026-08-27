@@ -49,9 +49,8 @@ export function GameCard({ state, card, onOpen, index }: GameCardProps) {
   const alternate = definition.alternateEffect
     ? canUseCard(state, card.instanceId, 'ALTERNATE')
     : { allowed: false };
-  const isTest = (definition.id as string).startsWith('card.teste.');
-  // Carta de teste não tem efeito: não pode se anunciar como jogável.
-  const usable = !isTest && (primary.allowed || alternate.allowed);
+    // Carta de teste não tem efeito: não pode se anunciar como jogável.
+  const usable = (primary.allowed || alternate.allowed);
 
   return (
     <li className="hand__slot" style={{ ['--i' as string]: index }}>
@@ -80,18 +79,13 @@ export function GameCard({ state, card, onOpen, index }: GameCardProps) {
         <span className="game-card__body">
           <strong className="game-card__name card__name">{definition.name}</strong>
           <span className="game-card__category card__category">
-            {CARD_CATEGORY_LABELS[definition.category]}
-            {isTest && ' · teste'}
+            {CARD_CATEGORY_LABELS[definition.category]} · {definition.playType.toLowerCase()}
           </span>
-          <span className="game-card__effect">
-            {isSequestro
-              ? 'Captura até 7 soldados inimigos.'
-              : 'Carta de teste — efeito a definir.'}
-          </span>
+          <span className="game-card__effect">{definition.description}</span>
         </span>
 
         <span className={`game-card__state card__flag${usable ? ' is-on' : ''}`}>
-          {isTest ? 'Sem efeito' : usable ? 'Jogável' : 'Indisponível'}
+          {usable ? 'Jogável' : 'Indisponível'}
         </span>
       </button>
     </li>

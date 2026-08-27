@@ -25,4 +25,6 @@ export interface Soldier {
   alive: boolean;
   /** Facção/dono original — permite lore e efeitos de "libertar prisioneiros". */
   origin: { factionId: FactionId; ownerId: PlayerId };
+  /** Rodada em que foi eliminado — usado pela carta Reconstituição. */
+  lostAtRound?: number;
 }

@@ -37,3 +37,24 @@ export function scriptedRng(values: number[]): Rng {
     },
   };
 }
+
+/** Embaralhamento Fisher–Yates com RNG injetável (determinístico nos testes). */
+export function shuffle<T>(items: readonly T[], rng: Rng = defaultRng): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng.next() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/** Escolhe um item ao acaso. Lança se a lista estiver vazia. */
+export function pick<T>(items: readonly T[], rng: Rng = defaultRng): T {
+  if (items.length === 0) throw new Error('pick: lista vazia.');
+  return items[Math.min(items.length - 1, Math.floor(rng.next() * items.length))];
+}
+
+/** Dado de N faces como inteiro em [1, sides]. */
+export function rollInt(sides: number, rng: Rng = defaultRng): number {
+  return Math.min(sides, Math.floor(rng.next() * sides) + 1);
+}

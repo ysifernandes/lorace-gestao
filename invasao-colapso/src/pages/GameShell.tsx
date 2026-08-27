@@ -1,10 +1,12 @@
 import { useGame } from '../hooks/useGame';
-import { GamePage } from './GamePage';
-import { FactionSelectScreen } from '../components/faction/FactionSelectScreen';
+import { HomeScreen } from './HomeScreen';
+import { SetupScreen } from './SetupScreen';
+import { MatchScreen } from './MatchScreen';
 
-/** Decide entre a escolha do exército e a partida em andamento. */
+/** Fluxo de telas: início → configuração → partida. */
 export function GameShell() {
-  const { started, startGame } = useGame();
-  if (!started) return <FactionSelectScreen onSelect={() => startGame()} />;
-  return <GamePage />;
+  const { screen } = useGame();
+  if (screen === 'HOME') return <HomeScreen />;
+  if (screen === 'SETUP') return <SetupScreen />;
+  return <MatchScreen />;
 }

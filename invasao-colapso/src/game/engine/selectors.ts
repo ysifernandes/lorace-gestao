@@ -8,6 +8,18 @@ import { getFaction } from '../factions/faction.registry';
 import type { AbilityDefinition, AbilityRuntimeState } from '../abilities/ability.types';
 import { abilitiesOfPlayer, checkAvailability } from '../abilities/abilityEngine';
 import { getCardDefinition } from '../cards/card.registry';
+import { distanceBetween, validAttackTargets, validMoveTargets } from '../map/adjacency';
+import { regionOfTerritory } from '../map/regions';
+import { BALANCE } from '../config/balance';
+import {
+  crossesQuarantine,
+  fogOfWarActive,
+  getCollapseEvent,
+  maxChargesFor,
+  specialAttackBlocked,
+} from '../collapse/collapseEngine';
+import { checkMission, effectiveMissionOf } from '../missions/missionEngine';
+import { reinforcementBreakdown } from '../turns/turnMachine';
 
 /** Leituras derivadas do estado. A UI consome só daqui. */
 
@@ -127,4 +139,137 @@ export function signatureCards(state: GameState, playerId: PlayerId) {
 
 export function pendingEffects(state: GameState) {
   return state.effectQueue.filter((entry) => entry.status === 'PENDING');
+}
+
+// ---------------------------------------------------------------------------
+// MVP: leituras usadas pela interface da partida
+// ---------------------------------------------------------------------------
+
+/** Jogadores que participam da partida (exclui os Remanescentes neutros). */
+export function seatedPlayers(state: GameState): Player[] {
+  return state.turn.order.map((id) => state.players[id as string]).filter(Boolean);
+}
+
+export function isNeutral(state: GameState, territory: Territory): boolean {
+  if (!territory.controllerId) return true;
+  return state.players[territory.controllerId as string]?.status === 'NEUTRAL';
+}
+
+/**
+ * Contagem que o jogador PODE ver. Sob Nevoeiro de Vidro, territórios
+ * inimigos mostram apenas uma faixa.
+ */
+export function visibleTroops(
+  state: GameState,
+  territory: Territory,
+  viewerId: PlayerId,
+): { exact: number | null; label: string } {
+  const count = territory.garrison.length;
+  const mine = territory.controllerId === viewerId;
+  if (mine || !fogOfWarActive(state)) return { exact: count, label: String(count) };
+  if (count <= 2) return { exact: null, label: 'poucos' };
+  if (count <= 5) return { exact: null, label: 'médio' };
+  return { exact: null, label: 'muitos' };
+}
+
+/** Territórios de onde o jogador do turno pode declarar o Ataque Comum. */
+export function attackOrigins(state: GameState): Territory[] {
+  const playerId = state.turn.currentPlayerId;
+  return allTerritories(state).filter(
+    (t) =>
+      t.controllerId === playerId &&
+      t.garrison.length > 1 &&
+      validAttackTargets(state, t.id).length > 0,
+  );
+}
+
+export function attackTargetsFrom(state: GameState, from: TerritoryId): Territory[] {
+  return validAttackTargets(state, from).filter(
+    (t) => !crossesQuarantine(state, from, t.id),
+  );
+}
+
+export function moveTargetsFrom(state: GameState, from: TerritoryId): Territory[] {
+  const origin = state.territories[from as string];
+  if (!origin?.controllerId) return [];
+  const faction = getFaction(state.players[origin.controllerId as string].factionId);
+  if (!faction.rules.chainMovement) return validMoveTargets(state, from);
+  return allTerritories(state).filter(
+    (t) => t.controllerId === origin.controllerId && t.id !== origin.id,
+  );
+}
+
+/** Alvos válidos para o Ataque Especial: distância exatamente 2. */
+export function specialTargetsFrom(state: GameState, from: TerritoryId): Territory[] {
+  const origin = state.territories[from as string];
+  if (!origin?.controllerId) return [];
+  return allTerritories(state).filter((t) => {
+    if (!t.controllerId || t.controllerId === origin.controllerId) return false;
+    if (regionOfTerritory(t.id)?.id === 'os-abrigos' && (t.id as string) !== 'abrigo-zero') {
+      return false;
+    }
+    return distanceBetween(state, origin.id, t.id) === BALANCE.transport.range;
+  });
+}
+
+export interface MissionView {
+  missionId: string;
+  name: string;
+  description: string;
+  category: string;
+  progress: string;
+  completed: boolean;
+  substituted: boolean;
+}
+
+/** Missão do jogador — só deve ser chamada para o próprio jogador. */
+export function missionOf(state: GameState, playerId: PlayerId): MissionView | null {
+  const entry = state.missions[playerId as string];
+  if (!entry) return null;
+  const mission = effectiveMissionOf(state, playerId);
+  if (!mission) return null;
+  return {
+    missionId: mission.id,
+    name: mission.name,
+    description: mission.description,
+    category: mission.category,
+    progress: checkMission(state, playerId).progress,
+    completed: entry.completed,
+    substituted: Boolean(entry.replacedBy),
+  };
+}
+
+export function reinforcementDetail(state: GameState, playerId: PlayerId) {
+  return reinforcementBreakdown(state, playerId);
+}
+
+/** Resumo do Transporte Especial para o HUD. */
+export function transportStatus(state: GameState, playerId: PlayerId) {
+  const player = state.players[playerId as string];
+  const faction = player ? getFaction(player.factionId) : null;
+  const free = Boolean(faction?.rules.freeSpecialAttack);
+  const blocked = specialAttackBlocked(state);
+  const used = state.turn.specialAttackUsed;
+  return {
+    charges: player?.transportCharges ?? 0,
+    max: maxChargesFor(state, playerId),
+    free,
+    blocked,
+    used,
+    available: !used && !blocked && (free || (player?.transportCharges ?? 0) > 0),
+  };
+}
+
+export function activeCollapseSummary(state: GameState) {
+  return state.collapse.active.map((active) => {
+    const event = getCollapseEvent(active.eventId);
+    return {
+      id: active.id,
+      name: event.name,
+      description: event.description,
+      untilRound: active.untilRound,
+      regionId: active.targetRegionId,
+      territoryId: active.targetTerritoryId,
+    };
+  });
 }

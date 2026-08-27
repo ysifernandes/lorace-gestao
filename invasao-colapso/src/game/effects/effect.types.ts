@@ -26,7 +26,8 @@ export type EffectKind =
   | 'REVEAL_INFO'
   | 'CAPTURE_UNITS'
   | 'HEAL_UNIT'
-  | 'MODIFY_MOVEMENT';
+  | 'MODIFY_MOVEMENT'
+  | 'RETARGET_COLLAPSE';
 
 export type EffectDescriptor =
   /** Aumenta os reforços pendentes do jogador no turno atual. */
@@ -50,11 +51,23 @@ export type EffectDescriptor =
   | { kind: 'REROLL_DICE'; playerId: PlayerId; times: number }
   | { kind: 'BLOCK_ATTACK'; territoryId: TerritoryId }
   | { kind: 'BLOCK_CARD'; playerId: PlayerId }
-  | { kind: 'PROTECT_TERRITORY'; territoryId: TerritoryId; turns: number }
+  | {
+      kind: 'PROTECT_TERRITORY';
+      territoryId: TerritoryId;
+      turns: number;
+      ownerId: PlayerId;
+      source: string;
+      attackerDiceReduction?: number;
+      blockSpecialAttack?: boolean;
+      ignoreFirstLossPerRound?: boolean;
+      blockReinforce?: boolean;
+    }
   | { kind: 'REVEAL_INFO'; playerId: PlayerId; scope: string }
   | { kind: 'CAPTURE_UNITS'; soldierIds: SoldierId[]; captorId: PlayerId }
   | { kind: 'HEAL_UNIT'; soldierIds: SoldierId[] }
-  | { kind: 'MODIFY_MOVEMENT'; playerId: PlayerId; delta: number };
+  | { kind: 'MODIFY_MOVEMENT'; playerId: PlayerId; delta: number }
+  /** Redireciona o Evento do Colapso pendente (Distorção dos Magos). */
+  | { kind: 'RETARGET_COLLAPSE'; regionId?: string; territoryId?: TerritoryId };
 
 /** De onde o efeito veio — usado para prioridade, log e depuração. */
 export interface EffectSource {

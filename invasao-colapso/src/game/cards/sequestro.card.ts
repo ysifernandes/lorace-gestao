@@ -17,6 +17,7 @@ export const SEQUESTRO_CARD: CardDefinition = {
   name: 'Sequestro',
   factionId: HUMANOS_ID,
   category: 'OPERACAO',
+  playType: 'OFENSIVA',
   description:
     'Operação de extração aérea humana. Pode ser usada para capturar tropas inimigas ' +
     'ou, defensivamente, como contramedida biológica. Um uso consome a carta.',
@@ -33,10 +34,11 @@ export const SEQUESTRO_CARD: CardDefinition = {
       'entre os seus territórios.',
     conditions: [
       { type: 'IS_CURRENT_PLAYER' },
-      { type: 'PHASE_IS', phases: ['ACAO'] },
+      { type: 'PHASE_IS', phases: ['CARTAS'] },
       { type: 'ENEMY_SOLDIERS_AVAILABLE', min: 1 },
     ],
     limits: { maxTargets: SEQUESTRO_MAX_TARGETS },
+    action: { type: 'SEQUESTRO' },
     animation: SEQUESTRO_ANIMATION,
   },
   alternateEffect: {
@@ -47,6 +49,7 @@ export const SEQUESTRO_CARD: CardDefinition = {
       'define quantos soldados atacantes são destruídos (limitado ao total de atacantes).',
     conditions: [{ type: 'HAS_PENDING_ATTACK_AGAINST_OWNER' }],
     limits: { diceSides: VACINA_DICE_SIDES },
+    action: { type: 'VACINA' },
     animation: VACINA_ANIMATION,
   },
   art: {
