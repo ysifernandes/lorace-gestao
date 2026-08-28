@@ -292,9 +292,11 @@ export function createGame(options: NewGameOptions = {}): GameState {
   }
 
   // --- Objetivos secretos --------------------------------------------------
+  syncPlayerTerritories(state);
   const deal = dealMissions(
     order.map((id) => ({ id, factionId: players[id as string].factionId as string })),
     rng,
+    state,
   );
   state.missions = deal.assignments;
 

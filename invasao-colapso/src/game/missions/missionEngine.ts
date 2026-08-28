@@ -85,12 +85,37 @@ export interface MissionDealResult {
 export function dealMissions(
   players: { id: PlayerId; factionId: string }[],
   rng: Rng = defaultRng,
+  /**
+   * Estado inicial da partida. Quando informado, uma missão que JÁ estaria
+   * cumprida na largada é descartada — ninguém pode vencer antes de jogar.
+   * A verificação é genérica: usa o mesmo verificador da partida, sem
+   * conhecer missão nenhuma pelo nome.
+   */
+  initialState?: GameState,
 ): MissionDealResult {
   const factionIds = players.map((p) => p.factionId);
   const assignments: Record<string, PlayerMission> = {};
   const discarded = new Set<string>();
   const pool = shuffle(MISSION_SEEDS.map((m) => m.id), rng);
   const taken = new Set<string>();
+
+  const alreadyDone = (missionId: string, playerId: PlayerId): boolean => {
+    if (!initialState) return false;
+    const probe: GameState = {
+      ...initialState,
+      missions: {
+        ...initialState.missions,
+        [playerId as string]: {
+          missionId,
+          playerId,
+          completed: false,
+          revealed: false,
+          tracking: { conquestRounds: [], regionsTouched: [], holdRounds: 0, collapseSurvived: 0 },
+        },
+      },
+    };
+    return checkMission(probe, playerId).completed;
+  };
 
   for (const player of players) {
     const context: MissionValidityContext = {
@@ -103,6 +128,10 @@ export function dealMissions(
       if (taken.has(candidate)) continue;
       const mission = getMission(candidate);
       if (!isMissionValid(mission, context)) {
+        discarded.add(candidate);
+        continue;
+      }
+      if (alreadyDone(candidate, player.id)) {
         discarded.add(candidate);
         continue;
       }

@@ -109,23 +109,95 @@ export interface RegionShape {
   name: string;
   color: string;
   bonus: number;
-  /** Caixa envolvente para o rótulo da região. */
+  /** Posição do rótulo, acima da massa de terra. */
   label: { x: number; y: number };
+  /**
+   * Massa de terra da região como união de círculos — um por território.
+   * União (e não casco convexo) porque o casco de uma região invadiria as
+   * vizinhas: os agrupamentos do mapa de referência se entrelaçam.
+   */
+  blobs: { x: number; y: number; r: number }[];
 }
 
-export const REGION_SHAPES: RegionShape[] = REGION_SEEDS.map((region) => {
-  const centers = region.territoryIds
-    .map((id) => SHAPE_BY_ID.get(id as string))
-    .filter((s): s is TerritoryShape => Boolean(s))
-    .map((s) => s.center);
-  // Centro do agrupamento: o nome da região funciona como marca d'água.
-  const x = centers.reduce((sum, c) => sum + c.x, 0) / centers.length;
-  const y = centers.reduce((sum, c) => sum + c.y, 0) / centers.length;
-  return {
-    id: region.id,
-    name: region.name,
-    color: region.color,
-    bonus: region.bonus,
-    label: { x, y },
-  };
-});
+/** Margem de "costa" em volta de cada território da região. */
+const LANDMASS_MARGIN = 24;
+
+/**
+ * O rótulo da região precisa cair em espaço vazio: as regiões do mapa de
+ * referência se entrelaçam, então o centroide costuma cair em cima de um
+ * território de OUTRA região. Testamos posições candidatas em volta do
+ * agrupamento e ficamos com a mais livre — evitando também os rótulos das
+ * regiões já posicionadas.
+ */
+function freeLabelSpot(
+  centers: { x: number; y: number }[],
+  everyCenter: { x: number; y: number }[],
+  placed: { x: number; y: number }[],
+): { x: number; y: number } {
+  const cx = centers.reduce((sum, c) => sum + c.x, 0) / centers.length;
+  const cy = centers.reduce((sum, c) => sum + c.y, 0) / centers.length;
+  const gap = RADIUS + LANDMASS_MARGIN;
+  const candidates: { x: number; y: number }[] = [];
+  for (const ring of [1.15, 1.6, 2.1]) {
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (i / 12) * Math.PI * 2;
+      // Elipse: o mapa é mais largo que alto, o rótulo também.
+      const spanX = Math.max(...centers.map((c) => Math.abs(c.x - cx))) + gap;
+      const spanY = Math.max(...centers.map((c) => Math.abs(c.y - cy))) + gap;
+      candidates.push({
+        x: cx + Math.cos(angle) * spanX * ring,
+        y: cy + Math.sin(angle) * spanY * ring,
+      });
+    }
+  }
+  const bounded = candidates.filter(
+    (p) => p.x > 130 && p.x < MAP_WIDTH - 130 && p.y > 36 && p.y < MAP_HEIGHT - 40,
+  );
+  // Distância mínima entre rótulos: dois nomes de região nunca se encavalam.
+  const spaced = bounded.filter((p) =>
+    placed.every((q) => Math.hypot(q.x - p.x, q.y - p.y) > 230),
+  );
+  const inside = spaced.length > 0 ? spaced : bounded;
+  let best = inside[0] ?? { x: cx, y: cy - gap };
+  let bestScore = -Infinity;
+  for (const candidate of inside) {
+    const nearTerritory = Math.min(
+      ...everyCenter.map((c) => Math.hypot(c.x - candidate.x, c.y - candidate.y)),
+    );
+    const nearLabel = placed.length
+      ? Math.min(...placed.map((c) => Math.hypot(c.x - candidate.x, c.y - candidate.y)))
+      : 999;
+    // Longe de território, MUITO longe de outro rótulo, perto do próprio grupo.
+    const score =
+      Math.min(nearTerritory, 190) +
+      Math.min(nearLabel, 260) * 1.4 -
+      Math.hypot(candidate.x - cx, candidate.y - cy) * 0.35;
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+const ALL_CENTERS = TERRITORY_SHAPES.map((s) => s.center);
+
+export const REGION_SHAPES: RegionShape[] = (() => {
+  const placed: { x: number; y: number }[] = [];
+  return REGION_SEEDS.map((region) => {
+    const shapes = region.territoryIds
+      .map((id) => SHAPE_BY_ID.get(id as string))
+      .filter((s): s is TerritoryShape => Boolean(s));
+    const centers = shapes.map((s) => s.center);
+    const label = freeLabelSpot(centers, ALL_CENTERS, placed);
+    placed.push(label);
+    return {
+      id: region.id,
+      name: region.name,
+      color: region.color,
+      bonus: region.bonus,
+      label,
+      blobs: centers.map((c) => ({ x: c.x, y: c.y, r: RADIUS + LANDMASS_MARGIN })),
+    };
+  });
+})();

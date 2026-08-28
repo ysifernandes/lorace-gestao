@@ -64,6 +64,11 @@ export function useZoomPan() {
     setViewport((v) => ({ ...v, scale: clampScale(v.scale * factor) }));
   }, []);
 
+  /** Vai direto a uma escala — usado pelos botões de nível de câmera. */
+  const zoomTo = useCallback((scale: number) => {
+    setViewport((v) => ({ ...v, scale: clampScale(scale) }));
+  }, []);
+
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -133,6 +138,7 @@ export function useZoomPan() {
     viewport,
     reset,
     zoomBy,
+    zoomTo,
     wasDragged,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel },
   };

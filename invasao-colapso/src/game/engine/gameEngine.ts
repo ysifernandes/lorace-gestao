@@ -794,6 +794,11 @@ export function applyAction(
       if (draft.pendingOccupation) {
         return fail(state, 'Ocupe o território conquistado antes de encerrar o ataque.');
       }
+      // REGRA OFICIAL: declarou, rola. A primeira rodada de dados é
+      // obrigatória — só depois dela o atacante pode recuar.
+      if (attack.rounds.length === 0) {
+        return fail(state, 'A primeira rodada de dados é obrigatória: role antes de recuar.');
+      }
       closeBattle(draft, action.type === 'RESOLVE_ATTACK' ? 'RESOLVED' : 'CANCELLED');
       pushLog(draft, 'COMBAT', 'O atacante recuou. A batalha terminou.');
       return { ok: true, state: draft };

@@ -9,8 +9,14 @@ import {
   SHAPE_BY_ID,
   TERRITORY_SHAPES,
 } from '../../data/boardArt';
+import { TERRITORY_SEEDS } from '../../data/territories.seed';
 import { isNeutral, territoryColor, visibleTroops } from '../../game/engine/selectors';
+import { getFaction } from '../../game/factions/faction.registry';
 import { useZoomPan } from '../map/useZoomPan';
+import { CAMERA_LEVELS, CAMERA_LABEL, CAMERA_SCALE, LEVEL_DETAIL, cameraLevelFor } from '../../view/camera';
+import type { CameraLevel } from '../../view/camera';
+import { armyLod } from '../../view/armyLod';
+import { unitSilhouette } from '../../view/factionArt';
 
 export type BoardMode = 'IDLE' | 'REINFORCE' | 'ATTACK' | 'SPECIAL' | 'MOVE' | 'CARD_TARGET';
 
@@ -33,6 +39,61 @@ const MODE_TINT: Record<BoardMode, string> = {
   CARD_TARGET: '#a874e8',
 };
 
+const POI_BY_TERRITORY = new Map(
+  TERRITORY_SEEDS.filter((t) => t.poi).map((t) => [t.id as string, t.poi!]),
+);
+
+/** Um pelotão desenhado sobre o território, no detalhe do nível de câmera. */
+function Army({
+  factionId,
+  color,
+  secondary,
+  troops,
+  level,
+  cx,
+  cy,
+}: {
+  factionId: string;
+  color: string;
+  secondary: string;
+  troops: number;
+  level: CameraLevel;
+  cx: number;
+  cy: number;
+}) {
+  const lod = useMemo(() => armyLod(troops, level), [troops, level]);
+  const art = useMemo(() => unitSilhouette(factionId as never), [factionId]);
+  if (lod.slots.length === 0) return null;
+  return (
+    <g className="army" aria-hidden="true">
+      {lod.slots.map((slot, index) => (
+        <g
+          key={index}
+          transform={`translate(${cx + slot.dx} ${cy + slot.dy}) scale(${slot.scale.toFixed(2)})`}
+        >
+          <ellipse className="army__shadow" cx={0} cy={1} rx={5.4} ry={2} />
+          <path d={art.body} fill={color} stroke="rgba(4,8,14,.85)" strokeWidth={0.9} />
+          {art.headRadius > 0 && (
+            <circle cx={0} cy={art.headY} r={art.headRadius} fill={color} stroke="rgba(4,8,14,.85)" strokeWidth={0.9} />
+          )}
+          <path
+            d={art.crest}
+            fill={secondary}
+            stroke="rgba(4,8,14,.85)"
+            strokeWidth={0.8}
+            strokeLinejoin="round"
+          />
+        </g>
+      ))}
+      {lod.overflow > 0 && (
+        <text className="army__overflow" x={cx} y={cy + 26} textAnchor="middle">
+          +{lod.overflow}
+        </text>
+      )}
+    </g>
+  );
+}
+
 export function GameBoard({
   state,
   viewerId,
@@ -42,24 +103,44 @@ export function GameBoard({
   mode,
   onSelect,
 }: GameBoardProps) {
-  const { viewport, reset, zoomBy, wasDragged, handlers } = useZoomPan();
+  const { viewport, reset, zoomBy, zoomTo, wasDragged, handlers } = useZoomPan();
   const highlightSet = useMemo(() => new Set(highlighted.map(String)), [highlighted]);
   const tint = MODE_TINT[mode];
 
+  const inBattle = state.pendingAttack?.status === 'DECLARED';
+  const level = cameraLevelFor(viewport.scale, inBattle);
+  const detail = LEVEL_DETAIL[level];
+
+  const battleIds = useMemo(() => {
+    const attack = state.pendingAttack;
+    if (!attack || attack.status !== 'DECLARED') return new Set<string>();
+    return new Set([attack.fromTerritoryId as string, attack.toTerritoryId as string]);
+  }, [state.pendingAttack]);
+
   return (
-    <div className="board" data-mode={mode}>
+    <div className="board" data-mode={mode} data-camera={level}>
       <div className="board__viewport" {...handlers}>
         <svg
           className="board__svg"
           viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
           role="group"
-          aria-label="Mapa da Bacia"
+          aria-label="Mapa do Colapso"
         >
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,.04)" strokeWidth="1" />
             </pattern>
+            <radialGradient id="board-vignette" cx="50%" cy="42%" r="72%">
+              <stop offset="55%" stopColor="rgba(0,0,0,0)" />
+              <stop offset="100%" stopColor="rgba(2,5,10,.72)" />
+            </radialGradient>
+            <filter id="landmass-blur" x="-12%" y="-12%" width="124%" height="124%">
+              <feGaussianBlur stdDeviation="7" />
+            </filter>
+            <filter id="territory-depth" x="-30%" y="-30%" width="160%" height="180%">
+              <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="rgba(2,5,10,.72)" />
+            </filter>
           </defs>
           <g
             style={{
@@ -69,20 +150,30 @@ export function GameBoard({
           >
             <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#grid)" />
 
-            {/* Regiões como marca d'água, atrás de tudo: informam sem competir. */}
-            {REGION_SHAPES.map((region) => (
-              <text
-                key={region.id}
-                className="board__region-label"
-                x={region.label.x}
-                y={region.label.y}
-                textAnchor="middle"
-                fill={region.color}
-              >
-                {region.name} · +{region.bonus}
-              </text>
-            ))}
+            {/* Massas de terra: a região existe como TERRENO, não como legenda. */}
+            <g className="board__landmasses">
+              {REGION_SHAPES.map((region) => (
+                <g key={region.id} className="board__landmass" fill={region.color}>
+                  {region.blobs.map((blob, index) => (
+                    <circle key={index} cx={blob.x} cy={blob.y} r={blob.r} />
+                  ))}
+                </g>
+              ))}
+            </g>
 
+            {detail.regionName &&
+              REGION_SHAPES.map((region) => (
+                <text
+                  key={region.id}
+                  className="board__region-label"
+                  x={region.label.x}
+                  y={region.label.y}
+                  textAnchor="middle"
+                  fill={region.color}
+                >
+                  {region.name} · +{region.bonus}
+                </text>
+              ))}
 
             {/* Fronteiras: a verdade da adjacência, desenhada */}
             <g className="board__links">
@@ -96,16 +187,27 @@ export function GameBoard({
                     (entry.a === link.b && entry.b === link.a),
                 );
                 return (
-                  <line
-                    key={`${link.a}-${link.b}`}
-                    x1={a.center.x}
-                    y1={a.center.y}
-                    x2={b.center.x}
-                    y2={b.center.y}
-                    className={`board__link board__link--${link.kind.toLowerCase()}${
-                      disabled ? ' board__link--off' : ''
-                    }`}
-                  />
+                  <g key={`${link.a}-${link.b}`}>
+                    <line
+                      x1={a.center.x}
+                      y1={a.center.y}
+                      x2={b.center.x}
+                      y2={b.center.y}
+                      className={`board__link board__link--${link.kind.toLowerCase()}${
+                        disabled ? ' board__link--off' : ''
+                      }`}
+                    />
+                    {detail.linkNames && link.name && (
+                      <text
+                        className="board__link-label"
+                        x={(a.center.x + b.center.x) / 2}
+                        y={(a.center.y + b.center.y) / 2 - 6}
+                        textAnchor="middle"
+                      >
+                        {link.name}
+                      </text>
+                    )}
+                  </g>
                 );
               })}
             </g>
@@ -119,7 +221,14 @@ export function GameBoard({
               const selected = selectedId === shape.id;
               const origin = originId === shape.id;
               const target = highlightSet.has(shape.id as string);
+              const fighting = battleIds.has(shape.id as string);
               const troops = visibleTroops(state, territory, viewerId);
+              const controller = territory.controllerId
+                ? state.players[territory.controllerId as string]
+                : null;
+              const faction = controller ? getFaction(controller.factionId) : null;
+              const poi = POI_BY_TERRITORY.get(shape.id as string);
+              const showFigures = detail.figures && troops.exact !== null;
               return (
                 <g
                   key={shape.id as string}
@@ -128,7 +237,8 @@ export function GameBoard({
                     (selected ? ' territory--selected' : '') +
                     (origin ? ' territory--origin' : '') +
                     (target ? ' territory--target' : '') +
-                    (neutral ? ' territory--neutral' : '')
+                    (neutral ? ' territory--neutral' : '') +
+                    (fighting ? ' territory--fighting' : '')
                   }
                   onPointerUp={() => {
                     if (wasDragged()) return;
@@ -141,34 +251,90 @@ export function GameBoard({
                     if (event.key === 'Enter' || event.key === ' ') onSelect(shape.id);
                   }}
                 >
+                  {/* Base extrudada: dá volume de miniatura ao território. */}
+                  <path className="territory__base" d={shape.path} transform="translate(0 7)" />
                   <path
+                    className="territory__top"
                     d={shape.path}
                     fill={color}
-                    fillOpacity={neutral ? 0.28 : 0.62}
+                    fillOpacity={neutral ? 0.3 : 0.66}
                     stroke={target ? tint : selected ? '#ffffff' : 'rgba(6,10,16,.75)'}
                     strokeWidth={target || selected ? 3.5 : 1.6}
+                    filter="url(#territory-depth)"
                   />
-                  <text className="territory__name" x={shape.center.x} y={shape.center.y - 12}>
-                    {shape.name}
-                  </text>
-                  <circle
-                    className="territory__badge"
-                    cx={shape.center.x}
-                    cy={shape.center.y + 12}
-                    r={15}
-                    fill="rgba(4,8,14,.82)"
-                    stroke={color}
-                    strokeWidth={2}
-                  />
-                  <text className="territory__troops" x={shape.center.x} y={shape.center.y + 17}>
-                    {troops.label}
-                  </text>
+                  {poi && (
+                    <g className="territory__poi" transform={`translate(${shape.center.x} ${shape.center.y - 32})`}>
+                      <path d="M 0 -8 L 7 0 L 0 8 L -7 0 Z" fill="rgba(4,8,14,.8)" stroke={color} strokeWidth={1.6} />
+                      <text className="territory__poi-mark" y={3.5} textAnchor="middle">
+                        ★
+                      </text>
+                    </g>
+                  )}
+                  {detail.territoryName && (
+                    <text className="territory__name" x={shape.center.x} y={shape.center.y - 18}>
+                      {shape.name}
+                    </text>
+                  )}
+                  {showFigures && faction && (
+                    <Army
+                      factionId={faction.id as string}
+                      color={faction.color}
+                      secondary={faction.secondaryColor ?? faction.color}
+                      troops={troops.exact ?? 0}
+                      level={level}
+                      cx={shape.center.x}
+                      cy={shape.center.y + 12}
+                    />
+                  )}
+                  {detail.badge && (
+                    <>
+                      <circle
+                        className="territory__badge"
+                        cx={shape.center.x}
+                        cy={shape.center.y + (showFigures ? 30 : 12)}
+                        r={15}
+                        fill="rgba(4,8,14,.86)"
+                        stroke={color}
+                        strokeWidth={2}
+                      />
+                      <text
+                        className="territory__troops"
+                        x={shape.center.x}
+                        y={shape.center.y + (showFigures ? 35 : 17)}
+                      >
+                        {troops.label}
+                      </text>
+                    </>
+                  )}
                 </g>
               );
             })}
           </g>
+          <rect
+            width={BOARD_WIDTH}
+            height={BOARD_HEIGHT}
+            fill="url(#board-vignette)"
+            pointerEvents="none"
+          />
         </svg>
       </div>
+
+      {/* Níveis de câmera: MUNDO → REGIÃO → TERRITÓRIO → COMBATE */}
+      <div className="board__camera" role="group" aria-label="Nível de câmera">
+        {CAMERA_LEVELS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={`board__camera-btn${option === level ? ' is-active' : ''}`}
+            aria-pressed={option === level}
+            disabled={option === 'COMBATE' && !inBattle}
+            onClick={() => zoomTo(CAMERA_SCALE[option])}
+          >
+            {CAMERA_LABEL[option]}
+          </button>
+        ))}
+      </div>
+
       <div className="board__controls">
         <button type="button" onClick={() => zoomBy(1.2)} aria-label="Aproximar">
           +

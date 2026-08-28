@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../hooks/useGame';
-import { getFaction, playableFactions } from '../game/factions/faction.registry';
+import { getFaction } from '../game/factions/faction.registry';
 import { FACTION_PRIORITY, startingTroopsFor, territoriesPerPlayer, neutralTerritoryCount } from '../game/engine/setup';
 import type { FactionId } from '../game/types/ids';
 
@@ -10,7 +10,10 @@ export function SetupScreen() {
   const { startGame, goHome } = useGame();
   const [playerCount, setPlayerCount] = useState(4);
   const [picks, setPicks] = useState<(FactionId | null)[]>(() => Array(6).fill(null));
-  const roster = playableFactions();
+  // ROSTER OFICIAL: as seis facções definidas pelo criador, nesta ordem.
+  // Tecnólogos (conflito de referência registrado) fica fora da seleção e
+  // continua acessível pelo painel DEV até o criador decidir.
+  const roster = FACTION_PRIORITY.map((id) => getFaction(id));
 
   const chosen = picks.slice(0, playerCount).filter(Boolean) as FactionId[];
 

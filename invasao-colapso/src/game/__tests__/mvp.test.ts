@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PLAYER_IDS,
   TERRITORY_IDS,
+  TEST_FACTIONS,
   dice,
   garrison,
   jumpTo,
@@ -183,6 +184,9 @@ describe('MVP — Ataque', () => {
       from: TERRITORY_IDS.distritoCentral,
       to: TERRITORY_IDS.ruinasLeste,
     });
+    // A primeira rodada de dados é obrigatória antes de recuar.
+    expect(mustFail(state, { type: 'CANCEL_ATTACK' })).toMatch(/primeira rodada/);
+    state = must(state, { type: 'ROLL_BATTLE_ROUND' }, { rng: dice(6, 1, 5, 2, 2) });
     state = must(state, { type: 'CANCEL_ATTACK' });
     expect(
       mustFail(state, {
@@ -261,6 +265,7 @@ describe('MVP — Ataque', () => {
       amount: 2,
     });
     expect(state.players[PLAYER_IDS.p1 as string].transportCharges).toBe(0);
+    state = must(state, { type: 'ROLL_BATTLE_ROUND' }, { rng: dice(6, 5, 1, 1) });
     state = must(state, { type: 'CANCEL_ATTACK' });
     expect(
       mustFail(state, {
@@ -645,6 +650,26 @@ describe('MVP — Vacina (regra oficial)', () => {
 
 // --------------------------------------------------------------- MISSÕES
 describe('MVP — Missões secretas', () => {
+  it('T44b · ninguém começa a partida já tendo cumprido a missão', () => {
+    // Com 3+ jogadores cada um começa com 10 territórios e 30+ soldados —
+    // o bastante para satisfazer missões de acumulação na largada. O sorteio
+    // precisa descartá-las, senão a partida termina antes do primeiro turno.
+    for (let seed = 0; seed < 30; seed += 1) {
+      const count = 2 + (seed % 5);
+      const state = createGame({
+        gameId: `seed-${seed}`,
+        createdAt: 0,
+        playerCount: count,
+        rng: seededRng(seed + 1),
+        players: TEST_FACTIONS.slice(0, count).map((factionId) => ({ factionId })),
+      });
+      expect(state.result).toBeNull();
+      for (const playerId of state.turn.order) {
+        expect(checkMission(state, playerId).completed).toBe(false);
+      }
+    }
+  });
+
   it('T44 · existem 30 missões, sem id duplicado', () => {
     expect(MISSION_SEEDS).toHaveLength(30);
     expect(new Set(MISSION_SEEDS.map((m) => m.id)).size).toBe(30);

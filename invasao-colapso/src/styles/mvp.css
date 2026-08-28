@@ -435,33 +435,114 @@
   display: block;
 }
 .board__region-label {
-  font-size: 21px;
-  letter-spacing: 0.3em;
+  font-size: 19px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  opacity: 0.16;
+  opacity: 0.62;
   font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(4, 8, 14, 0.7);
+  stroke-width: 4px;
   pointer-events: none;
 }
 .board__link {
   stroke: rgba(150, 172, 208, 0.3);
   stroke-width: 2;
 }
-.board__link--poco {
-  stroke: rgba(126, 208, 196, 0.55);
+.board__link--maritima {
+  stroke: rgba(96, 178, 224, 0.62);
   stroke-dasharray: 9 7;
-  stroke-width: 2.5;
-}
-.board__link--ponte {
-  stroke: rgba(224, 163, 60, 0.6);
-  stroke-dasharray: 14 5;
-}
-.board__link--rota {
-  stroke: rgba(96, 160, 224, 0.6);
-  stroke-dasharray: 4 6;
+  stroke-width: 2.6;
 }
 .board__link--off {
   stroke: rgba(226, 86, 77, 0.5);
   stroke-dasharray: 2 8;
+}
+.board__link-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: rgba(160, 205, 235, 0.85);
+  paint-order: stroke;
+  stroke: rgba(4, 8, 14, 0.8);
+  stroke-width: 2.5px;
+  pointer-events: none;
+}
+
+/* Massas de terra: o mapa lê como continente, não como grafo.
+   A união de círculos é desenhada em UM grupo com opacidade única, para que
+   a sobreposição interna não escureça a região. */
+.board__landmass {
+  opacity: 0.17;
+  pointer-events: none;
+}
+
+/* Volume de miniatura: base extrudada sob a face do território. */
+.territory__base {
+  fill: rgba(3, 6, 11, 0.66);
+  pointer-events: none;
+}
+.territory__poi-mark {
+  font-size: 9px;
+  fill: #ffd98a;
+  pointer-events: none;
+}
+.territory--fighting .territory__top {
+  stroke: #ff6a4d;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 12px rgba(255, 106, 77, 0.8));
+}
+
+/* Tropas visíveis no mapa: figuras, não apenas um número. */
+.army {
+  pointer-events: none;
+}
+.army__shadow {
+  fill: rgba(2, 5, 10, 0.45);
+}
+.army__overflow {
+  font-size: 11px;
+  font-weight: 800;
+  fill: #e9f0ff;
+  paint-order: stroke;
+  stroke: rgba(4, 8, 14, 0.85);
+  stroke-width: 3px;
+}
+
+/* Níveis de câmera */
+.board__camera {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  /* O painel não pode roubar cliques do mapa: só os botões recebem ponteiro. */
+  pointer-events: none;
+  gap: 4px;
+  z-index: 5;
+  background: rgba(8, 12, 19, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+}
+.board__camera-btn {
+  pointer-events: auto;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.board__camera-btn.is-active {
+  background: rgba(47, 111, 237, 0.24);
+  color: var(--text);
+}
+.board__camera-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .territory {
   cursor: pointer;

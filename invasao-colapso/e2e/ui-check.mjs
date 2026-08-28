@@ -57,7 +57,7 @@ async function session(label, viewport) {
   const territories = await page.locator('.territory').count();
   check('mapa desenha 30 territórios', territories === 30, `viu ${territories}`);
   const links = await page.locator('.board__link').count();
-  check('mapa desenha as 56 fronteiras', links === 56, `viu ${links}`);
+  check('mapa desenha as 61 fronteiras', links === 61, `viu ${links}`);
   check('mapa mostra as 6 regiões', (await page.locator('.board__region-label').count()) === 6);
   check('sem rolagem horizontal', !(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)));
 

@@ -106,7 +106,17 @@ export function BattleBoard({ state, onRoll, onRetreat }: BattleBoardProps) {
         <button type="button" className="btn btn--danger" onClick={onRoll}>
           Rolar dados
         </button>
-        <button type="button" className="btn btn--ghost" onClick={onRetreat}>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={onRetreat}
+          disabled={attack.rounds.length === 0}
+          title={
+            attack.rounds.length === 0
+              ? 'A primeira rodada de dados é obrigatória.'
+              : 'Encerrar o ataque'
+          }
+        >
           Recuar
         </button>
       </div>
