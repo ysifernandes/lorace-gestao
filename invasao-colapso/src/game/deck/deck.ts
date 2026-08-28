@@ -6,6 +6,7 @@ import type { Rng } from '../rng/rng';
 import { defaultRng, shuffle } from '../rng/rng';
 import { DECK_COMPOSITION } from '../cards/neutral.cards';
 import { getCardDefinition } from '../cards/card.registry';
+import { getFaction } from '../factions/faction.registry';
 import { BALANCE } from '../config/balance';
 
 /**
@@ -124,7 +125,11 @@ export function canDrawNow(state: GameState, playerId: PlayerId): { ok: boolean;
   if (!player) return { ok: false, reason: 'Jogador inexistente.' };
   if (state.turn.currentPlayerId !== playerId) return { ok: false, reason: 'Não é o seu turno.' };
   if (state.turn.phase !== 'CARTAS') return { ok: false, reason: 'Só na fase CARTAS.' };
-  if (state.turn.drewCard) return { ok: false, reason: 'Você já comprou nesta fase.' };
+  // Conhecimento Arcano (Magos): compra mais de uma carta por turno.
+  const extra = getFaction(player.factionId).rules.extraCardDrawPerTurn ?? 0;
+  if (state.turn.cardsDrawn >= 1 + extra) {
+    return { ok: false, reason: 'Você já comprou o máximo de cartas nesta fase.' };
+  }
   if (state.deck.length === 0 && state.discard.length === 0) {
     return { ok: false, reason: 'O Baralho do Colapso acabou.' };
   }

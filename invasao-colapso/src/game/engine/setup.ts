@@ -10,10 +10,10 @@ import { getFaction } from '../factions/faction.registry';
 import { HUMANOS_ID } from '../factions/humanos';
 import {
   ALIENIGENAS_ID,
-  FACTION_05_ID,
-  FACTION_06_ID,
+  GOBLINS_ID,
   MAGOS_ID,
   REMANESCENTES_ID,
+  VAMPIROS_ID,
   ZUMBIS_ID,
 } from '../factions/roster';
 import { SIGNATURE_BY_FACTION } from '../cards/signature.cards';
@@ -40,14 +40,14 @@ import { cardDefinitionId } from '../types/ids';
  * objetivos secretos → cartas → Transporte Especial → turno 1.
  */
 
-/** Ordem de prioridade das facções: as originais primeiro. */
+/** Ordem oficial das facções, definida pelo criador. */
 export const FACTION_PRIORITY: FactionId[] = [
   HUMANOS_ID,
   ALIENIGENAS_ID,
   ZUMBIS_ID,
+  VAMPIROS_ID,
   MAGOS_ID,
-  FACTION_05_ID,
-  FACTION_06_ID,
+  GOBLINS_ID,
 ];
 
 export const MAX_PLAYERS = 6;
@@ -208,6 +208,8 @@ export function createGame(options: NewGameOptions = {}): GameState {
       movesUsed: 0,
       movesAllowed: BALANCE.movement.perTurn,
       drewCard: false,
+      cardsDrawn: 0,
+      conversionsThisTurn: 0,
       conquestsThisTurn: 0,
     },
     players,

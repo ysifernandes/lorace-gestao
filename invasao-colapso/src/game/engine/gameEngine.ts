@@ -64,7 +64,7 @@ import {
   specialAttackBlocked,
 } from '../collapse/collapseEngine';
 import { canDrawNow, discardCard, drawCardFor, enforceHandLimit } from '../deck/deck';
-import { blocksReinforce, blocksSpecialAttack } from './modifiers';
+import { activeModifiersFor, blocksReinforce, blocksSpecialAttack } from './modifiers';
 import { processEliminations, settleVictory } from './victory';
 import {
   checkMission,
@@ -144,13 +144,35 @@ function applyEndOfTurnRules(draft: GameState, playerId: PlayerId): void {
 
   // Ponto de Interesse: Setor Militar rende 1 soldado por turno.
   for (const territory of territoriesOf(draft, playerId)) {
-    if ((territory.id as string) === 'setor-militar') {
+    if ((territory.id as string) === 'reduto-do-comando') {
       createSoldier(draft, {
         factionId: player.factionId,
         ownerId: playerId,
         territoryId: territory.id,
       });
       pushLog(draft, 'ACTION', `Setor Militar: +1 soldado.`);
+    }
+  }
+
+  // Passiva REGENERAÇÃO (Vampiros): territórios feridos recuperam 1 soldado.
+  if (rules.regenerateWoundedTerritories) {
+    const wounded = territoriesOf(draft, playerId)
+      .filter((t) => t.garrison.length < BALANCE.territory.woundedBelow)
+      .sort((a, b) => a.garrison.length - b.garrison.length)
+      .slice(0, rules.regenerateWoundedTerritories);
+    for (const territory of wounded) {
+      createSoldier(draft, {
+        factionId: player.factionId,
+        ownerId: playerId,
+        territoryId: territory.id,
+      });
+    }
+    if (wounded.length > 0) {
+      pushLog(
+        draft,
+        'ABILITY',
+        `Regeneração: +1 soldado em ${wounded.map((t) => t.name).join(', ')}.`,
+      );
     }
   }
 
@@ -170,7 +192,7 @@ function endOfRound(draft: GameState, rng: Rng): void {
   for (const player of Object.values(draft.players)) {
     if (player.status !== 'ACTIVE') continue;
     const hasDepot = territoriesOf(draft, player.id).some(
-      (t) => (t.id as string) === 'patio-de-cargas',
+      (t) => (t.id as string) === 'usina-nuclear',
     );
     const every = hasDepot
       ? BALANCE.transport.rechargeWithDepotRounds
@@ -249,7 +271,7 @@ function closeBattle(draft: GameState, status: 'RESOLVED' | 'CANCELLED'): void {
 }
 
 /** Conquista o território alvo da batalha atual. */
-function resolveConquest(draft: GameState, attack: PendingAttack): void {
+function resolveConquest(draft: GameState, attack: PendingAttack, rng: Rng = defaultRng): void {
   const origin = draft.territories[attack.fromTerritoryId as string];
   const target = draft.territories[attack.toTerritoryId as string];
   const defenderId = attack.defenderPlayerId;
@@ -261,17 +283,53 @@ function resolveConquest(draft: GameState, attack: PendingAttack): void {
   draft.turn.conquestsThisTurn += 1;
   trackConquest(draft, attack.attackerPlayerId, target.id as string);
 
-  // Passiva de conversão (Zumbis): 1 defensor eliminado vira tropa sua.
+  // Passiva de conversão (Zumbis): defensores eliminados viram tropa sua,
+  // até o teto por turno declarado em `rules.conquestConversionPerTurn`.
   const attackerFaction = getFaction(draft.players[attack.attackerPlayerId as string].factionId);
-  if (attackerFaction.rules.conquestConversion) {
-    createSoldier(draft, {
-      factionId: attackerFaction.id,
-      ownerId: attack.attackerPlayerId,
-      territoryId: target.id,
-    });
-    occupation.min = Math.max(0, occupation.min - 1);
-    pushLog(draft, 'ABILITY', `Contágio: 1 defensor eliminado passou para o seu exército.`);
+  const conversionRule = attackerFaction.rules.conquestConversion ?? 0;
+  if (conversionRule > 0) {
+    const cap = attackerFaction.rules.conquestConversionPerTurn ?? Number.POSITIVE_INFINITY;
+    const room = Math.max(0, cap - draft.turn.conversionsThisTurn);
+    const converted = Math.min(conversionRule, room);
+    for (let i = 0; i < converted; i += 1) {
+      createSoldier(draft, {
+        factionId: attackerFaction.id,
+        ownerId: attack.attackerPlayerId,
+        territoryId: target.id,
+      });
+    }
+    if (converted > 0) {
+      draft.turn.conversionsThisTurn += converted;
+      occupation.min = Math.max(0, occupation.min - converted);
+      pushLog(
+        draft,
+        'ABILITY',
+        `Infestação: ${converted} defensor(es) eliminado(s) passaram para o seu exército.`,
+      );
+    }
   }
+
+  // Passiva de mutação (Alienígenas): a conquista gera soldados extras.
+  const mutation = attackerFaction.rules.conquestMutation ?? 0;
+  if (mutation > 0) {
+    for (let i = 0; i < mutation; i += 1) {
+      createSoldier(draft, {
+        factionId: attackerFaction.id,
+        ownerId: attack.attackerPlayerId,
+        territoryId: target.id,
+      });
+    }
+    pushLog(draft, 'ABILITY', `Evolução Biológica: +${mutation} soldado(s) em ${target.name}.`);
+  }
+
+  // Passiva de saque (Goblins): conquistar compra carta na hora.
+  const loot = attackerFaction.rules.drawOnConquest ?? 0;
+  for (let i = 0; i < loot; i += 1) {
+    const card = drawCardFor(draft, attack.attackerPlayerId, rng);
+    if (!card) break;
+    pushLog(draft, 'CARD', `Saque Rápido: 1 carta tomada na conquista.`);
+  }
+
 
   // Fraqueza de perder território: descarta 1 carta.
   const defenderFaction = getFaction(draft.players[defenderId as string]?.factionId);
@@ -467,7 +525,7 @@ export function applyAction(
       }
 
       const maxByFaction = faction.rules.maxSoldiersPerMove ?? Number.POSITIVE_INFINITY;
-      const maxByRoute = isLinkKind(from.id, to.id, 'ROTA')
+      const maxByRoute = isLinkKind(from.id, to.id, 'MARITIMA')
         ? BALANCE.movement.coastalRouteLimit
         : Number.POSITIVE_INFINITY;
       const limit = Math.min(maxByFaction, maxByRoute);
@@ -601,10 +659,17 @@ export function applyAction(
       if (blocksSpecialAttack(draft, to.id)) {
         return fail(state, `${to.name} está protegido contra Ataque Especial.`);
       }
-      const isShelter = (id: TerritoryId) => regionOfTerritory(id)?.id === 'os-abrigos';
-      const allowedShelter = (id: TerritoryId) => (id as string) === 'abrigo-zero';
-      if ((isShelter(from.id) && !allowedShelter(from.id)) || (isShelter(to.id) && !allowedShelter(to.id))) {
-        return fail(state, 'O Transporte Especial não alcança as galerias dos Abrigos.');
+      // REGRA APROVADA, REANCORADA AO MAPA DE REFERÊNCIA: o Transporte Especial
+      // não atravessa a zona anômala. No mapa antigo eram as galerias dos
+      // Abrigos; no mapa de referência é a ZONA DE IMPACTO, com a mesma exceção
+      // do único ponto estável (o Núcleo do Colapso).
+      const isAnomalous = (id: TerritoryId) => regionOfTerritory(id)?.id === 'zona-impacto';
+      const stableInside = (id: TerritoryId) => (id as string) === 'nucleo-do-colapso';
+      if (
+        (isAnomalous(from.id) && !stableInside(from.id)) ||
+        (isAnomalous(to.id) && !stableInside(to.id))
+      ) {
+        return fail(state, 'O Transporte Especial não atravessa a Zona de Impacto.');
       }
       const distance = distanceBetween(draft, from.id, to.id);
       if (distance !== BALANCE.transport.range) {
@@ -706,7 +771,7 @@ export function applyAction(
 
       const targetEmpty = soldiersInTerritory(draft, attack.toTerritoryId).length === 0;
       if (targetEmpty) {
-        resolveConquest(draft, attack);
+        resolveConquest(draft, attack, rng);
         attack.status = 'RESOLVED';
         emitGameEvent(draft, { kind: 'AFTER_ATTACK', payload: { playerId: attack.attackerPlayerId } });
         return { ok: true, state: draft, data: { round: outcome.round, conquered: true } };
@@ -744,7 +809,7 @@ export function applyAction(
       for (const defender of soldiersInTerritory(draft, attack.toTerritoryId)) {
         eliminateSoldier(draft, defender.id);
       }
-      resolveConquest(draft, attack);
+      resolveConquest(draft, attack, rng);
       attack.status = 'RESOLVED';
       pushLog(draft, 'COMBAT', '[DEV] Batalha vencida.');
       return { ok: true, state: draft };
@@ -790,6 +855,23 @@ export function applyAction(
       syncPlayerTerritories(draft);
       pushLog(draft, 'COMBAT', `${action.amount} soldado(s) ocuparam ${target.name}.`);
 
+      // Armadilha deixada por quem perdeu o território (carta dos Goblins):
+      // fere a força que entrou, mas nunca esvazia o território.
+      const trap = activeModifiersFor(draft, target.id).find((m) => m.trapDamage);
+      if (trap?.trapDamage) {
+        const victims = target.garrison.slice(
+          0,
+          Math.min(trap.trapDamage, Math.max(0, target.garrison.length - 1)),
+        );
+        for (const soldierId of victims) eliminateSoldier(draft, soldierId);
+        draft.territoryModifiers = draft.territoryModifiers.filter((m) => m.id !== trap.id);
+        pushLog(
+          draft,
+          'ACTION',
+          `Armadilha Explosiva em ${target.name}: ${victims.length} soldado(s) perdidos.`,
+        );
+      }
+
       const eliminated = processEliminations(draft, target.controllerId);
       if (eliminated.length > 0) {
         pushLog(draft, 'ACTION', `${eliminated.length} jogador(es) eliminado(s).`);
@@ -807,6 +889,7 @@ export function applyAction(
       const card = drawCardFor(draft, playerId, rng);
       if (!card) return fail(state, 'O Baralho do Colapso está vazio.');
       draft.turn.drewCard = true;
+      draft.turn.cardsDrawn += 1;
       const definition = getCardDefinition(card.definitionId);
       pushLog(draft, 'CARD', `Carta comprada: ${definition.name}.`);
       return { ok: true, state: draft, data: { cardInstanceId: card.instanceId } };

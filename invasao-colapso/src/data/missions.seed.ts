@@ -1,5 +1,5 @@
 import type { FactionId } from '../game/types/ids';
-import { ALIENIGENAS_ID, FACTION_05_ID, FACTION_06_ID, MAGOS_ID, ZUMBIS_ID } from '../game/factions/roster';
+import { ALIENIGENAS_ID, GOBLINS_ID, MAGOS_ID, VAMPIROS_ID, ZUMBIS_ID } from '../game/factions/roster';
 import { HUMANOS_ID } from '../game/factions/humanos';
 
 /**
@@ -32,7 +32,7 @@ export type MissionCondition =
   | { type: 'REGIONS_NON_ADJACENT'; count: number }
   /** Controlar N Pontos de Interesse ao mesmo tempo. */
   | { type: 'POI_CONTROL'; count: number }
-  /** Controlar os dois lados de N Poços. */
+  /** Controlar os dois lados de N rotas marítimas. */
   | { type: 'POCO_BOTH_SIDES'; count: number }
   /** Eliminar uma facção específica. */
   | { type: 'ELIMINATE_FACTION'; factionId: FactionId }
@@ -127,33 +127,33 @@ export const MISSION_SEEDS: MissionDefinition[] = [
   {
     id: 'mission.metropole-ferro',
     name: 'Eixo Norte',
-    description: 'Controle A Metrópole e os Montes de Ferro, ambas completas.',
+    description: 'Controle as Terras Centrais e a Fronteira Norte, ambas completas.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'REGIONS_SPECIFIC', regionIds: ['metropole', 'montes-de-ferro'] },
+    condition: { type: 'REGIONS_SPECIFIC', regionIds: ['terras-centrais', 'fronteira-norte'] },
     weight: 5,
   },
   {
     id: 'mission.siderurgico-vitrea',
     name: 'Eixo Sul',
-    description: 'Controle o Cinturão Siderúrgico e a Zona Vítrea, ambas completas.',
+    description: 'Controle a Zona Devastada e a Zona de Impacto, ambas completas.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'REGIONS_SPECIFIC', regionIds: ['cinturao-siderurgico', 'zona-vitrea'] },
+    condition: { type: 'REGIONS_SPECIFIC', regionIds: ['zona-devastada', 'zona-impacto'] },
     weight: 5,
   },
   {
     id: 'mission.abrigos-plus-6',
-    name: 'Raiz Subterrânea',
-    description: 'Controle Os Abrigos completa e mais 6 territórios de superfície.',
+    name: 'Domínio Costeiro',
+    description: 'Controle a Costa Sombria completa e mais 6 territórios fora dela.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'REGION_PLUS_TERRITORIES', regionId: 'os-abrigos', extra: 6 },
+    condition: { type: 'REGION_PLUS_TERRITORIES', regionId: 'costa-sombria', extra: 6 },
     weight: 4,
   },
   {
     id: 'mission.planicie-plus-poi',
     name: 'Estrada e Sinal',
-    description: 'Controle a Planície Errante completa e 4 Pontos de Interesse.',
+    description: 'Controle a Floresta Corrompida completa e 4 Pontos de Interesse.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'REGION_PLUS_TERRITORIES', regionId: 'planicie-errante', extra: 4 },
+    condition: { type: 'REGION_PLUS_TERRITORIES', regionId: 'floresta-corrompida', extra: 4 },
     weight: 5,
   },
   {
@@ -167,25 +167,25 @@ export const MISSION_SEEDS: MissionDefinition[] = [
   {
     id: 'mission.hold-metropole',
     name: 'Capital Firme',
-    description: 'Controle A Metrópole completa e mantenha por 2 rodadas seguidas.',
+    description: 'Controle as Terras Centrais completas e mantenha por 2 rodadas seguidas.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'HOLD_REGION_ROUNDS', regionId: 'metropole', rounds: 2 },
+    condition: { type: 'HOLD_REGION_ROUNDS', regionId: 'terras-centrais', rounds: 2 },
     weight: 5,
   },
   {
     id: 'mission.hold-abrigos',
-    name: 'Portas Fechadas',
-    description: 'Controle Os Abrigos completa e mantenha por 2 rodadas seguidas.',
+    name: 'Maré Firme',
+    description: 'Controle a Costa Sombria completa e mantenha por 2 rodadas seguidas.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'HOLD_REGION_ROUNDS', regionId: 'os-abrigos', rounds: 2 },
+    condition: { type: 'HOLD_REGION_ROUNDS', regionId: 'costa-sombria', rounds: 2 },
     weight: 4,
   },
   {
     id: 'mission.metropole-4',
-    name: 'Coração da Bacia',
-    description: 'Controle 4 dos 5 territórios da Metrópole.',
+    name: 'Coração do Continente',
+    description: 'Controle 4 dos 5 territórios das Terras Centrais.',
     category: 'CONSOLIDACAO',
-    condition: { type: 'TERRITORIES_IN_REGION', regionId: 'metropole', count: 4 },
+    condition: { type: 'TERRITORIES_IN_REGION', regionId: 'terras-centrais', count: 4 },
     weight: 3,
   },
 
@@ -200,16 +200,16 @@ export const MISSION_SEEDS: MissionDefinition[] = [
   },
   {
     id: 'mission.pocos-3',
-    name: 'Senhor dos Poços',
-    description: 'Controle os dois lados de 3 Poços ao mesmo tempo.',
+    name: 'Senhor das Rotas',
+    description: 'Controle os dois lados de 3 rotas marítimas ao mesmo tempo.',
     category: 'POSICAO',
     condition: { type: 'POCO_BOTH_SIDES', count: 3 },
     weight: 4,
   },
   {
     id: 'mission.pocos-2',
-    name: 'Descida Garantida',
-    description: 'Controle os dois lados de 2 Poços ao mesmo tempo.',
+    name: 'Cabeça de Ponte',
+    description: 'Controle os dois lados de 2 rotas marítimas ao mesmo tempo.',
     category: 'POSICAO',
     condition: { type: 'POCO_BOTH_SIDES', count: 2 },
     weight: 3,
@@ -227,7 +227,7 @@ export const MISSION_SEEDS: MissionDefinition[] = [
   },
   {
     id: 'mission.eliminate-alienigenas',
-    name: 'Cortar a Ancoragem',
+    name: 'Derrubar as Naves',
     description: 'Elimine a facção Alienígenas da partida.',
     category: 'MILITAR',
     condition: { type: 'ELIMINATE_FACTION', factionId: ALIENIGENAS_ID },
@@ -245,7 +245,7 @@ export const MISSION_SEEDS: MissionDefinition[] = [
   },
   {
     id: 'mission.eliminate-magos',
-    name: 'Quebrar a Sintonia',
+    name: 'Quebrar o Círculo',
     description: 'Elimine a facção Magos da partida.',
     category: 'MILITAR',
     condition: { type: 'ELIMINATE_FACTION', factionId: MAGOS_ID },
@@ -253,20 +253,20 @@ export const MISSION_SEEDS: MissionDefinition[] = [
     fallbackId: FALLBACK,
   },
   {
-    id: 'mission.eliminate-faction05',
-    name: 'Apagar os Fornos',
-    description: 'Elimine a facção FACTION_05 da partida.',
+    id: 'mission.eliminate-vampiros',
+    name: 'Estaca no Coração',
+    description: 'Elimine a facção Vampiros da partida.',
     category: 'MILITAR',
-    condition: { type: 'ELIMINATE_FACTION', factionId: FACTION_05_ID },
+    condition: { type: 'ELIMINATE_FACTION', factionId: VAMPIROS_ID },
     weight: 4,
     fallbackId: FALLBACK,
   },
   {
-    id: 'mission.eliminate-faction06',
-    name: 'Parar o Comboio',
-    description: 'Elimine a facção FACTION_06 da partida.',
+    id: 'mission.eliminate-goblins',
+    name: 'Desmontar a Oficina',
+    description: 'Elimine a facção Goblins da partida.',
     category: 'MILITAR',
-    condition: { type: 'ELIMINATE_FACTION', factionId: FACTION_06_ID },
+    condition: { type: 'ELIMINATE_FACTION', factionId: GOBLINS_ID },
     weight: 4,
     fallbackId: FALLBACK,
   },

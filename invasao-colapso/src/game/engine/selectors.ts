@@ -205,7 +205,7 @@ export function specialTargetsFrom(state: GameState, from: TerritoryId): Territo
   if (!origin?.controllerId) return [];
   return allTerritories(state).filter((t) => {
     if (!t.controllerId || t.controllerId === origin.controllerId) return false;
-    if (regionOfTerritory(t.id)?.id === 'os-abrigos' && (t.id as string) !== 'abrigo-zero') {
+    if (regionOfTerritory(t.id)?.id === 'costa-sombria' && (t.id as string) !== 'nucleo-do-colapso') {
       return false;
     }
     return distanceBetween(state, origin.id, t.id) === BALANCE.transport.range;

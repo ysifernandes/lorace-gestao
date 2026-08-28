@@ -12,6 +12,8 @@ export interface BalanceConfig {
   territory: {
     /** Soldados que precisam permanecer em um território de origem. */
     minGarrison: number;
+    /** Abaixo deste número o território conta como "ferido" (Regeneração). */
+    woundedBelow: number;
   };
   reinforcements: {
     /** Piso de reforços por turno. REGRA DO GAME DESIGN. */
@@ -37,7 +39,7 @@ export interface BalanceConfig {
     /** REGRA OFICIAL: defensor usa no máximo 3 dados. */
     maxDefenseDice: number;
     /** Ataque através de um Poço fica limitado a 2 dados. */
-    pocoAttackDice: number;
+    maritimeAttackDice: number;
   };
   movement: {
     /** Movimentações por turno (padrão). */
@@ -127,6 +129,7 @@ export interface BalanceConfig {
 export const BALANCE: BalanceConfig = {
   territory: {
     minGarrison: 1,
+    woundedBelow: 3,
   },
   reinforcements: {
     minimum: 3,
@@ -143,7 +146,7 @@ export const BALANCE: BalanceConfig = {
     maxSides: 20,
     maxAttackDice: 3,
     maxDefenseDice: 3,
-    pocoAttackDice: 2,
+    maritimeAttackDice: 2,
   },
   movement: {
     perTurn: 1,

@@ -149,6 +149,8 @@ export interface TerritoryModifier {
   ignoreFirstLossPerRound?: boolean;
   /** Não pode receber reforço nem ser destino de movimentação. */
   blockReinforce?: boolean;
+  /** Armadilha: quem conquistar este território perde N soldados. */
+  trapDamage?: number;
   source: string;
 }
 

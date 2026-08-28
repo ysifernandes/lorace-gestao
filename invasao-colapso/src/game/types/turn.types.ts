@@ -44,4 +44,8 @@ export interface TurnState {
   drewCard: boolean;
   /** Territórios conquistados neste turno — dá direito à compra de carta. */
   conquestsThisTurn: number;
+  /** Cartas já compradas neste turno (Magos compram mais de uma). */
+  cardsDrawn: number;
+  /** Defensores convertidos neste turno (teto da Infestação dos Zumbis). */
+  conversionsThisTurn: number;
 }

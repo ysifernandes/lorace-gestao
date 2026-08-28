@@ -15,7 +15,7 @@ export type CollapseCategory =
   | 'ANOMALIA';
 
 /** Que tipo de alvo o evento precisa sortear antes de ser aplicado. */
-export type CollapseTargetKind = 'NONE' | 'REGION' | 'TERRITORY' | 'PLAYER' | 'POCO';
+export type CollapseTargetKind = 'NONE' | 'REGION' | 'TERRITORY' | 'PLAYER' | 'MARITIMA';
 
 /** Efeito declarativo. Cada `type` tem um resolvedor único no motor. */
 export type CollapseEffectSpec =
@@ -42,9 +42,9 @@ export type CollapseEffectSpec =
   | { type: 'TERRITORY_SHIELD'; attackerDiceReduction: number }
   | { type: 'LARGEST_TERRITORY_HALVED' }
   | { type: 'BORDER_ATTRITION'; amount: number }
-  | { type: 'DISABLE_POCO' }
-  | { type: 'DISABLE_BRIDGE' }
-  | { type: 'DISABLE_COASTAL' }
+  | { type: 'DISABLE_MARITIME' }
+  | { type: 'DISABLE_LAND_BORDER' }
+  | { type: 'DISABLE_ALL_MARITIME' }
   | { type: 'FORCE_NEXT_EVENT' }
   | { type: 'SILENCE'; rounds: number }
   | { type: 'PLAYER_LOSE_TROOPS'; amount: number }
@@ -316,13 +316,14 @@ export const COLLAPSE_EVENT_SEEDS: CollapseEventDefinition[] = [
     intensity: 3,
   },
   {
+    // Reancorado ao mapa de referência: não existem Poços, existem rotas marítimas.
     id: 'collapse.desabamento-de-poco',
-    name: 'Desabamento de Poço',
+    name: 'Fenda Submersa',
     categories: ['TERRITORIAL', 'AMEACA'],
-    description: 'Um dos cinco Poços deixa de existir por 2 rodadas.',
-    flavor: 'A coluna de sustentação cede e o poço se fecha.',
-    target: 'POCO',
-    effect: { type: 'DISABLE_POCO' },
+    description: 'Uma das cinco rotas marítimas deixa de existir por 2 rodadas.',
+    flavor: 'O leito cede e a passagem se fecha sobre si mesma.',
+    target: 'MARITIMA',
+    effect: { type: 'DISABLE_MARITIME' },
     duration: 2,
     priority: 10,
     intensity: 3,
@@ -331,10 +332,10 @@ export const COLLAPSE_EVENT_SEEDS: CollapseEventDefinition[] = [
     id: 'collapse.ponte-rompida',
     name: 'Ponte Rompida',
     categories: ['TERRITORIAL', 'AMEACA'],
-    description: 'A Ponte da Represa é cortada por 3 rodadas.',
-    flavor: 'A estrutura da comporta finalmente desiste.',
+    description: 'Uma fronteira terrestre entre dois territórios ocupados é cortada por 3 rodadas.',
+    flavor: 'A estrutura que ligava os dois lados finalmente desiste.',
     target: 'NONE',
-    effect: { type: 'DISABLE_BRIDGE' },
+    effect: { type: 'DISABLE_LAND_BORDER' },
     duration: 3,
     priority: 10,
     intensity: 3,
@@ -343,10 +344,10 @@ export const COLLAPSE_EVENT_SEEDS: CollapseEventDefinition[] = [
     id: 'collapse.mar-agitado',
     name: 'Mar Agitado',
     categories: ['TERRITORIAL', 'AMEACA'],
-    description: 'A Rota Costeira fica intransitável por 2 rodadas.',
-    flavor: 'O que sobrou do mar interior decide se mexer.',
+    description: 'Todas as rotas marítimas ficam intransitáveis por 2 rodadas.',
+    flavor: 'O que sobrou do mar decide se mexer, e ninguém atravessa.',
     target: 'NONE',
-    effect: { type: 'DISABLE_COASTAL' },
+    effect: { type: 'DISABLE_ALL_MARITIME' },
     duration: 2,
     priority: 10,
     intensity: 2,

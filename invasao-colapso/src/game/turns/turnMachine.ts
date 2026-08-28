@@ -70,9 +70,12 @@ export function reinforcementBreakdown(
   const rawBonus = regions.reduce((sum, r) => sum + r.bonus, 0);
   const regionBonus = multiplier === 1 ? rawBonus : Math.floor(rawBonus * multiplier);
 
-  const poiBonus = POI_REINFORCEMENT_IDS.filter(
-    (id) => state.territories[id as string]?.controllerId === player,
-  ).length;
+  // Fraqueza dos Vampiros: não recebem bônus de Ponto de Interesse.
+  const poiBonus = faction.rules.ignorePoiBonus
+    ? 0
+    : POI_REINFORCEMENT_IDS.filter(
+        (id) => state.territories[id as string]?.controllerId === player,
+      ).length;
 
   const collapseBonus = collapseReinforcementBonus(state, player);
 
@@ -106,6 +109,8 @@ function startTurnFor(draft: GameState, player: PlayerId): void {
   draft.turn.movesUsed = 0;
   draft.turn.movesAllowed = movesAllowedFor(draft, player);
   draft.turn.drewCard = false;
+  draft.turn.cardsDrawn = 0;
+  draft.turn.conversionsThisTurn = 0;
   draft.turn.conquestsThisTurn = 0;
   draft.turn.turnsPlayed += 1;
   draft.turn.pendingReinforcements = reinforcementsFor(draft, player);

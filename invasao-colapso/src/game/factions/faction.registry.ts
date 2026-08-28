@@ -2,13 +2,14 @@ import type { FactionDefinition } from '../types/faction.types';
 import type { FactionId } from '../types/ids';
 import { HUMANOS } from './humanos';
 import { REMANESCENTES, ROSTER } from './roster';
+import { TECNOLOGOS } from './tecnologos';
 
 /**
  * Registry de facções. Adicionar uma nova facção = adicionar aqui.
  * Nada na UI conhece facções por nome; tudo passa por este registry.
  */
 const REGISTRY = new Map<string, FactionDefinition>(
-  [HUMANOS, ...ROSTER, REMANESCENTES].map((f) => [f.id as string, f]),
+  [HUMANOS, ...ROSTER, TECNOLOGOS, REMANESCENTES].map((f) => [f.id as string, f]),
 );
 
 export function registerFaction(faction: FactionDefinition): void {

@@ -68,8 +68,22 @@ export interface FactionRules {
   chainMovement?: boolean;
   /** Multiplicador do bônus de região completa. Padrão: 1. */
   regionBonusMultiplier?: number;
-  /** Defensores eliminados convertidos ao conquistar (máx. por turno). */
+  /** Defensores eliminados convertidos ao conquistar. */
   conquestConversion?: number;
+  /** Teto de conversões por turno (Infestação dos Zumbis: máx. +3). */
+  conquestConversionPerTurn?: number;
+  /** Mutação: soldados extras ganhos ao conquistar (Alienígenas). */
+  conquestMutation?: number;
+  /** Compra automática de carta ao conquistar (Saque Rápido dos Goblins). */
+  drawOnConquest?: number;
+  /** Cartas adicionais compradas por turno (Conhecimento Arcano dos Magos). */
+  extraCardDrawPerTurn?: number;
+  /** Territórios que recuperam 1 soldado ao final do turno (Vampiros). */
+  regenerateWoundedTerritories?: number;
+  /** Não recebe bônus de Ponto de Interesse (fraqueza dos Vampiros). */
+  ignorePoiBonus?: boolean;
+  /** Territórios com N+ soldados fazem o atacante rolar 1 dado a menos. */
+  fortifiedFrom?: number;
   /** Territórios com N+ soldados perdem 1 no início do turno. */
   overcrowdThreshold?: number;
   /** Descarta 1 carta ao perder um território. */

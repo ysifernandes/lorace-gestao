@@ -14,7 +14,7 @@ import { getCardDefinition } from '../cards/card.registry';
 import { SEQUESTRO_CARD_ID } from '../cards/sequestro.card';
 import { BALANCE } from '../config/balance';
 import { HUMANOS_ID } from '../factions/humanos';
-import { ALIENIGENAS_ID, FACTION_05_ID, FACTION_06_ID, MAGOS_ID, ZUMBIS_ID } from '../factions/roster';
+import { ALIENIGENAS_ID, GOBLINS_ID, MAGOS_ID, VAMPIROS_ID, ZUMBIS_ID } from '../factions/roster';
 
 /**
  * SIMULAÇÃO DE PARTIDA COMPLETA.
@@ -55,7 +55,7 @@ function simulate(options: { players: number; seed: number; maxTurns?: number })
     playerCount: options.players,
     deterministic: true,
     rng,
-    players: [HUMANOS_ID, ZUMBIS_ID, ALIENIGENAS_ID, MAGOS_ID, FACTION_05_ID, FACTION_06_ID]
+    players: [HUMANOS_ID, ZUMBIS_ID, ALIENIGENAS_ID, MAGOS_ID, VAMPIROS_ID, GOBLINS_ID]
       .slice(0, options.players)
       .map((factionId) => ({ factionId })),
   });

@@ -30,7 +30,15 @@ export type CardActionSpec =
   | { type: 'SEQUESTRO' }
   | { type: 'VACINA' }
   /** Recebe N soldados para distribuir livremente entre territórios seus. */
-  | { type: 'GAIN_TROOPS'; amount: number }
+  | { type: 'GAIN_TROOPS'; amount: number; discardAtEndOfTurn?: number }
+  /** Invasão Orbital: um território inimigo perde até N soldados. */
+  | { type: 'ORBITAL_STRIKE'; amount: number }
+  /** Ritual Maior: o território escolhido rola 1D6 e perde essa quantidade. */
+  | { type: 'RITUAL'; diceSides: number }
+  /** Pacto de Sangue: 1D6 drena o inimigo e metade retorna como ganho. */
+  | { type: 'BLOOD_PACT'; diceSides: number }
+  /** Armadilha Explosiva: quem entrar no território sofre dano. */
+  | { type: 'TRAP'; damage: number; rounds: number }
   /** Remove N soldados de um território inimigo (nunca abaixo de 1). */
   | { type: 'SABOTAGE'; amount: number }
   /** Concede movimentações adicionais neste turno. */

@@ -129,7 +129,7 @@ export function dealMissions(
 // ---------------------------------------------------------------------------
 
 const POI_IDS = TERRITORY_SEEDS.filter((t) => t.poi).map((t) => t.id);
-const POCO_LINKS = listSpecialLinks().filter((l) => l.kind === 'POCO');
+const POCO_LINKS = listSpecialLinks().filter((l) => l.kind === 'MARITIMA');
 
 /** Regiões que não fazem fronteira entre si (pré-computado do mapa). */
 const NON_ADJACENT_REGION_PAIRS: [string, string][] = (() => {
@@ -202,7 +202,7 @@ export function checkMission(state: GameState, playerId: PlayerId): MissionCheck
         (id) => state.territories[id as string]?.controllerId === playerId,
       );
       // "Estrada e Sinal" pede Pontos de Interesse; as demais pedem territórios fora da região.
-      const isPoiVariant = c.regionId === 'planicie-errante';
+      const isPoiVariant = c.regionId === 'floresta-corrompida';
       const extraCount = isPoiVariant
         ? POI_IDS.filter((id) => state.territories[id as string]?.controllerId === playerId).length
         : owned.filter((t) => !region.territoryIds.includes(t.id)).length;
@@ -236,7 +236,7 @@ export function checkMission(state: GameState, playerId: PlayerId): MissionCheck
           state.territories[link.a as string]?.controllerId === playerId &&
           state.territories[link.b as string]?.controllerId === playerId,
       ).length;
-      return { completed: have >= c.count, progress: `${have}/${c.count} Poços completos` };
+      return { completed: have >= c.count, progress: `${have}/${c.count} rotas completas` };
     }
 
     case 'ELIMINATE_FACTION': {

@@ -8,6 +8,7 @@ import { getTerritory } from '../map/territory';
 import { soldiersInTerritory } from '../soldiers/soldier';
 import { isLinkKind } from '../map/regions';
 import { activeModifiersFor } from '../engine/modifiers';
+import { tryGetFaction } from '../factions/faction.registry';
 
 /**
  * COMBATE OFICIAL — REGRAS APROVADAS PELO CRIADOR.
@@ -76,12 +77,20 @@ export function compareDice(
   return { comparisons, attackerLosses, defenderLosses };
 }
 
-/** Teto de dados do atacante nesta fronteira: um Poço limita a 2. */
+/** Teto de dados do atacante nesta fronteira: uma rota marítima limita a 2. */
 export function attackerCapFor(state: GameState, from: TerritoryId, to: TerritoryId): number {
   let cap = BALANCE.dice.maxAttackDice;
-  if (isLinkKind(from, to, 'POCO')) cap = Math.min(cap, BALANCE.dice.pocoAttackDice);
+  if (isLinkKind(from, to, 'MARITIMA')) cap = Math.min(cap, BALANCE.dice.maritimeAttackDice);
   for (const modifier of activeModifiersFor(state, to)) {
     if (modifier.attackerDiceReduction) cap -= modifier.attackerDiceReduction;
+  }
+  // Passiva ENGENHARIA TÁTICA (Humanos): posição fortificada tira 1 dado do atacante.
+  const target = state.territories[to as string];
+  const defenderId = target?.controllerId;
+  if (defenderId) {
+    const defenderFaction = tryGetFaction(state.players[defenderId as string]?.factionId);
+    const threshold = defenderFaction?.rules.fortifiedFrom;
+    if (threshold && target.garrison.length >= threshold) cap -= 1;
   }
   return Math.max(1, cap);
 }

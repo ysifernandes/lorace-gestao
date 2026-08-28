@@ -83,16 +83,16 @@ describe('MVP — Partida', () => {
     }
   });
 
-  it('T05 · seis facções jogáveis, incluindo as confirmadas pelo criador', () => {
-    const names = playableFactions().map((f) => f.name);
-    expect(names).toHaveLength(6);
-    expect(names).toContain('Humanos');
-    expect(names).toContain('Alienígenas');
-    expect(names).toContain('Zumbis');
-    expect(names).toContain('Magos');
-    // Os dois assentos sem nome oficial continuam marcados como temporários.
-    expect(names).toContain('FACTION_05');
-    expect(names).toContain('FACTION_06');
+  it('T05 · as seis facções oficiais do criador estão ativas', () => {
+    const official = playableFactions().filter((f) => f.status === 'ACTIVE').map((f) => f.name);
+    expect(official).toHaveLength(6);
+    expect(official).toEqual(
+      expect.arrayContaining(['Humanos', 'Alienígenas', 'Zumbis', 'Vampiros', 'Magos', 'Goblins']),
+    );
+    // CONFLITO REGISTRADO: a referência visual mostra Tecnólogos no lugar dos
+    // Vampiros. Os dois existem; Tecnólogos fica fora do roster oficial.
+    const tecnologos = playableFactions().find((f) => f.name === 'Tecnólogos');
+    expect(tecnologos?.status).toBe('TEST_ONLY');
   });
 });
 
@@ -126,11 +126,11 @@ describe('MVP — Mapa', () => {
     }
   });
 
-  it('T10 · 56 fronteiras únicas e 7 conexões especiais', () => {
+  it('T10 · 61 fronteiras únicas e 5 rotas marítimas', () => {
     const edges = TERRITORY_SEEDS.reduce((sum, t) => sum + t.neighbors.length, 0) / 2;
-    expect(edges).toBe(56);
-    expect(SPECIAL_LINKS.filter((l) => l.kind === 'POCO')).toHaveLength(5);
-    expect(SPECIAL_LINKS).toHaveLength(7);
+    expect(edges).toBe(61);
+    expect(SPECIAL_LINKS.filter((l) => l.kind === 'MARITIMA')).toHaveLength(5);
+    expect(SPECIAL_LINKS).toHaveLength(5);
   });
 });
 
@@ -168,8 +168,9 @@ describe('MVP — Turno', () => {
 
   it('T14 · o reforço segue máx(3, territórios ÷ 3) + bônus', () => {
     const state = newGame();
-    // 10 territórios → 3 de base, +1 pelo Distrito Central (Ponto de Interesse).
-    expect(state.turn.pendingReinforcements).toBe(4);
+    // 10 territórios → máx(3, ⌊10/3⌋) = 3 de base. Nenhum Ponto de Interesse
+    // de reforço cai com o jogador 1 nesta distribuição determinística.
+    expect(state.turn.pendingReinforcements).toBe(3);
   });
 });
 
@@ -341,13 +342,13 @@ describe('MVP — Dados', () => {
     expect(garrison(state, TERRITORY_IDS.ruinasLeste)).toBe(before - 2);
   });
 
-  it('T27 · ataque por Poço limita o atacante a 2 dados', () => {
+  it('T27 · ataque por rota marítima limita o atacante a 2 dados', () => {
     let state = jumpTo(newGame(), 'ATAQUE_COMUM');
-    state = must(state, { type: 'ADD_SOLDIERS', territoryId: TERRITORY_IDS.distritoCentral, amount: 6, ownerId: PLAYER_IDS.p1 });
+    state = must(state, { type: 'ADD_SOLDIERS', territoryId: TERRITORY_IDS.portoMaritimo, amount: 6, ownerId: PLAYER_IDS.p1 });
     state = must(state, {
       type: 'DECLARE_ATTACK',
-      from: TERRITORY_IDS.distritoCentral,
-      to: TERRITORY_IDS.abrigoZero,
+      from: TERRITORY_IDS.portoMaritimo,
+      to: TERRITORY_IDS.alvoMaritimo,
     });
     expect(state.pendingAttack?.attackerDiceCap).toBe(2);
   });
@@ -879,7 +880,7 @@ describe('MVP — Transporte Especial e movimentação', () => {
     ).toMatch(/movimentação/);
   });
 
-  it('T63 · o Transporte Especial não alcança as galerias dos Abrigos', () => {
+  it('T63 · o Transporte Especial não atravessa a Zona de Impacto', () => {
     const state = jumpTo(newGame(), 'ATAQUE_ESPECIAL');
     expect(
       mustFail(state, {
@@ -888,6 +889,6 @@ describe('MVP — Transporte Especial e movimentação', () => {
         to: TERRITORY_IDS.galeriaOeste,
         amount: 1,
       }),
-    ).toMatch(/galerias/);
+    ).toMatch(/Zona de Impacto/);
   });
 });

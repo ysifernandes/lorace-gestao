@@ -2,15 +2,20 @@ import { cardDefinitionId } from '../types/ids';
 import type { CardActionSpec, CardDefinition, CardPlayType } from '../types/card.types';
 import type { FactionId } from '../types/ids';
 import type { AnimationSpec } from '../types/animation.types';
-import { ALIENIGENAS_ID, FACTION_05_ID, FACTION_06_ID, MAGOS_ID, ZUMBIS_ID } from '../factions/roster';
+import { ALIENIGENAS_ID, GOBLINS_ID, MAGOS_ID, VAMPIROS_ID, ZUMBIS_ID } from '../factions/roster';
+import { TECNOLOGOS_ID } from '../factions/tecnologos';
 
 /**
  * CARTAS ASSINATURA — uma por facção.
  *
- * A dos Humanos é o SEQUESTRO (regra oficial, em `sequestro.card.ts`).
- * As cinco daqui são PROVISÓRIAS: acompanham as facções ainda não aprovadas
- * pelo criador e nenhuma copia o Sequestro — nenhuma outra converte tropas
- * inimigas nem tem duplo uso ofensivo/defensivo.
+ * Os efeitos abaixo são transcrição direta da REFERÊNCIA VISUAL OFICIAL
+ * "CARTAS ESPECIAIS DAS FACÇÕES". Nada foi alterado silenciosamente.
+ *
+ * A dos Humanos é o SEQUESTRO (regra oficial, em `sequestro.card.ts`) —
+ * nenhuma outra carta copia o duplo uso ofensivo/defensivo dela.
+ *
+ * VAMPIROS não aparece na referência de cartas; a carta deles está marcada
+ * como PROPOSTA e aguarda aprovação.
  */
 
 const SIGNATURE_ANIMATION: AnimationSpec = {
@@ -18,7 +23,8 @@ const SIGNATURE_ANIMATION: AnimationSpec = {
   name: 'Carta assinatura',
   beats: [
     { kind: 'HIGHLIGHT', durationMs: 220 },
-    { kind: 'ENERGY_BURST', durationMs: 380 },
+    { kind: 'ENERGY_BURST', durationMs: 420 },
+    { kind: 'REVEAL', durationMs: 260 },
   ],
 };
 
@@ -32,66 +38,91 @@ interface SignatureSpec {
   action: CardActionSpec;
   emoji: string;
   palette: [string, string];
+  /** true quando o efeito veio da referência visual oficial. */
+  fromReference: boolean;
 }
 
 const SPECS: SignatureSpec[] = [
   {
-    slug: 'feixe-de-corte',
-    name: 'Feixe de Corte',
+    slug: 'invasao-orbital',
+    name: 'Invasão Orbital',
     factionId: ALIENIGENAS_ID,
-    playType: 'REATIVA',
-    category: 'DEFESA',
-    description: 'O próximo Ataque Comum contra você nesta rodada usa no máximo 1 dado.',
-    action: { type: 'DICE_CAP_INCOMING', value: 1 },
-    emoji: '👁️',
-    palette: ['#0b2b26', '#25b39a'],
-  },
-  {
-    slug: 'cepa-resistente',
-    name: 'Cepa Resistente',
-    factionId: ZUMBIS_ID,
-    playType: 'DEFENSIVA',
-    category: 'DEFESA',
-    description:
-      'Escolha um território seu: nas próximas 2 rodadas, ao defender ele ignora a primeira comparação perdida de cada rodada.',
-    action: { type: 'SHIELD', rounds: 2, ignoreFirstLossPerRound: true },
-    emoji: '☣️',
-    palette: ['#1a2409', '#7fae2e'],
-  },
-  {
-    slug: 'eco',
-    name: 'Eco',
-    factionId: MAGOS_ID,
-    playType: 'TATICA',
-    category: 'EVENTO',
-    description: 'Repita o último Evento do Colapso já revelado nesta partida.',
-    action: { type: 'REPEAT_LAST_COLLAPSE' },
-    emoji: '🜁',
-    palette: ['#1c1030', '#8b62d9'],
-  },
-  {
-    slug: 'reconstituicao',
-    name: 'Reconstituição',
-    factionId: FACTION_05_ID,
-    playType: 'TATICA',
-    category: 'SUPORTE',
-    description:
-      'Devolva ao tabuleiro até 4 soldados seus perdidos nesta rodada, distribuídos entre territórios seus.',
-    action: { type: 'RESTORE_TROOPS', amount: 4 },
-    emoji: '⚙️',
-    palette: ['#2b1408', '#d0703a'],
-  },
-  {
-    slug: 'desmanche',
-    name: 'Desmanche',
-    factionId: FACTION_06_ID,
     playType: 'OFENSIVA',
     category: 'OPERACAO',
     description:
-      'Escolha um território inimigo: até o próximo turno do dono, ele não recebe reforço nem movimentação.',
-    action: { type: 'BLOCK_TERRITORY', rounds: 1 },
+      'Escolha um território inimigo. Todas as unidades naquele território perdem até 3 soldados.',
+    action: { type: 'ORBITAL_STRIKE', amount: 3 },
+    emoji: '🛸',
+    palette: ['#1a0a2e', '#A855F7'],
+    fromReference: true,
+  },
+  {
+    slug: 'surto',
+    name: 'Surto',
+    factionId: ZUMBIS_ID,
+    playType: 'TATICA',
+    category: 'SUPORTE',
+    description:
+      'Adicione instantaneamente 5 soldados, distribuídos como desejar em territórios que você controla.',
+    action: { type: 'GAIN_TROOPS', amount: 5 },
+    emoji: '☣️',
+    palette: ['#0f1a06', '#7FD32E'],
+    fromReference: true,
+  },
+  {
+    slug: 'pacto-de-sangue',
+    name: 'Pacto de Sangue',
+    factionId: VAMPIROS_ID,
+    playType: 'OFENSIVA',
+    category: 'OPERACAO',
+    description:
+      'Escolha um território inimigo e role 1D6: ele perde essa quantidade de soldados e você ' +
+      'ganha metade (arredondada para baixo) em um território seu vizinho.',
+    action: { type: 'BLOOD_PACT', diceSides: 6 },
+    emoji: '🩸',
+    palette: ['#1c0507', '#D42A3A'],
+    fromReference: false,
+  },
+  {
+    slug: 'ritual-maior',
+    name: 'Ritual Maior',
+    factionId: MAGOS_ID,
+    playType: 'OFENSIVA',
+    category: 'EVENTO',
+    description:
+      'Escolha um território. Todos os jogadores naquele território rolam 1D6 e perdem essa ' +
+      'quantidade de soldados.',
+    action: { type: 'RITUAL', diceSides: 6 },
     emoji: '🜂',
-    palette: ['#2b2306', '#d8b23c'],
+    palette: ['#1f1304', '#E0952A'],
+    fromReference: true,
+  },
+  {
+    slug: 'armadilha-explosiva',
+    name: 'Armadilha Explosiva',
+    factionId: GOBLINS_ID,
+    playType: 'DEFENSIVA',
+    category: 'DEFESA',
+    description:
+      'Escolha um território. No início do turno do próximo jogador que entrar nele, ele sofre ' +
+      '3 de dano (perde 3 soldados).',
+    action: { type: 'TRAP', damage: 3, rounds: 3 },
+    emoji: '💣',
+    palette: ['#1f1a02', '#F7D02E'],
+    fromReference: true,
+  },
+  {
+    slug: 'arsenal-avancado',
+    name: 'Arsenal Avançado',
+    factionId: TECNOLOGOS_ID,
+    playType: 'TATICA',
+    category: 'SUPORTE',
+    description:
+      'Adicione 3 unidades de apoio ao campo de batalha. Descarte 1 carta no final do turno.',
+    action: { type: 'GAIN_TROOPS', amount: 3, discardAtEndOfTurn: 1 },
+    emoji: '⚙️',
+    palette: ['#1c0606', '#E03B3B'],
+    fromReference: true,
   },
 ];
 
@@ -125,9 +156,13 @@ export const SIGNATURE_CARDS: CardDefinition[] = SPECS.map(build);
 
 /** Assinatura de cada facção (a dos Humanos é o Sequestro). */
 export const SIGNATURE_BY_FACTION: Record<string, string> = {
-  [ALIENIGENAS_ID as string]: 'card.feixe-de-corte',
-  [ZUMBIS_ID as string]: 'card.cepa-resistente',
-  [MAGOS_ID as string]: 'card.eco',
-  [FACTION_05_ID as string]: 'card.reconstituicao',
-  [FACTION_06_ID as string]: 'card.desmanche',
+  [ALIENIGENAS_ID as string]: 'card.invasao-orbital',
+  [ZUMBIS_ID as string]: 'card.surto',
+  [VAMPIROS_ID as string]: 'card.pacto-de-sangue',
+  [MAGOS_ID as string]: 'card.ritual-maior',
+  [GOBLINS_ID as string]: 'card.armadilha-explosiva',
+  [TECNOLOGOS_ID as string]: 'card.arsenal-avancado',
 };
+
+/** Cartas cujo efeito veio da referência visual (para relatório e DEV). */
+export const SIGNATURE_FROM_REFERENCE = SPECS.filter((s) => s.fromReference).map((s) => s.slug);

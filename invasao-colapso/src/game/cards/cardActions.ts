@@ -2,7 +2,7 @@ import type { GameState } from '../types/game.types';
 import type { PlayerId, SoldierId, TerritoryId } from '../types/ids';
 import type { CardActionSpec } from '../types/card.types';
 import type { Rng } from '../rng/rng';
-import { defaultRng } from '../rng/rng';
+import { defaultRng, rollInt } from '../rng/rng';
 import { createSoldier, eliminateSoldier, placeInTerritory, soldiersInTerritory } from '../soldiers/soldier';
 import { getTerritory, syncPlayerTerritories, territoriesOf } from '../map/territory';
 import { isAdjacent } from '../map/adjacency';
@@ -129,6 +129,81 @@ export function applyCardAction(
       }
       for (let i = 0; i < removable; i += 1) eliminateSoldier(draft, soldiers[i].id);
       return { ok: true, message: `${target.territory.name} perde ${removable} soldado(s).` };
+    }
+
+    case 'ORBITAL_STRIKE': {
+      // Referência: "todas as unidades naquele território perdem até 3 soldados".
+      const target = enemyTerritory(draft, playerId, params.targetTerritoryId);
+      if (!target.territory) return { ok: false, error: target.error };
+      const soldiers = soldiersInTerritory(draft, target.territory.id);
+      const removable = Math.min(spec.amount, soldiers.length - BALANCE.territory.minGarrison);
+      if (removable <= 0) return { ok: false, error: 'O alvo já está no mínimo de guarnição.' };
+      for (let i = 0; i < removable; i += 1) eliminateSoldier(draft, soldiers[i].id);
+      return {
+        ok: true,
+        message: `${target.territory.name} perde ${removable} soldado(s) sob o feixe orbital.`,
+      };
+    }
+
+    case 'RITUAL': {
+      // Referência: "todos os jogadores naquele território rolam 1D6 e perdem
+      // essa quantidade de soldados". Um território tem um controlador só, então
+      // o ritual atinge o exército presente ali.
+      const id = params.targetTerritoryId;
+      const territory = id ? draft.territories[id as string] : undefined;
+      if (!territory?.controllerId) return { ok: false, error: 'Escolha um território ocupado.' };
+      const roll = rollInt(spec.diceSides, rng);
+      const soldiers = soldiersInTerritory(draft, territory.id);
+      const floor = territory.controllerId === playerId ? BALANCE.territory.minGarrison : BALANCE.territory.minGarrison;
+      const removable = Math.max(0, Math.min(roll, soldiers.length - floor));
+      for (let i = 0; i < removable; i += 1) eliminateSoldier(draft, soldiers[i].id);
+      return {
+        ok: true,
+        message: `Ritual Maior em ${territory.name}: 1D6 = ${roll} → ${removable} soldado(s) perdido(s).`,
+        data: { diceValue: roll, eliminated: removable },
+      };
+    }
+
+    case 'BLOOD_PACT': {
+      const target = enemyTerritory(draft, playerId, params.targetTerritoryId);
+      if (!target.territory) return { ok: false, error: target.error };
+      const source = territoriesOf(draft, playerId).find((own) =>
+        isAdjacent(draft, own.id, target.territory!.id),
+      );
+      if (!source) return { ok: false, error: 'Você precisa de um território vizinho ao alvo.' };
+      const roll = rollInt(spec.diceSides, rng);
+      const soldiers = soldiersInTerritory(draft, target.territory.id);
+      const drained = Math.max(0, Math.min(roll, soldiers.length - BALANCE.territory.minGarrison));
+      for (let i = 0; i < drained; i += 1) eliminateSoldier(draft, soldiers[i].id);
+      const gained = Math.floor(drained / 2);
+      for (let i = 0; i < gained; i += 1) {
+        createSoldier(draft, {
+          factionId: player.factionId,
+          ownerId: playerId,
+          territoryId: source.id,
+        });
+      }
+      return {
+        ok: true,
+        message: `Pacto de Sangue: 1D6 = ${roll} → ${drained} drenado(s), ${gained} ganho(s) em ${source.name}.`,
+        data: { diceValue: roll, drained, gained },
+      };
+    }
+
+    case 'TRAP': {
+      const own = ownTerritory(draft, playerId, params.targetTerritoryId, 'um território seu');
+      if (!own.territory) return { ok: false, error: own.error };
+      addTerritoryModifier(draft, {
+        territoryId: own.territory.id,
+        ownerId: playerId,
+        untilRound: draft.turn.number + spec.rounds,
+        trapDamage: spec.damage,
+        source: 'card.armadilha-explosiva',
+      });
+      return {
+        ok: true,
+        message: `${own.territory.name} minado: quem entrar perde ${spec.damage} soldado(s).`,
+      };
     }
 
     case 'EXTRA_MOVE': {

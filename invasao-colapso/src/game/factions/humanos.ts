@@ -13,7 +13,7 @@ export const HUMANOS_ID = factionId('humanos');
 export const HUMANOS: FactionDefinition = {
   id: HUMANOS_ID,
   name: 'Humanos',
-  subtitle: 'Os que mantiveram a cadeia de comando',
+  subtitle: 'Adaptação · Tecnologia · Controle Tático',
   description:
     'Remanescentes das antigas estruturas civis e militares. Compensam a falta ' +
     'de números com logística, resgate e medicina de guerra.',
@@ -59,14 +59,16 @@ export const HUMANOS: FactionDefinition = {
       description: 'Unidade padrão. Unidades especiais chegam em etapa futura.',
     },
   ],
-  passiveAbilityIds: ['ability.humanos.sobrevivencia'],
-  activeAbilityIds: ['ability.humanos.operacao-aerea'],
+  passiveAbilityIds: ['ability.humanos.engenharia-tatica'],
+  activeAbilityIds: ['ability.humanos.logistica-adaptativa'],
   signatureCardIds: ['card.sequestro'],
   commanders: [], // Aguardando definição do criador.
   visualEffects: ['searchlight', 'rotor-dust', 'medical-glow'],
   animationIds: ['anim.sequestro', 'anim.vacina', 'anim.sobrevivencia', 'anim.operacao-aerea'],
   modifiers: {},
   rules: {
+    // ENGENHARIA TÁTICA: tradução mecânica de "defesas mais resistentes".
+    fortifiedFrom: 4,
     balance: { ataque: 3, defesa: 3, mobilidade: 4, cartas: 4, recuperacao: 4 },
   },
   status: 'ACTIVE',

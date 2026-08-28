@@ -5,7 +5,13 @@ import { defaultRng, pick, shuffle } from '../rng/rng';
 import { BALANCE } from '../config/balance';
 import { COLLAPSE_EVENT_SEEDS } from '../../data/collapseEvents.seed';
 import type { CollapseEventDefinition } from '../../data/collapseEvents.seed';
-import { listRegions, listSpecialLinks, disableLink, expireDisabledLinks } from '../map/regions';
+import {
+  listRegions,
+  listSpecialLinks,
+  disableLink,
+  expireDisabledLinks,
+  specialLinkBetween,
+} from '../map/regions';
 import { listTerritories, syncPlayerTerritories, territoriesOf } from '../map/territory';
 import { staticNeighborsOf } from '../map/adjacency';
 import { createSoldier, eliminateSoldier, soldiersInTerritory } from '../soldiers/soldier';
@@ -164,10 +170,10 @@ function resolveTarget(
       if (candidates.length === 0) return 'INVALID';
       return { territoryId: pick(candidates, rng).id };
     }
-    case 'POCO': {
-      const pocos = listSpecialLinks().filter((l) => l.kind === 'POCO');
-      if (pocos.length === 0) return 'INVALID';
-      const chosen = pick(pocos, rng);
+    case 'MARITIMA': {
+      const routes = listSpecialLinks().filter((l) => l.kind === 'MARITIMA');
+      if (routes.length === 0) return 'INVALID';
+      const chosen = pick(routes, rng);
       return { territoryId: chosen.a };
     }
     case 'PLAYER': {
@@ -459,25 +465,39 @@ function applyEffect(
       return `${total} soldado(s) perdidos nas fronteiras.`;
     }
 
-    case 'DISABLE_POCO': {
-      const pocos = listSpecialLinks().filter((l) => l.kind === 'POCO');
+    case 'DISABLE_MARITIME': {
+      const routes = listSpecialLinks().filter((l) => l.kind === 'MARITIMA');
+      if (routes.length === 0) return 'sem rota marítima.';
       const chosen = target.targetTerritoryId
-        ? pocos.find((l) => l.a === target.targetTerritoryId) ?? pick(pocos, rng)
-        : pick(pocos, rng);
+        ? routes.find((l) => l.a === target.targetTerritoryId) ?? pick(routes, rng)
+        : pick(routes, rng);
       disableLink(draft, chosen.a, chosen.b, draft.turn.number + event.duration);
-      return `${chosen.name} interditado.`;
+      return `${chosen.name} interditada.`;
     }
-    case 'DISABLE_BRIDGE': {
-      const bridge = listSpecialLinks().find((l) => l.kind === 'PONTE');
-      if (!bridge) return 'sem ponte.';
-      disableLink(draft, bridge.a, bridge.b, draft.turn.number + event.duration);
-      return `${bridge.name} rompida.`;
+    case 'DISABLE_LAND_BORDER': {
+      // Fronteira terrestre entre dois territórios ocupados, sorteada.
+      const candidates = listTerritories(draft).flatMap((t) =>
+        staticNeighborsOf(draft, t.id)
+          .filter(
+            (n) =>
+              (t.id as string) < (n.id as string) &&
+              t.controllerId &&
+              n.controllerId &&
+              !specialLinkBetween(t.id, n.id),
+          )
+          .map((n) => ({ a: t.id, b: n.id, name: `${t.name} ↔ ${n.name}` })),
+      );
+      if (candidates.length === 0) return 'sem fronteira elegível.';
+      const chosen = pick(candidates, rng);
+      disableLink(draft, chosen.a, chosen.b, draft.turn.number + event.duration);
+      return `${chosen.name} rompida.`;
     }
-    case 'DISABLE_COASTAL': {
-      const route = listSpecialLinks().find((l) => l.kind === 'ROTA');
-      if (!route) return 'sem rota.';
-      disableLink(draft, route.a, route.b, draft.turn.number + event.duration);
-      return `${route.name} intransitável.`;
+    case 'DISABLE_ALL_MARITIME': {
+      const routes = listSpecialLinks().filter((l) => l.kind === 'MARITIMA');
+      for (const route of routes) {
+        disableLink(draft, route.a, route.b, draft.turn.number + event.duration);
+      }
+      return `${routes.length} rota(s) marítima(s) intransitável(is).`;
     }
 
     case 'FORCE_NEXT_EVENT': {
@@ -541,7 +561,7 @@ function regionName(regionId?: string): string {
 
 export function maxChargesFor(state: GameState, playerId: PlayerId): number {
   const hasDepot = listTerritories(state).some(
-    (t) => t.controllerId === playerId && t.id === ('patio-de-cargas' as TerritoryId),
+    (t) => t.controllerId === playerId && t.id === ('usina-nuclear' as TerritoryId),
   );
   return hasDepot ? BALANCE.transport.maxChargesWithDepot : BALANCE.transport.maxCharges;
 }

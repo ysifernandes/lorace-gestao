@@ -5,20 +5,58 @@ import type { EngineOptions } from '../engine/gameEngine';
 import type { GameState } from '../types/game.types';
 import { assertValid } from '../engine/invariants';
 import { PLAYER_IDS } from '../engine/setup';
-import { TERRITORY_IDS } from '../../data/territories.seed';
+import { TERRITORY_IDS as MAP_IDS } from '../../data/territories.seed';
 import type { CardInstanceId, PlayerId, TerritoryId } from '../types/ids';
 import type { Rng } from '../rng/rng';
 import { scriptedRng } from '../rng/rng';
 import { HUMANOS_ID } from '../factions/humanos';
 import {
   ALIENIGENAS_ID,
-  FACTION_05_ID,
-  FACTION_06_ID,
+  GOBLINS_ID,
   MAGOS_ID,
+  VAMPIROS_ID,
   ZUMBIS_ID,
 } from '../factions/roster';
 
-export { PLAYER_IDS, TERRITORY_IDS };
+export { PLAYER_IDS, MAP_IDS };
+
+/**
+ * FIXTURE DE TERRITÓRIOS DA BATERIA.
+ *
+ * O mapa mudou (agora é o mapa da referência oficial, 30 territórios em 6
+ * regiões), então os ids antigos deixaram de existir. Em vez de reescrever
+ * 150 chamadas, as chaves antigas viraram PAPÉIS, apontando para territórios
+ * reais do novo mapa numa partida determinística de 2 jogadores:
+ *
+ *   distritoCentral   → origem do p1, com vizinho inimigo
+ *   ruinasLeste       → inimigo adjacente à origem
+ *   zonaSul           → outro território do p1, adjacente à origem
+ *   baseOcidental     → território do p1 adjacente a zonaSul
+ *   regiaoIndustrial  → outro território inimigo
+ *   salinas           → inimigo NÃO adjacente à origem
+ *   cemiterioComboios → território do p1 NÃO adjacente à origem
+ *   zonaNorte         → território inimigo qualquer (destino inválido)
+ *   fronteiraVermelha → inimigo a distância exatamente 2 de zonaSul
+ *   portoMaritimo     → ponta de rota marítima do p1
+ *   alvoMaritimo      → outra ponta da mesma rota, inimiga
+ *   altoForno         → território do p1 vizinho da Zona de Impacto
+ *   galeriaOeste      → território dentro da Zona de Impacto
+ */
+export const TERRITORY_IDS = {
+  distritoCentral: MAP_IDS.complexoArtico,
+  ruinasLeste: MAP_IDS.portoFerro,
+  zonaSul: MAP_IDS.cidadeFantasma,
+  baseOcidental: MAP_IDS.fortalezaBoreal,
+  regiaoIndustrial: MAP_IDS.colinasTitanio,
+  salinas: MAP_IDS.cidadeSubmersa,
+  cemiterioComboios: MAP_IDS.usinaNuclear,
+  zonaNorte: MAP_IDS.redutoComando,
+  fronteiraVermelha: MAP_IDS.capitalContinental,
+  portoMaritimo: MAP_IDS.arquipelagoNegro,
+  alvoMaritimo: MAP_IDS.farolAbismo,
+  altoForno: MAP_IDS.usinaNuclear,
+  galeriaOeste: MAP_IDS.torreAnomalia,
+} as const;
 
 /**
  * Partida determinística usada por toda a bateria.
@@ -30,8 +68,8 @@ export const TEST_FACTIONS = [
   ZUMBIS_ID,
   ALIENIGENAS_ID,
   MAGOS_ID,
-  FACTION_05_ID,
-  FACTION_06_ID,
+  VAMPIROS_ID,
+  GOBLINS_ID,
 ];
 
 export function newGame(playerCount = 2): GameState {
