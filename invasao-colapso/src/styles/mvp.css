@@ -350,11 +350,22 @@
 /* ------------------------------------------------------------------ partida */
 .match {
   height: 100%;
-  display: grid;
-  /* corpo é a única linha elástica; fases e mão nunca invadem o mapa. */
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  /* Coluna flexível em vez de grade de linhas fixas: a tela ganhou o banner
+     de turno e a ajuda de fase, que aparecem e somem. Com `grid-template-rows`
+     contado à mão, uma linha nova empurrava o mapa para cima do HUD. */
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+}
+.match__body {
+  flex: 1 1 auto;
+}
+.match > .turnbanner,
+.match > .phasehelp,
+.match > .phasebar,
+.match > .hand {
+  flex: 0 0 auto;
 }
 .match__body {
   display: grid;
@@ -1515,5 +1526,684 @@
   .board__controls button {
     width: 36px;
     height: 36px;
+  }
+}
+
+/* ═══════════════════════════════════════════════ ETAPA 2 — nova experiência */
+
+/* -------------------------------------------------------- menu principal */
+.home {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 18px;
+  overflow: hidden;
+}
+.home__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(226, 86, 77, 0.18), transparent 70%),
+    radial-gradient(70% 60% at 20% 90%, rgba(47, 111, 237, 0.16), transparent 70%),
+    radial-gradient(40% 40% at 85% 30%, rgba(168, 85, 247, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.home__inner {
+  position: relative;
+  width: min(560px, 100%);
+  text-align: center;
+}
+.home__eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.66rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.home__title {
+  margin: 0;
+  font-size: clamp(2.1rem, 8vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-wrap: balance;
+}
+.home__title-mark {
+  color: var(--danger);
+}
+.home__tagline {
+  margin: 14px 0 30px;
+  color: var(--text-dim);
+  font-size: 0.94rem;
+}
+.home__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(12, 17, 26, 0.86);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.menu-item:hover {
+  transform: translateX(3px);
+  border-color: var(--line-strong);
+}
+.menu-item__label {
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.menu-item__hint {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.menu-item--primary {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: linear-gradient(120deg, rgba(47, 111, 237, 0.22), rgba(12, 17, 26, 0.9));
+}
+.menu-item--continue {
+  border-color: color-mix(in srgb, var(--ok, #4ec37a) 55%, var(--line));
+}
+.menu-item--suggested {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--line));
+}
+.menu-item--quiet .menu-item__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.home__foot {
+  margin-top: 26px;
+  font-size: 0.68rem;
+  color: var(--text-faint, var(--muted));
+  letter-spacing: 0.06em;
+}
+
+/* -------------------------------------------------------------- online */
+.online,
+.howto {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 20px 16px 80px;
+}
+.online__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.online__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+.online__card h2 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field__label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field__input {
+  min-height: var(--touch);
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: rgba(8, 12, 19, 0.8);
+  color: var(--text);
+  font: inherit;
+}
+.field__input--code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.online__problem {
+  margin-top: 14px;
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+.online__status {
+  margin-top: 10px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- lobby */
+.lobby {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 18px 16px 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.lobby--waiting {
+  min-height: 60vh;
+  align-items: center;
+  justify-content: center;
+}
+.lobby__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lobby__code {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: rgba(8, 12, 19, 0.8);
+}
+.lobby__code-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lobby__code-value {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.26em;
+  color: var(--text);
+}
+.lobby__slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 10px;
+}
+/* Sala de guerra: cada jogador ocupa uma posição, com a cor do exército. */
+.warslot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--fc) 40%, var(--line));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--fc) 18%, transparent), rgba(10, 14, 21, 0.9));
+}
+.warslot--empty {
+  opacity: 0.45;
+  border-style: dashed;
+}
+.warslot--ready {
+  box-shadow: inset 0 0 0 1px var(--fc);
+}
+.warslot__emblem {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--fc) 28%, rgba(4, 8, 14, 0.9));
+}
+.warslot__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.warslot__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+.warslot__host {
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--fc);
+  color: #06090f;
+  font-weight: 800;
+}
+.warslot__faction {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.warslot__status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+.warslot__tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.warslot__tag--ready {
+  color: #4ec37a;
+}
+.warslot__tag--off {
+  color: var(--warning);
+}
+.lobby__pick h2 {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lobby__factions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lobby__foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lobby__waiting {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+/* ------------------------------------------------------------- how to */
+.howto__block {
+  margin-bottom: 26px;
+}
+.howto__block h2 {
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.howto__phases {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.howto__phases li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.howto__phase-num {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(47, 111, 237, 0.2);
+  border: 1px solid var(--line-strong);
+  font-weight: 800;
+  font-size: 0.78rem;
+  flex: 0 0 auto;
+}
+.howto__phases p,
+.howto__list li {
+  margin: 2px 0 0;
+  color: var(--text-dim);
+  font-size: 0.86rem;
+}
+.howto__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.howto__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* ------------------------------------------------- SUA VEZ / instrução */
+.turnbanner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fc) 16%, transparent), transparent 60%),
+    rgba(9, 13, 20, 0.94);
+}
+.turnbanner__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.turnbanner__emblem {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fc) 30%, rgba(4, 8, 14, 0.9));
+  border: 1px solid color-mix(in srgb, var(--fc) 55%, transparent);
+}
+.turnbanner__turn {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--fc);
+}
+.turnbanner__phase {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+.turnbanner__instruction {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.turnbanner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.turnbanner__primary {
+  min-width: 148px;
+  font-weight: 800;
+}
+.turnbanner__help {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+.turnbanner__blocked {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--warning);
+}
+.phasehelp {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(47, 111, 237, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.phasehelp p {
+  margin: 0;
+  flex: 1;
+  font-size: 0.84rem;
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------ tutorial */
+.coach {
+  /* No desktop o cartão fica ancorado à direita, sobre o painel lateral —
+     nunca por cima da barra de fases nem da mão de cartas. */
+  position: fixed;
+  right: 14px;
+  top: 168px;
+  z-index: 40;
+  width: min(330px, calc(100vw - 28px));
+  padding: 14px 16px 10px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: rgba(9, 13, 20, 0.96);
+  box-shadow: 0 18px 40px rgba(2, 5, 10, 0.6);
+}
+.coach__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.coach__count {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.coach__skip {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.68rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.coach__title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.coach__body {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.coach__rule {
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border-left: 2px solid var(--accent);
+  background: rgba(47, 111, 237, 0.1);
+  font-size: 0.76rem;
+  color: var(--text);
+}
+.coach__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.coach__hint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--warning);
+}
+.coach__next {
+  width: 100%;
+}
+.coach__progress {
+  margin-top: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.coach__progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+/* -------------------------------------------------------- arena de dados */
+.arena-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 6, 11, 0.72);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+.arena {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: clamp(12px, 4vw, 40px);
+  padding: 22px clamp(16px, 5vw, 40px);
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: rgba(8, 12, 19, 0.94);
+  box-shadow: 0 24px 60px rgba(2, 5, 10, 0.7);
+}
+.arena__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.arena__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fc);
+  font-weight: 800;
+}
+.arena__dice {
+  display: flex;
+  gap: 8px;
+}
+.arena__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 132px;
+}
+.arena__verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+}
+.arena__verdict em {
+  font-style: normal;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.arena__verdict strong {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.arena__verdict--attacker strong {
+  color: #ff7a5c;
+}
+.arena__verdict--defender strong {
+  color: #61b4ea;
+}
+.arena__losses {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* O dado: entra, gira, quica e assenta. Nunca decide o valor. */
+.die3d {
+  width: clamp(38px, 9vw, 52px);
+  height: clamp(38px, 9vw, 52px);
+  opacity: 0;
+  transform: translateY(-40px) scale(0.7);
+  transition: opacity 0.16s ease;
+}
+.die3d.is-in {
+  opacity: 1;
+  transform: translate(var(--drift, 0px), calc(-1 * var(--lift, 0px))) rotate(var(--spin, 0deg));
+}
+.die3d.is-settled {
+  transform: translateY(0) rotate(0deg) scale(1);
+  transition: transform 0.18s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.die3d__face {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgba(2, 5, 10, 0.7));
+}
+.die3d__body {
+  fill: #f2f5fb;
+  stroke: var(--fc);
+  stroke-width: 5;
+}
+.die3d__pip {
+  fill: #10151f;
+}
+.die3d.is-settled .die3d__body {
+  fill: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die3d,
+  .die3d.is-in,
+  .die3d.is-settled {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------- celular */
+@media (max-width: 720px) {
+  .turnbanner {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .turnbanner__instruction {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+  }
+  .turnbanner__primary {
+    min-width: 120px;
+  }
+  .coach {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    width: auto;
+    padding: 12px 14px 8px;
+  }
+  .coach__body {
+    font-size: 0.8rem;
+  }
+  .arena {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
   }
 }

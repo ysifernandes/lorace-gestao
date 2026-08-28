@@ -19,8 +19,21 @@ interface SaveEnvelope {
 export class GameRepository {
   constructor(private readonly adapter: StorageAdapter = createDefaultAdapter()) {}
 
+  /** O armazenamento funciona neste navegador. */
   get available(): boolean {
     return this.adapter.available;
+  }
+
+  /**
+   * Existe uma partida salva que dá para retomar?
+   *
+   * Diferente de `available`: ali a pergunta é se o navegador guarda dados;
+   * aqui é se há partida de verdade. O menu usa ESTA para decidir se mostra
+   * CONTINUAR — senão o botão aparece sempre e não leva a lugar nenhum.
+   */
+  get hasSave(): boolean {
+    const saved = this.load();
+    return saved !== null && saved.status !== 'FINISHED';
   }
 
   save(state: GameState): void {

@@ -32,8 +32,11 @@ async function session(label, viewport) {
 
   // ---- tela inicial
   check('tela inicial mostra o título', (await page.locator('.home__title').textContent())?.includes('INVASÃO'));
-  check('botão NOVA PARTIDA existe', await page.locator('.home__actions .btn--primary').isVisible());
-  await page.locator('.home__actions .btn--primary').click();
+  // O menu foi reestruturado: JOGAR ONLINE / JOGAR LOCAL / TUTORIAL / COMO JOGAR.
+  check('menu principal oferece as opções novas', (await page.locator('.menu-item').count()) >= 4);
+  const local = page.locator('.menu-item', { hasText: 'Jogar local' });
+  check('botão JOGAR LOCAL existe', await local.isVisible());
+  await local.click();
 
   // ---- configuração
   await page.waitForSelector('.setup');
@@ -136,8 +139,11 @@ async function session(label, viewport) {
       await page.waitForTimeout(150);
       check('ocupação obrigatória se resolve', (await page.locator('.modal').count()) === 0);
     } else if (await page.locator('.battle').isVisible()) {
+      // Durante a apresentação dos dados, ações conflitantes ficam travadas.
+      // Espera a arena fechar antes de recuar — é a regra de reentrada.
+      await page.waitForSelector('.arena', { state: 'detached', timeout: 9000 }).catch(() => {});
       await page.locator('.battle__actions .btn--ghost').click();
-      await page.waitForTimeout(120);
+      await page.waitForTimeout(200);
       check('recuar encerra a batalha', !(await page.locator('.battle').isVisible()));
     }
   }

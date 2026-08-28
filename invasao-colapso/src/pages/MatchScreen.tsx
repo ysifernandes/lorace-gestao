@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../hooks/useGame';
 import type { CardInstance, CardMode } from '../game/types/card.types';
 import type { SoldierId, TerritoryId } from '../game/types/ids';
@@ -21,6 +21,11 @@ import { LogPanel } from '../components/panels/LogPanel';
 import { AnimationStage } from '../components/panels/AnimationStage';
 import { AbilityFeed } from '../components/panels/AbilityFeed';
 import { DevPanel } from '../dev/DevPanel';
+import { TurnBanner } from '../components/hud/TurnBanner';
+import { TutorialCoach } from '../components/tutorial/TutorialCoach';
+import { DiceArena } from '../components/battle/DiceArena';
+import { phaseGuide } from '../game/turns/phaseGuide';
+import { getFaction } from '../game/factions/faction.registry';
 import {
   activeCollapseSummary,
   attackTargetsFrom,
@@ -43,12 +48,17 @@ type Pending =
   | { kind: 'CARD_TARGET'; card: CardInstance; mode: CardMode };
 
 export function MatchScreen() {
-  const { state, dispatch, goHome, goSetup, error, notice } = useGame();
+  const { state, dispatch, goHome, goSetup, error, notice, mode, viewerId, canAct, lastDice, leaveRoom } =
+    useGame();
   const [selected, setSelected] = useState<TerritoryId | null>(null);
   const [pending, setPending] = useState<Pending>({ kind: 'NONE' });
   const [preview, setPreview] = useState<CardInstance | null>(null);
   const [showMission, setShowMission] = useState(false);
   const [sequestro, setSequestro] = useState<CardInstance | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  /** Rodada que está sendo encenada. Trava ações enquanto os dados rolam. */
+  const [rolling, setRolling] = useState<number | null>(null);
+  const lastRoundRef = useRef(0);
 
   const player = state.players[state.turn.currentPlayerId as string];
   const phase = state.turn.phase;
@@ -57,6 +67,19 @@ export function MatchScreen() {
   const transport = transportStatus(state, player.id);
   const reinforcement = reinforcementDetail(state, player.id);
   const drawable = canDrawNow(state, player.id);
+
+  const battleRounds = state.pendingAttack?.rounds ?? [];
+  const lastRound = battleRounds[battleRounds.length - 1] ?? null;
+
+  // Toda rodada nova do motor vira uma apresentação. A animação nunca cria
+  // uma rodada: ela só encena a que já existe no estado.
+  useEffect(() => {
+    if (battleRounds.length > lastRoundRef.current) {
+      lastRoundRef.current = battleRounds.length;
+      setRolling(battleRounds.length);
+    }
+    if (battleRounds.length === 0) lastRoundRef.current = 0;
+  }, [battleRounds.length]);
 
   const origin = pending.kind !== 'NONE' && pending.kind !== 'CARD_TARGET' ? pending.from : null;
 
@@ -220,12 +243,66 @@ export function MatchScreen() {
     inspectorTerritory?.controllerId === player.id &&
     (inspectorTerritory?.garrison.length ?? 0) > 1;
 
+  const guide = phaseGuide(state, player.id);
+  const viewer = state.players[viewerId as string] ?? player;
+  const viewerFaction = getFaction(viewer.factionId);
+  const attackerFaction = state.pendingAttack
+    ? getFaction(state.players[state.pendingAttack.attackerPlayerId as string].factionId)
+    : null;
+  const defenderFaction = state.pendingAttack
+    ? getFaction(state.players[state.pendingAttack.defenderPlayerId as string]?.factionId ?? viewer.factionId)
+    : null;
+  /** Durante a apresentação dos dados, nenhuma ação conflitante é aceita. */
+  const locked = rolling !== null;
+
+  /** A AÇÃO PRINCIPAL do momento — uma só, sempre óbvia. */
+  function runPrimary() {
+    if (locked) return;
+    if (state.pendingAttack?.status === 'DECLARED') {
+      dispatch({ type: 'ROLL_BATTLE_ROUND' });
+      return;
+    }
+    if (phase === 'REFORCO' && state.turn.pendingReinforcements > 0) {
+      dispatch({ type: 'AUTO_REINFORCE' });
+      return;
+    }
+    if (phase === 'CARTAS' && drawable.ok) {
+      dispatch({ type: 'DRAW_CARD' });
+      return;
+    }
+    dispatch({ type: 'ADVANCE_PHASE' });
+  }
+
   const isTarget = selected ? highlighted.includes(selected) : false;
   const originTroops = origin ? (state.territories[origin as string]?.garrison.length ?? 0) : 0;
 
   return (
     <div className="match">
-      <TopBar state={state} onOpenMission={() => setShowMission(true)} onExit={goHome} />
+      <TopBar
+        state={state}
+        onOpenMission={() => setShowMission(true)}
+        onExit={mode === 'ONLINE' ? leaveRoom : goHome}
+      />
+
+      <TurnBanner
+        playerName={player.name}
+        faction={viewerFaction}
+        guide={guide}
+        yours={canAct}
+        onPrimary={runPrimary}
+        primaryDisabled={locked}
+        onHelp={() => setShowHelp((open) => !open)}
+      />
+
+      {showHelp ? (
+        <div className="phasehelp" role="note">
+          <strong>{guide.title}</strong>
+          <p>{guide.instruction}</p>
+          <button type="button" className="btn btn--sm btn--ghost" onClick={() => setShowHelp(false)}>
+            Fechar
+          </button>
+        </div>
+      ) : null}
 
       <div className="match__body">
         <main className="match__map">
@@ -240,12 +317,24 @@ export function MatchScreen() {
           />
         </main>
 
+        {lastRound && rolling !== null && attackerFaction && defenderFaction ? (
+          <div className="arena-stage" role="dialog" aria-label="Rolagem de dados">
+            <DiceArena
+              round={lastRound}
+              seed={lastDice?.seed ?? lastRound.index}
+              attackerColor={attackerFaction.color}
+              defenderColor={defenderFaction.color}
+              onFinished={() => setRolling(null)}
+            />
+          </div>
+        ) : null}
+
         <aside className="match__side">
           {state.pendingAttack ? (
             <BattleBoard
               state={state}
-              onRoll={() => dispatch({ type: 'ROLL_BATTLE_ROUND' })}
-              onRetreat={() => dispatch({ type: 'CANCEL_ATTACK' })}
+              onRoll={() => !locked && dispatch({ type: 'ROLL_BATTLE_ROUND' })}
+              onRetreat={() => !locked && dispatch({ type: 'CANCEL_ATTACK' })}
             />
           ) : null}
 
@@ -421,6 +510,8 @@ export function MatchScreen() {
       {notice && !error ? <div className="toast">{notice}</div> : null}
 
       <AnimationStage state={state} onAcknowledge={(id) => dispatch({ type: 'ACK_ANIMATION', eventId: id })} />
+
+      <TutorialCoach />
 
       <DevPanel />
     </div>

@@ -1928,9 +1928,35 @@ var DECK_COMPOSITION = SPECS2.map(
 );
 var DECK_SIZE = SPECS2.reduce((sum, spec) => sum + spec.copies, 0);
 
+// src/game/cards/facedown.card.ts
+var FACEDOWN_CARD_ID = cardDefinitionId("card.oculta");
+var FACEDOWN_CARD = {
+  id: FACEDOWN_CARD_ID,
+  name: "Carta virada",
+  factionId: null,
+  category: "SUPORTE",
+  playType: "TATICA",
+  description: "Uma carta na m\xE3o de outro jogador. Voc\xEA n\xE3o pode ver qual \xE9.",
+  maxUses: 1,
+  // Nunca jogável: não é a sua carta.
+  conditions: [{ type: "NEVER" }],
+  primaryEffect: {
+    id: "effect.oculta",
+    name: "Carta virada",
+    description: "Sem efeito: esta carta n\xE3o \xE9 sua.",
+    conditions: [],
+    animation: { id: "anim.oculta", name: "Carta virada", beats: [] }
+  },
+  alternateEffect: null,
+  art: { key: "card.oculta", emoji: "\u{1F0A0}", palette: ["#111823", "#3a4a63"] }
+};
+
 // src/game/cards/card.registry.ts
 var REGISTRY3 = new Map(
-  [SEQUESTRO_CARD, ...SIGNATURE_CARDS, ...NEUTRAL_CARDS].map((card) => [card.id, card])
+  [SEQUESTRO_CARD, ...SIGNATURE_CARDS, ...NEUTRAL_CARDS, FACEDOWN_CARD].map((card) => [
+    card.id,
+    card
+  ])
 );
 function getCardDefinition(id2) {
   const card = REGISTRY3.get(id2);
@@ -4441,6 +4467,8 @@ function checkCondition(state, card, condition) {
       );
       return enemies.length >= condition.min ? { allowed: true } : { allowed: false, reason: "N\xE3o h\xE1 soldados inimigos em territ\xF3rio para capturar." };
     }
+    case "NEVER":
+      return { allowed: false, reason: "Esta carta n\xE3o \xE9 sua: voc\xEA n\xE3o pode v\xEA-la nem us\xE1-la." };
     default:
       return { allowed: true };
   }
@@ -6230,15 +6258,24 @@ function redactFor(state, viewer) {
     if (mission.revealed) continue;
     delete copy.missions[playerId2];
   }
-  const hiddenCardIds = /* @__PURE__ */ new Set();
   for (const player of Object.values(copy.players)) {
     if (player.id === viewer) continue;
-    for (const cardId of player.handCardIds) hiddenCardIds.add(cardId);
-    player.handCardIds = player.handCardIds.map(
-      (_, index) => `hidden:${player.id}:${index}`
-    );
+    const hidden = player.handCardIds.map((_, index) => `hidden:${player.id}:${index}`);
+    for (const cardId of player.handCardIds) delete copy.cards[cardId];
+    player.handCardIds.forEach((_, index) => {
+      const instanceId = hidden[index];
+      copy.cards[instanceId] = {
+        instanceId,
+        definitionId: FACEDOWN_CARD_ID,
+        ownerId: player.id,
+        state: "IN_HAND",
+        usesRemaining: 1,
+        usedMode: null,
+        history: []
+      };
+    });
+    player.handCardIds = hidden;
   }
-  for (const cardId of hiddenCardIds) delete copy.cards[cardId];
   return copy;
 }
 
