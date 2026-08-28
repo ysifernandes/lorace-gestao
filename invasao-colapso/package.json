@@ -1,0 +1,37 @@
+{
+  "name": "invasao-colapso",
+  "private": true,
+  "version": "0.1.0",
+  "description": "INVASAO: COLAPSO - jogo de estrategia territorial (Etapa 1 - Fundacao)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "node e2e/ui-check.mjs",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "build:single": "npm run build && node scripts/build-single-file.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "server": "npm run build:server && node dist-server/server.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^6.1.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.62.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
+    "ws": "^8.21.3"
+  }
+}
