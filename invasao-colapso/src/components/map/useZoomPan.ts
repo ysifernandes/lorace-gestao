@@ -32,6 +32,8 @@ function clampScale(value: number) {
  */
 export function useZoomPan() {
   const [viewport, setViewport] = useState<Viewport>(initialViewport);
+  /** true durante um movimento comandado por botão/duplo toque. */
+  const [animating, setAnimating] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const panStart = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   const pinchStart = useRef<{ distance: number; scale: number } | null>(null);
@@ -42,7 +44,10 @@ export function useZoomPan() {
    * Em celular o jogo abre aproximado (rótulos legíveis), e este botão é a
    * forma garantida de voltar a enxergar os 30 territórios.
    */
-  const reset = useCallback(() => setViewport({ scale: 1, x: 0, y: 0 }), []);
+  const reset = useCallback(() => {
+    setAnimating(true);
+    setViewport({ scale: 1, x: 0, y: 0 });
+  }, []);
 
   // O ponteiro pode ser solto fora do mapa (ou o gesto ser cancelado pelo
   // sistema). Sem isso, o pan continuaria "grudado" no cursor.
@@ -66,8 +71,28 @@ export function useZoomPan() {
 
   /** Vai direto a uma escala — usado pelos botões de nível de câmera. */
   const zoomTo = useCallback((scale: number) => {
+    setAnimating(true);
     setViewport((v) => ({ ...v, scale: clampScale(scale) }));
   }, []);
+
+  /**
+   * Aproxima e CENTRALIZA um ponto do mapa (coordenadas do tabuleiro).
+   * Usado pelo duplo clique/toque em um território.
+   */
+  const focusOn = useCallback(
+    (point: { x: number; y: number }, board: { width: number; height: number }, scale: number) => {
+      const next = clampScale(scale);
+      setAnimating(true);
+      // O grupo é escalado a partir do centro: o deslocamento leva o ponto
+      // escolhido de volta para o meio da tela.
+      setViewport({
+        scale: next,
+        x: (board.width / 2 - point.x) * next,
+        y: (board.height / 2 - point.y) * next,
+      });
+    },
+    [],
+  );
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -107,11 +132,13 @@ export function useZoomPan() {
       const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1;
       const ratio = distance / pinchStart.current.distance;
       dragged.current = true;
+      setAnimating(false);
       setViewport((v) => ({ ...v, scale: clampScale(pinchStart.current!.scale * ratio) }));
       return;
     }
 
     if (panStart.current) {
+      setAnimating(false);
       const dx = event.clientX - panStart.current.x;
       const dy = event.clientY - panStart.current.y;
       if (Math.hypot(dx, dy) > 6) dragged.current = true;
@@ -128,6 +155,7 @@ export function useZoomPan() {
 
   const onWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
     if (event.ctrlKey) event.preventDefault();
+    setAnimating(false);
     setViewport((v) => ({ ...v, scale: clampScale(v.scale * (event.deltaY > 0 ? 0.92 : 1.08)) }));
   }, []);
 
@@ -136,9 +164,11 @@ export function useZoomPan() {
 
   return {
     viewport,
+    animating,
     reset,
     zoomBy,
     zoomTo,
+    focusOn,
     wasDragged,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel },
   };

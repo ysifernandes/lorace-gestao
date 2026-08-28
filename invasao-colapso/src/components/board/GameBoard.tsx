@@ -104,7 +104,8 @@ export function GameBoard({
   mode,
   onSelect,
 }: GameBoardProps) {
-  const { viewport, reset, zoomBy, zoomTo, wasDragged, handlers } = useZoomPan();
+  const { viewport, animating, reset, zoomBy, zoomTo, focusOn, wasDragged, handlers } =
+    useZoomPan();
   const highlightSet = useMemo(() => new Set(highlighted.map(String)), [highlighted]);
   const tint = MODE_TINT[mode];
 
@@ -144,6 +145,7 @@ export function GameBoard({
             </filter>
           </defs>
           <g
+            className={animating ? 'board__camera-move' : undefined}
             style={{
               transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
               transformOrigin: '50% 50%',
@@ -268,6 +270,13 @@ export function GameBoard({
                     if (wasDragged()) return;
                     onSelect(shape.id);
                   }}
+                  onDoubleClick={() =>
+                    focusOn(
+                      shape.center,
+                      { width: BOARD_WIDTH, height: BOARD_HEIGHT },
+                      CAMERA_SCALE.TERRITORIO,
+                    )
+                  }
                   role="button"
                   tabIndex={0}
                   aria-label={`${shape.name}, ${troops.label} tropas`}

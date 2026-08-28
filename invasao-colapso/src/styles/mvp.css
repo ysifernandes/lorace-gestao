@@ -2222,3 +2222,14 @@
 .territory__marker {
   pointer-events: none;
 }
+
+/* Movimento de câmera comandado (botão, duplo toque): suave.
+   Arrastar e pinçar continuam imediatos — o dedo não pode ter atraso. */
+.board__camera-move {
+  transition: transform 0.42s cubic-bezier(0.22, 0.75, 0.28, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .board__camera-move {
+    transition: none;
+  }
+}
