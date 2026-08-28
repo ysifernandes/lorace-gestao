@@ -10,8 +10,10 @@ import { PHASE_LABELS } from '../game/turns/phases';
 import { territoriesOf } from '../game/map/territory';
 import { validateState } from '../game/engine/invariants';
 import type { CardDefinitionId, PlayerId, TerritoryId } from '../game/types/ids';
+import { ASSETS_NEEDED } from '../view/assetsNeeded';
+import { listFactions } from '../game/factions/faction.registry';
 
-type Tab = 'PARTIDA' | 'MAPA' | 'CARTAS' | 'MISSOES' | 'COLAPSO' | 'ESTADO';
+type Tab = 'PARTIDA' | 'MAPA' | 'CARTAS' | 'MISSOES' | 'COLAPSO' | 'ESTADO' | 'ARTE';
 
 /**
  * PAINEL DEV — isolado e removível.
@@ -47,7 +49,7 @@ export function DevPanel() {
       </header>
 
       <nav className="dev__tabs">
-        {(['PARTIDA', 'MAPA', 'CARTAS', 'MISSOES', 'COLAPSO', 'ESTADO'] as Tab[]).map((item) => (
+        {(['PARTIDA', 'MAPA', 'CARTAS', 'MISSOES', 'COLAPSO', 'ESTADO', 'ARTE'] as Tab[]).map((item) => (
           <button
             key={item}
             type="button"
@@ -323,6 +325,47 @@ export function DevPanel() {
                 </li>
               ))}
             </ul>
+          </>
+        ) : null}
+
+        {tab === 'ARTE' ? (
+          <>
+            <h4>Assets que faltam ({ASSETS_NEEDED.length})</h4>
+            <p className="dev__note">
+              Tudo abaixo é PLACEHOLDER desenhado por código. Nenhum item é arte final.
+            </p>
+            <ul className="dev__list">
+              {ASSETS_NEEDED.map((asset) => (
+                <li key={asset.file}>
+                  <strong>ASSET_NEEDED:</strong> {asset.file}
+                  <br />
+                  {asset.purpose} — hoje: {asset.placeholder}
+                </li>
+              ))}
+            </ul>
+            <h4>Facções registradas</h4>
+            <ul className="dev__list">
+              {listFactions().map((faction) => (
+                <li key={faction.id as string}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 10,
+                      height: 10,
+                      borderRadius: 3,
+                      background: faction.color,
+                      marginRight: 6,
+                    }}
+                  />
+                  {faction.name} · {faction.color} · {faction.status}
+                </li>
+              ))}
+            </ul>
+            <p className="dev__note">
+              CONFLITO REGISTRADO: as referências visuais mostram TECNÓLOGOS no assento que o
+              texto oficial dá aos VAMPIROS. Os dois estão implementados; só os Vampiros entram
+              no roster oficial de seleção.
+            </p>
           </>
         ) : null}
 

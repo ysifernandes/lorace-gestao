@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../engine/setup';
 import { applyAction } from '../engine/gameEngine';
@@ -337,7 +338,7 @@ describe('Partida completa — simulação automatizada', () => {
   it('S01 · uma partida de 4 jogadores vai do início ao fim sem estado inválido', () => {
     const { state, report } = simulate({ players: 4, seed: 20260827 });
     // Diagnóstico impresso no relatório do teste — é o registro do que aconteceu.
-    console.log('S01', JSON.stringify(report));
+    writeFileSync('/tmp/sim.txt', `S01 ${JSON.stringify(report)}\n`, { flag: 'a' });
     expect(report.problems).toEqual([]);
     expect(validateState(state)).toEqual([]);
     expect(report.finished).toBe(true);
@@ -349,7 +350,7 @@ describe('Partida completa — simulação automatizada', () => {
   it('S02 · partidas de 2 a 6 jogadores terminam e nunca produzem estado inválido', { timeout: 30000 }, () => {
     for (const players of [2, 3, 5, 6]) {
       const { state, report } = simulate({ players, seed: 1000 + players });
-      console.log(`S02·${players}p`, JSON.stringify(report));
+      writeFileSync('/tmp/sim.txt', `S02-${players}p ${JSON.stringify(report)}\n`, { flag: 'a' });
       expect(report.problems).toEqual([]);
       expect(validateState(state)).toEqual([]);
       expect(report.finished).toBe(true);
