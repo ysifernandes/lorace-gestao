@@ -9,6 +9,8 @@
  * procedural) e é PLACEHOLDER — nenhum item aqui é arte final.
  */
 
+import { audioAssetsNeeded } from './audio/sfx.catalog';
+
 export interface AssetNeed {
   /** Nome de arquivo sugerido, dentro de `public/assets/`. */
   file: string;
@@ -76,14 +78,42 @@ export const ASSETS_NEEDED: AssetNeed[] = [
     placeholder: 'Sequência CSS de alerta → revelação',
   },
   {
-    file: 'audio/{trilha,sfx}/*.ogg',
-    purpose: 'Trilha e efeitos (dados, conquista, evento, vitória)',
+    file: 'audio/ambient/trilha-*.ogg',
+    purpose: 'Trilha de fundo por região e por momento da partida',
     reference: 'Direção de arte cinematográfica',
-    placeholder: 'Nenhum — o jogo está mudo',
+    placeholder: 'Nenhuma — não há música',
+  },
+  {
+    file: 'dice/{faccao}-dado.glb',
+    purpose: 'Dado 3D com material próprio de cada facção',
+    reference: 'Direção de arte: dados 3D por exército',
+    placeholder: 'Dado vetorial 2.5D com a cor de equipe na borda',
+  },
+  {
+    file: 'vfx/helicoptero-humanos.glb',
+    purpose: 'Helicóptero da sequência do Sequestro',
+    reference: 'Sequência oficial do Sequestro',
+    placeholder: 'Animação de holofote e extração em CSS',
   },
 ];
 
+/**
+ * Efeitos sonoros: hoje TODOS são sintetizados como placeholder pelo
+ * `AudioBus`. Cada linha aqui é um arquivo que ainda precisa ser criado.
+ */
+export const AUDIO_ASSETS_NEEDED: AssetNeed[] = audioAssetsNeeded().map((entry) => ({
+  file: entry.file,
+  purpose: entry.purpose,
+  reference: 'Infraestrutura de áudio (Etapa 2)',
+  placeholder: 'Som sintetizado por WebAudio, declaradamente provisório',
+}));
+
+/** Tudo que falta, incluindo áudio. */
+export function allAssetsNeeded(): AssetNeed[] {
+  return [...ASSETS_NEEDED, ...AUDIO_ASSETS_NEEDED];
+}
+
 /** Formato curto para relatório e painel DEV. */
 export function assetNeedLines(): string[] {
-  return ASSETS_NEEDED.map((a) => `ASSET_NEEDED: ${a.file} — ${a.purpose}`);
+  return allAssetsNeeded().map((a) => `ASSET_NEEDED: ${a.file} — ${a.purpose}`);
 }

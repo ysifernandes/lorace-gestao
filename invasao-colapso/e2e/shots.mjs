@@ -6,7 +6,7 @@ const page = await ctx.newPage();
 await page.goto('http://localhost:5199/', { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
-await page.locator('.home__actions .btn--primary').click();
+await page.locator('.menu-item', { hasText: 'Jogar local' }).click();
 await page.waitForSelector('.setup');
 await page.locator('.chooser .chip').nth(1).click();
 await page.locator('.setup__block-head .btn').click();

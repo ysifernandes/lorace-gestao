@@ -10,7 +10,7 @@ import { PHASE_LABELS } from '../game/turns/phases';
 import { territoriesOf } from '../game/map/territory';
 import { validateState } from '../game/engine/invariants';
 import type { CardDefinitionId, PlayerId, TerritoryId } from '../game/types/ids';
-import { ASSETS_NEEDED } from '../view/assetsNeeded';
+import { allAssetsNeeded } from '../view/assetsNeeded';
 import { listFactions } from '../game/factions/faction.registry';
 
 type Tab = 'PARTIDA' | 'MAPA' | 'CARTAS' | 'MISSOES' | 'COLAPSO' | 'ESTADO' | 'ARTE';
@@ -330,12 +330,12 @@ export function DevPanel() {
 
         {tab === 'ARTE' ? (
           <>
-            <h4>Assets que faltam ({ASSETS_NEEDED.length})</h4>
+            <h4>Assets que faltam ({allAssetsNeeded().length})</h4>
             <p className="dev__note">
               Tudo abaixo é PLACEHOLDER desenhado por código. Nenhum item é arte final.
             </p>
             <ul className="dev__list">
-              {ASSETS_NEEDED.map((asset) => (
+              {allAssetsNeeded().map((asset) => (
                 <li key={asset.file}>
                   <strong>ASSET_NEEDED:</strong> {asset.file}
                   <br />

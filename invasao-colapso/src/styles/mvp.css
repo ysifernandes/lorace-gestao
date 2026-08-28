@@ -2207,3 +2207,18 @@
     padding: 16px;
   }
 }
+
+/* --------------------------------- identidade ambiental das regiões */
+.board__motif {
+  opacity: 0.22;
+  pointer-events: none;
+}
+.board__motif--water {
+  opacity: 0.3;
+}
+.board__motif--crater {
+  opacity: 0.26;
+}
+.territory__marker {
+  pointer-events: none;
+}

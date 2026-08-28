@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { audio } from '../../view/audio/audioBus';
 import type { GameState } from '../../game/types/game.types';
 import { getCollapseEvent } from '../../game/collapse/collapseEngine';
 
@@ -27,6 +28,8 @@ export function CollapseOverlay({ state, onResolve }: CollapseOverlayProps) {
     if (!pending) return;
     setStage('ALERT');
     setCount(3);
+    // A sirene abre a sequência; o impacto marca a revelação do evento.
+    audio.play('collapse.siren');
     const toCount = window.setTimeout(() => setStage('COUNT'), 1100);
     return () => window.clearTimeout(toCount);
   }, [pending?.eventId]);
@@ -35,6 +38,7 @@ export function CollapseOverlay({ state, onResolve }: CollapseOverlayProps) {
     if (stage !== 'COUNT') return;
     if (count <= 0) {
       setStage('REVEAL');
+      audio.play('collapse.impact');
       return;
     }
     const timer = window.setTimeout(() => setCount((c) => c - 1), 620);

@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { audio } from '../../view/audio/audioBus';
 import type { GameState } from '../../game/types/game.types';
 import { getFaction } from '../../game/factions/faction.registry';
 import { effectiveMissionOf } from '../../game/missions/missionEngine';
@@ -19,6 +21,12 @@ const REASON_LABEL: Record<string, string> = {
 
 export function VictoryOverlay({ state, onNewGame, onHome }: VictoryOverlayProps) {
   const result = state.result;
+
+  // Fanfarra ao fim da partida. O hook vem antes de qualquer saída antecipada.
+  useEffect(() => {
+    if (result) audio.play('victory');
+  }, [result]);
+
   if (!result) return null;
   const winner = result.winnerId ? state.players[result.winnerId as string] : null;
   const faction = winner ? getFaction(winner.factionId) : null;

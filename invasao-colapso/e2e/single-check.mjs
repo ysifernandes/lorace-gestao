@@ -5,7 +5,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto('file:///home/user/lorace-gestao/invasao-colapso/dist-single/Invasao-Colapso.html', { waitUntil: 'load' });
 await page.waitForTimeout(600);
-await page.locator('.home__actions .btn--primary').click();
+await page.locator('.menu-item', { hasText: 'Jogar local' }).click();
 await page.waitForSelector('.setup');
 await page.locator('.setup__block-head .btn').click();
 await page.locator('.setup__footer .btn--primary').click();

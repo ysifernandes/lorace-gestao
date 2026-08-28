@@ -17,6 +17,7 @@ import { CAMERA_LEVELS, CAMERA_LABEL, CAMERA_SCALE, LEVEL_DETAIL, cameraLevelFor
 import type { CameraLevel } from '../../view/camera';
 import { armyLod } from '../../view/armyLod';
 import { unitSilhouette } from '../../view/factionArt';
+import { FACTION_MARKER, REGION_ART_BY_ID, markerPath, motifPath } from '../../view/regionArt';
 
 export type BoardMode = 'IDLE' | 'REINFORCE' | 'ATTACK' | 'SPECIAL' | 'MOVE' | 'CARD_TARGET';
 
@@ -152,13 +153,36 @@ export function GameBoard({
 
             {/* Massas de terra: a região existe como TERRENO, não como legenda. */}
             <g className="board__landmasses">
-              {REGION_SHAPES.map((region) => (
-                <g key={region.id} className="board__landmass" fill={region.color}>
-                  {region.blobs.map((blob, index) => (
-                    <circle key={index} cx={blob.x} cy={blob.y} r={blob.r} />
-                  ))}
-                </g>
-              ))}
+              {REGION_SHAPES.map((region) => {
+                const art = REGION_ART_BY_ID.get(region.id);
+                const xs = region.blobs.map((b) => b.x);
+                const ys = region.blobs.map((b) => b.y);
+                const left = Math.min(...xs) - 70;
+                const right = Math.max(...xs) + 70;
+                const bottom = Math.max(...ys) + 74;
+                const width = right - left;
+                return (
+                  <g key={region.id}>
+                    {/* Massa de terra: a região existe como TERRENO. */}
+                    <g className="board__landmass" fill={art?.ground ?? region.color}>
+                      {region.blobs.map((blob, index) => (
+                        <circle key={index} cx={blob.x} cy={blob.y} r={blob.r} />
+                      ))}
+                    </g>
+                    {/* Silhueta do relevo: montanha, cidade, ruína, água,
+                        floresta ou cratera — dá para reconhecer sem ler. */}
+                    {art && detail.regionName ? (
+                      <g
+                        className={`board__motif board__motif--${art.motif.toLowerCase()}`}
+                        transform={`translate(${left} ${bottom - 44}) scale(${width / 100} 1.1)`}
+                        fill={region.color}
+                      >
+                        <path d={motifPath(art.motif)} />
+                      </g>
+                    ) : null}
+                  </g>
+                );
+              })}
             </g>
 
             {detail.regionName &&
@@ -270,6 +294,22 @@ export function GameBoard({
                       </text>
                     </g>
                   )}
+                  {/* O mapa não depende só da cor: cada facção tem também um
+                      formato de marcador próprio, legível em tons de cinza. */}
+                  {faction ? (
+                    <g
+                      className="territory__marker"
+                      transform={`translate(${shape.center.x - 26} ${shape.center.y - 22}) scale(0.9)`}
+                      aria-hidden="true"
+                    >
+                      <circle r="10" fill="rgba(4,8,14,.82)" stroke={color} strokeWidth={1.6} />
+                      <path
+                        d={markerPath(FACTION_MARKER[faction.id as string] ?? 'DOT')}
+                        fill={color}
+                        transform="scale(0.72)"
+                      />
+                    </g>
+                  ) : null}
                   {detail.territoryName && (
                     <text className="territory__name" x={shape.center.x} y={shape.center.y - 18}>
                       {shape.name}

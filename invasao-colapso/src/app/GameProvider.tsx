@@ -19,6 +19,7 @@ import { WebSocketTransport } from '../net/transport';
 import type { TransportStatus } from '../net/transport';
 import type { DiceBroadcast, LobbyView } from '../net/protocol';
 import type { FactionId, PlayerId } from '../game/types/ids';
+import { audio } from '../view/audio/audioBus';
 
 export type Screen = 'HOME' | 'SETUP' | 'GAME' | 'ONLINE' | 'LOBBY' | 'HOWTO';
 export type GameMode = 'LOCAL' | 'TUTORIAL' | 'ONLINE';
@@ -143,6 +144,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     writeScreen(screen);
   }, [screen]);
+
+  // O navegador só deixa tocar som depois de um gesto do usuário. Destrava
+  // no primeiro toque/tecla e nunca mais precisa disso.
+  useEffect(() => {
+    const unlock = () => audio.unlock();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(
     () => () => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { planDiceRoll } from '../../view/diceRoll';
 import type { DieAnimation, DiceRollPlan } from '../../view/diceRoll';
 import type { BattleRound } from '../../game/types/game.types';
+import { audio } from '../../view/audio/audioBus';
 
 /**
  * ARENA DOS DADOS.
@@ -39,6 +40,25 @@ export function DiceArena({
       Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches),
     [],
   );
+
+  // A trilha sonora sai do MESMO plano da animação: cada dado que entra,
+  // quica e assenta tem seu som no instante exato em que isso é desenhado.
+  useEffect(() => {
+    if (reduced) return;
+    const steps: { id: 'dice.enter' | 'dice.impact' | 'dice.bounce' | 'dice.settle'; atMs: number }[] = [];
+    for (const die of [...plan.attacker, ...plan.defender]) {
+      steps.push({ id: 'dice.enter', atMs: die.enterDelayMs });
+      steps.push({ id: 'dice.impact', atMs: die.enterDelayMs + die.spinMs * 0.45 });
+      for (let bounce = 1; bounce <= die.bounces; bounce += 1) {
+        steps.push({ id: 'dice.bounce', atMs: die.enterDelayMs + die.spinMs * (0.55 + bounce * 0.12) });
+      }
+      steps.push({ id: 'dice.settle', atMs: die.settleAtMs });
+    }
+    for (const comparison of plan.comparisons) {
+      steps.push({ id: 'dice.impact', atMs: comparison.atMs });
+    }
+    audio.playSequence(steps);
+  }, [plan, reduced]);
 
   useEffect(() => {
     if (reduced) {
