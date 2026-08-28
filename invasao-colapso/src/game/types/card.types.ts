@@ -16,7 +16,9 @@ export type ActivationCondition =
   | { type: 'PHASE_IS'; phases: string[] }
   | { type: 'IS_CURRENT_PLAYER' }
   | { type: 'HAS_PENDING_ATTACK_AGAINST_OWNER' }
-  | { type: 'ENEMY_SOLDIERS_AVAILABLE'; min: number };
+  | { type: 'ENEMY_SOLDIERS_AVAILABLE'; min: number }
+  /** Nunca jogável. Usada pela carta virada do adversário. */
+  | { type: 'NEVER' };
 
 /**
  * AÇÃO DECLARATIVA DA CARTA.

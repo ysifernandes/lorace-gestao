@@ -3,6 +3,7 @@ import type { CardDefinitionId } from '../types/ids';
 import { SEQUESTRO_CARD } from './sequestro.card';
 import { NEUTRAL_CARDS } from './neutral.cards';
 import { SIGNATURE_CARDS } from './signature.cards';
+import { FACEDOWN_CARD } from './facedown.card';
 
 export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
   OPERACAO: 'Operação',
@@ -13,7 +14,10 @@ export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
 
 /** Registry de cartas: adicionar uma carta nova = registrar aqui. */
 const REGISTRY = new Map<string, CardDefinition>(
-  [SEQUESTRO_CARD, ...SIGNATURE_CARDS, ...NEUTRAL_CARDS].map((card) => [card.id as string, card]),
+  [SEQUESTRO_CARD, ...SIGNATURE_CARDS, ...NEUTRAL_CARDS, FACEDOWN_CARD].map((card) => [
+    card.id as string,
+    card,
+  ]),
 );
 
 export function registerCard(card: CardDefinition): void {

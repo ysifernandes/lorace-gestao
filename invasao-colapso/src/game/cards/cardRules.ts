@@ -49,6 +49,8 @@ function checkCondition(
         ? { allowed: true }
         : { allowed: false, reason: 'Não há soldados inimigos em território para capturar.' };
     }
+    case 'NEVER':
+      return { allowed: false, reason: 'Esta carta não é sua: você não pode vê-la nem usá-la.' };
     default:
       return { allowed: true };
   }
