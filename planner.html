@@ -144,6 +144,8 @@
   .round-btn:hover { transform: translateY(-1px); }
   .round-btn:focus-visible { outline: 2.5px solid var(--brand); outline-offset: 2px; }
   .round-btn svg { width: 20px; height: 20px; }
+  .only-m { display: none; }
+  @media (max-width: 860px) { .round-btn.only-m { display: grid; } }
   .badge { position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: var(--cherry); color: #fff; font: 500 11px/19px var(--f-mono); text-align: center; }
   .page { max-width: 1140px; margin: 0 auto; }
   .page[hidden] { display: none; }
@@ -902,6 +904,7 @@
   <main>
     <div class="topbar">
       <div class="mbrand"><div class="logo" aria-hidden="true"><svg viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 13C19 6 8 2 6 7s6 11 18 7"/><path d="M24 13c5-7 16-11 18-6s-6 11-18 7"/><path d="M22 15l-7 14M26 15l7 14"/><circle cx="24" cy="14" r="2.8" fill="currentColor"/></svg></div><div class="brand-name">Bloom</div></div>
+      <button class="round-btn only-m" id="btn-theme-m" aria-label="Tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg></button>
       <button class="round-btn" id="btn-bell" aria-label="Lembretes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge" id="bell-badge" hidden>0</span></button>
     </div>
     <section class="page" id="pg-hoje"></section>
@@ -3462,6 +3465,7 @@
     });
   });
 
+  $('#btn-theme-m').addEventListener('click', () => $('#btn-theme').click());
   $('#btn-settings').addEventListener('click', () => {
     modal({
       title: 'ajustes',
