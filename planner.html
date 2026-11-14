@@ -924,7 +924,7 @@
   @media (max-width: 420px) {
     .idea-add { grid-template-columns: minmax(0, 1fr); }
     .task-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .task-add .input[name=text], .task-add select, .task-add .btn { grid-column: 1 / -1; }
+    .task-add .mic-wrap, .task-add select, .task-add .btn { grid-column: 1 / -1; }
     .task-add > *, .idea-add > * { min-width: 0; }
   }
   @media (max-width: 360px) {
@@ -979,11 +979,25 @@
   .t-time { display: inline-block; font-family: var(--f-mono); font-size: 11.5px; color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); padding: 1px 7px; border-radius: 99px; margin-right: 7px; vertical-align: 1px; }
   .day-sep { border-top: 1.5px dashed var(--line); margin: 6px 0 2px; }
   .quick-add .qa-time { flex: 0 0 112px; }
+  .qa-hint { font-size: 12px; margin: 8px 0 0; }
   @media (max-width: 420px) {
     #quick-task { flex-wrap: wrap; }
-    #quick-task input[name=text] { flex: 1 1 100%; }
-    #quick-task .qa-time { flex: 1 1 auto; }
+    #quick-task .qa-time { flex: 1 1 0; min-width: 0; }
+    #quick-task .btn { flex: 0 0 auto; }
   }
+  /* ---------- Microfone ---------- */
+  .mic-wrap { position: relative; flex: 1; min-width: 0; display: block; }
+  .mic-wrap .input { width: 100%; padding-right: 46px; }
+  .mic-btn { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--brand); background: var(--accent-soft); }
+  .mic-wrap textarea ~ .mic-btn { top: 8px; transform: none; }
+  .mic-btn svg { width: 18px; height: 18px; }
+  .mic-btn:hover { background: var(--accent); }
+  .mic-btn:focus-visible { outline: 2px solid var(--brand); }
+  .mic-btn.on { background: #d61f45; color: #fff; animation: micpulse 1.2s ease-in-out infinite; }
+  @keyframes micpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(214,31,69,.45); } 50% { box-shadow: 0 0 0 8px rgba(214,31,69,0); } }
+  @media (prefers-reduced-motion: reduce) { .mic-btn.on { animation: none; } }
+  @media (max-width: 1080px) { .task-add .mic-wrap, .idea-add .mic-wrap { grid-column: 1 / -1; } }
+  @media (max-width: 420px) { #quick-task .mic-wrap { flex: 1 1 100%; } }
 </style>
 </head>
 <body>
@@ -1904,6 +1918,122 @@
     on(root, 'click', '[data-new-habit]', () => habitModal());
   }
 
+  /* Entende data e hora escritas ou faladas em português:
+     "amanhã às 15h reunião", "sexta 9 da manhã academia", "dia 20 pagar boleto", "20/11 às 14:30" */
+  const WEEKDAYS = { domingo: 0, segunda: 1, 'terça': 2, terca: 2, quarta: 3, quinta: 4, sexta: 5, 'sábado': 6, sabado: 6 };
+  const NUM_WORDS = { uma: 1, um: 1, duas: 2, dois: 2, 'três': 3, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12 };
+  function parsePT(raw) {
+    let txt = ' ' + String(raw).replace(/[,.;!?]+(\s|$)/g, ' $1').replace(/\s+/g, ' ').trim() + ' ';
+    let due = '', time = '';
+    const t = today();
+    const take = (re, fn) => { const m = txt.match(re); if (!m) return false; if (fn(m) === false) return false; txt = txt.replace(m[0], ' '); return true; };
+    take(/\s(?:para |pra )?depois de amanh[ãa]\s/i, () => { due = addDays(t, 2); })
+      || take(/\s(?:para |pra )?amanh[ãa]\s/i, () => { due = addDays(t, 1); })
+      || take(/\s(?:para |pra )?hoje\s/i, () => { due = t; });
+    if (!due) take(/\s(?:na |no |nesta |neste |esta |este |pr[óo]xim[ao] )?(domingo|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado)(?:[- ]feira)?(?: que vem)?\s/i, (m) => {
+      const target = WEEKDAYS[m[1].toLowerCase()];
+      let diff = (target - dow(t) + 7) % 7;
+      if (diff === 0) diff = 7;
+      due = addDays(t, diff);
+    });
+    if (!due) take(/\s(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s/, (m) => {
+      const d = Number(m[1]), mo = Number(m[2]);
+      if (d < 1 || d > 31 || mo < 1 || mo > 12) return false;
+      let y = m[3] ? Number(m[3].length === 2 ? '20' + m[3] : m[3]) : new Date().getFullYear();
+      let cand = `${y}-${pad(mo)}-${pad(d)}`;
+      if (!m[3] && cand < t) cand = `${y + 1}-${pad(mo)}-${pad(d)}`;
+      due = cand;
+    });
+    if (!due) take(/\s(?:no |para o |pro )?dia (\d{1,2})\s/i, (m) => {
+      const d = Number(m[1]);
+      if (d < 1 || d > 31) return false;
+      const now = new Date();
+      let y = now.getFullYear(), mo = now.getMonth() + 1;
+      if (d < now.getDate()) { mo += 1; if (mo > 12) { mo = 1; y += 1; } }
+      due = `${y}-${pad(mo)}-${pad(d)}`;
+    });
+    take(/\s(?:[àa]o |[àa] |ao )?meio[- ]dia(?: e meia)?\s/i, (m) => { time = /meia/i.test(m[0]) ? '12:30' : '12:00'; })
+      || take(/\s(?:[àa]o |[àa] |ao )?meia[- ]noite\s/i, () => { time = '00:00'; });
+    if (!time) {
+      const re = /\s((?:[àa]s?|a partir das)\s+)?(\d{1,2}|uma|um|duas|dois|tr[êe]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)(?:(:|h)(\d{2}))?\s*(horas?|h(?![a-z]))?(\s+e\s+meia)?(\s+da\s+(?:manh[ãa]|tarde|noite))?(?=\s)/gi;
+      let m;
+      while ((m = re.exec(txt))) {
+        const isNum = /^\d+$/.test(m[2]);
+        const hasCue = m[1] || m[3] || m[5] || m[7] || m[6];
+        if (!hasCue || (!isNum && !m[1])) continue;
+        let h = isNum ? Number(m[2]) : NUM_WORDS[m[2].toLowerCase()];
+        let mi = m[4] ? Number(m[4]) : m[6] ? 30 : 0;
+        if (m[7] && /tarde|noite/i.test(m[7]) && h < 12) h += 12;
+        if (h > 23 || mi > 59) continue;
+        time = `${pad(h)}:${pad(mi)}`;
+        txt = txt.slice(0, m.index) + ' ' + txt.slice(m.index + m[0].length);
+        break;
+      }
+    }
+    let clean = txt.replace(/\s+/g, ' ').trim()
+      .replace(/^(?:e|às|as|para|pra|no|na|de)\s+/i, '')
+      .replace(/\s+(?:e|às|as|para|pra|no|na|dia|de)$/i, '')
+      .trim();
+    if (clean) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    return { text: clean, due, time };
+  }
+  function whenLabel(due, time) {
+    const t = today();
+    const d = !due ? '' : due === t ? 'hoje' : due === addDays(t, 1) ? 'amanhã' : `${DOW[dow(due)]} ${fmtShort(due)}`;
+    return [d, time ? `às ${time}` : ''].filter(Boolean).join(' ');
+  }
+
+  /* Falar em vez de digitar: reconhecimento de voz do próprio aparelho */
+  const Voice = {
+    rec: null, btn: null,
+    available: () => !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    stop() { try { this.rec && this.rec.stop(); } catch (e) { /* já parou */ } },
+    start(btn) {
+      if (this.rec) { this.stop(); return; }
+      const field = btn.parentElement.querySelector('input, textarea');
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { toast('Seu aparelho não liberou o microfone do Bloom aqui. Toque no campo e use o 🎤 do teclado do iPhone.'); field && field.focus(); return; }
+      const rec = new SR();
+      rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+      const before = field.value.trim();
+      let finalText = '';
+      this.rec = rec; this.btn = btn;
+      btn.classList.add('on'); btn.setAttribute('aria-label', 'Parar de ouvir');
+      field.placeholder = 'ouvindo… pode falar';
+      rec.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+        }
+        field.value = [before, (finalText + ' ' + interim).trim()].filter(Boolean).join(' ');
+      };
+      rec.onerror = (e) => {
+        const c = e.error;
+        toast(c === 'not-allowed' || c === 'service-not-allowed' ? 'O microfone não foi liberado. No iPhone: Ajustes → Safari → Microfone, ou use o 🎤 do teclado.' : c === 'no-speech' ? 'Não ouvi nada. Toque no 🎤 e fale de novo.' : c === 'network' ? 'O reconhecimento de voz precisa de internet. Tente de novo.' : 'Não consegui ouvir agora. Use o 🎤 do teclado do iPhone.');
+      };
+      rec.onend = () => {
+        btn.classList.remove('on'); btn.setAttribute('aria-label', 'Falar em vez de digitar');
+        field.placeholder = field.getAttribute('data-ph') || field.placeholder.replace('ouvindo… pode falar', '');
+        this.rec = null; this.btn = null;
+        if (finalText.trim()) {
+          field.focus();
+          const form = field.closest('form');
+          if (form && (form.id === 'quick-task' || form.id === 'task-add')) {
+            const ps = parsePT(field.value);
+            if (ps.due || ps.time) toast(`Entendi: “${ps.text}” · ${whenLabel(ps.due, ps.time)}. Toque em Adicionar.`);
+          }
+        }
+      };
+      if (!field.getAttribute('data-ph')) field.setAttribute('data-ph', field.getAttribute('placeholder') || '');
+      try { rec.start(); } catch (e) { btn.classList.remove('on'); this.rec = null; toast('Não consegui ligar o microfone. Use o 🎤 do teclado do iPhone.'); }
+    },
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mic]');
+    if (b) { e.preventDefault(); Voice.start(b); }
+  });
+
   /* Notas rápidas */
   let qnAll = false;
   function quickNotesCard() {
@@ -1913,7 +2043,7 @@
     return `<div class="card qnotes taped t-butter">
       <div class="card-head"><h3>notas rápidas</h3><span class="muted">${notes.length ? notes.length + (notes.length === 1 ? ' nota' : ' notas') : 'ideias soltas, lembretes, qualquer coisa'}</span></div>
       <form class="qn-add" id="qn-add">
-        <textarea class="input" name="text" id="qn-text" rows="2" placeholder="anota aqui antes que a ideia fuja…" aria-label="Nova nota rápida"></textarea>
+        <div class="mic-wrap"><textarea class="input" name="text" id="qn-text" rows="2" placeholder="anota aqui antes que a ideia fuja…" aria-label="Nova nota rápida"></textarea><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
         <button class="btn" type="submit">Anotar</button>
       </form>
       ${shown.length ? `<div class="qn-list">${shown.map((n, i) => `<div class="qn" style="--qc:${['#fdf1b8', '#fde2ec', '#e3f0dc', '#e4ecf9', '#f1e4f7'][i % 5]}">
@@ -2025,10 +2155,11 @@
               ${untimed.map((it) => taskRow(it, true, t)).join('')}
               ${dayAll.length ? '' : '<div class="empty"><span class="hand">dia livre ♡</span>adicione o que vai fazer hoje, com ou sem horário</div>'}
               <form class="quick-add" id="quick-task">
-                <input class="input" name="text" placeholder="adicionar ao meu dia…" aria-label="Novo item para hoje" autocomplete="off">
+                <div class="mic-wrap"><input class="input" name="text" placeholder="fale ou escreva o que fazer…" aria-label="Novo item para hoje" autocomplete="off"><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
                 <input class="input qa-time" type="time" name="time" aria-label="Horário (opcional)" title="Horário (opcional)">
                 <button class="btn" type="submit">Adicionar</button>
               </form>
+              <p class="muted qa-hint">🎤 Dica: fale “amanhã às 15h reunião com a cliente” e o Bloom já marca a data e a hora.</p>
             </div>
           </div>
           <div class="stack">
@@ -2057,12 +2188,14 @@
     on(el, 'click', '[data-go]', (e, b) => go(b.dataset.go));
     on(el, 'submit', '#quick-task', (e, f) => {
       e.preventDefault();
-      const text = f.elements.text.value.trim();
-      if (!text) return;
-      const time = f.elements.time ? f.elements.time.value : '';
-      S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text, done: false, doneDates: {}, prio: 'normal', due: today(), time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
+      const raw = f.elements.text.value.trim();
+      if (!raw) return;
+      const ps = parsePT(raw);
+      const time = (f.elements.time && f.elements.time.value) || ps.time;
+      const due = ps.due || today();
+      S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text: ps.text || raw, done: false, doneDates: {}, prio: 'normal', due, time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
       save(); render();
-      if (time) toast(`Marcado para ${time}, com lembrete na hora 🔔`);
+      toast(due !== today() ? `Agendado: ${whenLabel(due, time)} ✓` : time ? `Marcado para ${time}, com lembrete na hora 🔔` : 'Adicionado ♥');
       setTimeout(() => $('#quick-task input', el)?.focus(), 0);
     });
     bindTaskActions(el);
@@ -2166,7 +2299,7 @@
         </div>
         <div class="card taped t-left">
           <form class="task-add" id="task-add">
-            <input class="input" name="text" placeholder="o que você precisa fazer?" aria-label="Nova tarefa" autocomplete="off">
+            <div class="mic-wrap"><input class="input" name="text" placeholder="o que você precisa fazer?" aria-label="Nova tarefa" autocomplete="off"><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
             <select class="input" name="prio" aria-label="Prioridade"><option value="normal">Prioridade normal</option><option value="alta">Prioridade alta</option></select>
             <input class="input" type="date" name="due" aria-label="Para quando">
             <input class="input" type="time" name="time" aria-label="Horário (opcional)" title="Horário (opcional)">
@@ -2189,14 +2322,15 @@
     on(el, 'click', '[data-filter]', (e, b) => { S.ui.taskFilter = b.dataset.filter; save(); render(); });
     on(el, 'submit', '#task-add', (e, f) => {
       e.preventDefault();
-      const text = f.elements.text.value.trim();
-      if (!text) { toast('Escreva a tarefa primeiro.'); return; }
+      const raw = f.elements.text.value.trim();
+      if (!raw) { toast('Escreva ou fale a tarefa primeiro.'); return; }
+      const ps = parsePT(raw);
       const listId = S.ui.taskList === 'all' ? S.tasks.lists[0]?.id : S.ui.taskList;
-      const time = f.elements.time.value;
-      const due = f.elements.due.value || (time ? today() : '');
-      S.tasks.items.push({ id: uid(), listId, text, done: false, doneDates: {}, prio: f.elements.prio.value, due, time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
+      const time = f.elements.time.value || ps.time;
+      const due = f.elements.due.value || ps.due || (time ? today() : '');
+      S.tasks.items.push({ id: uid(), listId, text: ps.text || raw, done: false, doneDates: {}, prio: f.elements.prio.value, due, time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
       save(); render();
-      if (time) toast(`Marcado: ${due === today() ? 'hoje' : fmtShort(due)} às ${time}, com lembrete 🔔`);
+      if (due || time) toast(`Marcado: ${whenLabel(due, time)}${time ? ', com lembrete 🔔' : ''}`);
       setTimeout(() => $('#task-add input[name=text]', el)?.focus(), 0);
     });
     on(el, 'click', '[data-clear-done]', () => {
@@ -3393,7 +3527,7 @@
         const ideas = posts.filter((p) => p.status === 'ideia');
         body = `<div class="card taped t-left">
             <form class="idea-add" id="idea-add">
-              <input class="input" name="title" placeholder="anote a ideia antes que ela fuja…" aria-label="Nova ideia" autocomplete="off">
+              <div class="mic-wrap"><input class="input" name="title" placeholder="anote a ideia antes que ela fuja…" aria-label="Nova ideia" autocomplete="off"><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
               <select class="input" name="folderId" aria-label="Pasta">${folderOptions().map((o) => `<option value="${o.value}" ${o.value === (f !== 'all' ? f : (B().folders[0]?.id || '')) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
               <select class="input" name="platform" aria-label="Rede">${Object.entries(PLATFORMS).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}</select>
               <select class="input" name="format" aria-label="Formato">${Object.entries(FORMATS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
