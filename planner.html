@@ -669,7 +669,7 @@
     <div class="spacer"></div>
     <button class="nav-btn" id="btn-theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>Tema</button>
     <button class="nav-btn" id="btn-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Ajustes</button>
-    <div class="side-note">Tudo fica salvo neste aparelho. Use “Ajustes” para fazer backup.</div>
+    <div class="side-note" id="sync-note">Tudo fica salvo neste aparelho. Use “Ajustes” para fazer backup.</div>
   </nav>
 
   <main>
@@ -892,14 +892,101 @@
 
   let saveTimer;
   function save() {
+    S._t = Date.now();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(S));
       } catch (e) {
-        toast('Não foi possível salvar — o espaço pode estar cheio (muitas fotos?).');
+        if (!Cloud.on) toast('Não foi possível salvar — o espaço pode estar cheio (muitas fotos?).');
       }
     }, 120);
+    Cloud.schedule();
+  }
+
+  /* ---------- Nuvem (quando aberto no claude.ai) ----------
+     Cada pessoa tem seus dados em data/users/<id>/…, privados.
+     O estado é dividido em 3 documentos para ficar abaixo do limite de tamanho. */
+  const Cloud = {
+    on: false, db: null, uid: null, assets: null, downloads: null,
+    last: {}, timer: null, chain: Promise.resolve(),
+    split(st) {
+      const { maps, mapSel, vision, ...core } = st;
+      return { core: { body: core }, maps: { body: { maps, mapSel } }, vision: { body: { vision } } };
+    },
+    ref(name) { return this.db.doc(`data/users/${this.uid}/${name}`); },
+    schedule() {
+      if (!this.on) return;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.flush(), 900);
+    },
+    flush() {
+      if (!this.on) return;
+      const parts = this.split(S);
+      const t = S._t || Date.now();
+      for (const [name, doc] of Object.entries(parts)) {
+        const json = JSON.stringify(doc.body);
+        if (this.last[name] === json) continue;
+        if (json.length > 250000) {
+          if (!this.warned) { this.warned = true; toast(name === 'vision' ? 'O mural ficou grande demais para a nuvem. Remova algumas fotos.' : 'Dados grandes demais para salvar na nuvem.'); }
+          continue;
+        }
+        this.last[name] = json;
+        this.chain = this.chain.then(() => this.ref(name).set({ t, json })).catch((e) => {
+          this.last[name] = null;
+          if (e && e.code === 'quota_exceeded') toast('O espaço na nuvem acabou. Remova algumas fotos do mural.');
+          else setSync('offline');
+        }).then(() => { if (this.on) setSync('ok'); });
+      }
+    },
+    async start() {
+      if (!window.claude || typeof window.claude.use !== 'function') return;
+      try {
+        const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+        if (!db || !user) return;
+        const uid = await user.id();
+        if (!uid) return;
+        this.db = db; this.uid = uid;
+        setSync('loading');
+        const snaps = await Promise.all(['core', 'maps', 'vision'].map((n) => this.ref(n).get()));
+        const docs = snaps.map((sn) => (sn.exists ? sn.data() : null));
+        if (docs.every((d) => !d)) {
+          // primeira vez na nuvem: envia o que já existe neste aparelho
+          this.on = true;
+          if (!S._t) S._t = Date.now();
+          this.flush();
+        } else {
+          const cloudT = Math.max(...docs.map((d) => (d && d.t) || 0));
+          const merged = {};
+          docs.forEach((d) => { if (d && d.json) Object.assign(merged, JSON.parse(d.json)); });
+          if ((S._t || 0) > cloudT + 1000 && loadState()) {
+            this.on = true; this.flush(); // este aparelho tem alterações mais novas
+          } else {
+            S = migrate(Object.assign(seed(), merged));
+            S._t = cloudT;
+            if (!S.maps.find((m) => m.id === S.mapSel)) S.mapSel = S.maps[0].id;
+            const parts = this.split(S);
+            for (const n of Object.keys(parts)) this.last[n] = JSON.stringify(parts[n].body);
+            this.on = true;
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {}
+            applyTheme(); rerender();
+          }
+        }
+        setSync('ok');
+        window.claude.use('assets').then((a) => { this.assets = a; }).catch(() => {});
+      } catch (e) {
+        setSync('offline');
+      }
+    },
+  };
+  function setSync(state) {
+    const el = document.getElementById('sync-note');
+    if (!el) return;
+    el.textContent = {
+      loading: 'Carregando seus dados da nuvem…',
+      ok: 'Salvo na nuvem ✓ Seus dados ficam com a sua conta.',
+      offline: 'Sem conexão com a nuvem agora. As alterações ficam neste aparelho.',
+    }[state] || el.textContent;
   }
   window.addEventListener('beforeunload', () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} });
 
@@ -933,13 +1020,20 @@
     pessego: ['#e8875f', '#ffc0a3'], menta: ['#6db38a', '#b5ecc9'], oceano: ['#6f95dc', '#b9d0ff'],
   };
   const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  function getPref(key, def) { try { return localStorage.getItem(key) || def; } catch (e) { return def; } }
+  function getPref(key, def) {
+    const k = key === 'lorace_planner_palette' ? 'palette' : key === 'lorace_planner_theme' ? 'mode' : null;
+    if (k && S && S.ui && S.ui[k]) return S.ui[k];
+    try { return localStorage.getItem(key) || def; } catch (e) { return def; }
+  }
+  const hostTheme = document.documentElement.getAttribute('data-theme');
   function applyTheme(palette, mode) {
     palette = PALETTES[palette] ? palette : (PALETTES[getPref('lorace_planner_palette', 'lorace')] ? getPref('lorace_planner_palette', 'lorace') : 'lorace');
     mode = mode || getPref('lorace_planner_theme', 'auto');
     const root = document.documentElement;
-    const dark = mode === 'dark' || (mode === 'auto' && darkMQ && darkMQ.matches);
-    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    const autoDark = hostTheme ? hostTheme === 'dark' : !!(darkMQ && darkMQ.matches);
+    const dark = mode === 'dark' || (mode === 'auto' && autoDark);
+    if (mode === 'auto') { if (hostTheme) root.setAttribute('data-theme', hostTheme); else root.removeAttribute('data-theme'); }
+    else root.setAttribute('data-theme', mode);
     const vars = PALETTES[palette][dark ? 'dark' : 'light'];
     for (const k of VARS) root.style.setProperty('--' + k, vars[k]);
     root.style.setProperty('--brand-2', BRAND2[palette][dark ? 1 : 0]);
@@ -1656,7 +1750,13 @@
             const c = document.createElement('canvas');
             c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
             c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-            resolve({ src: c.toDataURL('image/jpeg', 0.8), ratio: img.height / img.width });
+            const ratio = img.height / img.width;
+            const dataUrl = () => resolve({ src: c.toDataURL('image/jpeg', 0.8), ratio });
+            if (!Cloud.assets || !c.toBlob) return dataUrl();
+            c.toBlob((blob) => {
+              if (!blob) return dataUrl();
+              Cloud.assets.upload(blob).then((r) => resolve({ src: r.url, ratio })).catch(dataUrl);
+            }, 'image/jpeg', 0.85);
           };
           img.onerror = reject;
           img.src = reader.result;
@@ -2245,6 +2345,7 @@
       onSave: (v) => {
         saved = true;
         try { localStorage.setItem('lorace_planner_palette', v.palette); localStorage.setItem('lorace_planner_theme', v.mode); } catch (e) {}
+        S.ui.palette = v.palette; S.ui.mode = v.mode; save();
         applyTheme(v.palette, v.mode);
         toast(`Tema ${PALETTES[v.palette].name} aplicado ✨`);
       },
@@ -2264,6 +2365,14 @@
       onOpen: (form) => {
         $('#bk-export', form).addEventListener('click', () => {
           const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+          const filename = `lorace-planner-backup-${today()}.json`;
+          if (window.claude && window.claude.use) {
+            window.claude.use('downloads').then((d) => {
+              if (!d) { toast('Não é possível baixar arquivos aqui.'); return; }
+              d.save({ filename, data: blob }).then(() => toast('Backup salvo.')).catch(() => {});
+            });
+            return;
+          }
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
           a.download = `lorace-planner-backup-${today()}.json`;
@@ -2293,7 +2402,7 @@
       confirmBox('Restaurar backup?', 'Tudo o que está no planner agora será substituído pelo conteúdo do backup.', () => {
         S = migrate(data);
         if (!S.maps.find((m) => m.id === S.mapSel)) S.mapSel = S.maps[0].id;
-        save(); location.reload();
+        save(); Cloud.flush(); applyTheme(); go(current); toast('Backup restaurado.');
       }, 'Restaurar');
     };
     reader.readAsText(f);
@@ -2303,6 +2412,8 @@
      Start
      ========================================================= */
   go((location.hash || '#hoje').slice(1));
+  window.addEventListener('hashchange', () => { const p = location.hash.slice(1); if (p && p !== current && PAGES[p]) go(p); });
+  Cloud.start();
   // re-render "Hoje" when the day changes or the tab becomes visible again
   let lastDay = today();
   document.addEventListener('visibilitychange', () => {
