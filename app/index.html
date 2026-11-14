@@ -892,6 +892,22 @@
   .auth-card h2 { font-size: 40px; color: var(--brand); margin-bottom: 4px; }
   .auth-card > p.muted { margin: 0 0 18px; }
   .auth-msg { min-height: 20px; font-size: 13px; color: var(--ink-soft); margin: 10px 0 4px; text-align: center; }
+  /* ---------- Notas rápidas ---------- */
+  .qn-add { display: flex; gap: 8px; align-items: flex-end; }
+  .qn-add .input { flex: 1; min-width: 0; resize: none; min-height: 46px; line-height: 1.4; }
+  .qn-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+  .qn { background: var(--qc); border-radius: 4px 4px 4px 14px; padding: 12px 12px 8px; box-shadow: 0 8px 14px -10px rgba(59,35,38,.55); display: flex; flex-direction: column; gap: 6px; min-width: 0; color: #3b2326; }
+  .qn:nth-child(odd) { transform: rotate(-1deg); }
+  .qn:nth-child(even) { transform: rotate(.8deg); }
+  .qn p { margin: 0; font-family: var(--f-hand); font-size: 21px; line-height: 1.15; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; flex: 1; }
+  .qn p:focus-visible { outline: 2px solid var(--brand); }
+  .qn-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-family: var(--f-mono); font-size: 10px; color: rgba(59,35,38,.6); }
+  .qn-acts { display: flex; }
+  .qn-acts .icon-btn { width: 26px; height: 26px; font-size: 13px; color: rgba(59,35,38,.7); }
+  .qn-acts .icon-btn:hover { background: rgba(255,255,255,.6); }
+  :root[data-style="clean"] .qn { border-radius: 10px; transform: none; box-shadow: none; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+  :root[data-style="clean"] .qn p { font-size: 14.5px; line-height: 1.45; }
+  :root[data-style="clean"] .qn-foot, :root[data-style="clean"] .qn-acts .icon-btn { color: var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -1160,6 +1176,7 @@
       mood: {},
       notified: {},
       snoozes: [],
+      notes: [],
       vision: {
         title: `Meu ${nextYear}`,
         bg: 'cortica',
@@ -1202,6 +1219,7 @@
     });
     s.notified = s.notified || {};
     s.snoozes = s.snoozes || [];
+    s.notes = Array.isArray(s.notes) ? s.notes : [];
     if (!s.biz || typeof s.biz !== 'object') s.biz = bizSeed();
     s.biz.folders = s.biz.folders || []; s.biz.posts = s.biz.posts || []; s.biz.goals = s.biz.goals || [];
     if (!s.tasks.lists.find((l) => l.id === 'l-negocio')) s.tasks.lists.splice(1, 0, { id: 'l-negocio', name: 'Negócio', color: '#c2185b' });
@@ -1745,6 +1763,76 @@
     on(root, 'click', '[data-new-habit]', () => habitModal());
   }
 
+  /* Notas rápidas */
+  let qnAll = false;
+  function quickNotesCard() {
+    const notes = [...S.notes].sort((a, b) => b.at - a.at);
+    const shown = qnAll ? notes : notes.slice(0, 6);
+    const when = (ms) => { const d = new Date(ms); const day = iso(d); return (day === today() ? 'hoje' : day === addDays(today(), -1) ? 'ontem' : fmtShort(day)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+    return `<div class="card qnotes taped t-butter">
+      <div class="card-head"><h3>notas rápidas</h3><span class="muted">${notes.length ? notes.length + (notes.length === 1 ? ' nota' : ' notas') : 'ideias soltas, lembretes, qualquer coisa'}</span></div>
+      <form class="qn-add" id="qn-add">
+        <textarea class="input" name="text" id="qn-text" rows="2" placeholder="anota aqui antes que a ideia fuja…" aria-label="Nova nota rápida"></textarea>
+        <button class="btn" type="submit">Anotar</button>
+      </form>
+      ${shown.length ? `<div class="qn-list">${shown.map((n, i) => `<div class="qn" style="--qc:${['#fdf1b8', '#fde2ec', '#e3f0dc', '#e4ecf9', '#f1e4f7'][i % 5]}">
+        <p data-qn-edit="${n.id}" role="button" tabindex="0" title="Toque para editar">${esc(n.text)}</p>
+        <div class="qn-foot"><span>${when(n.at)}</span><span class="qn-acts">
+          <button class="icon-btn" data-qn-idea="${n.id}" aria-label="Virar ideia de conteúdo" title="Virar ideia de conteúdo">💡</button>
+          <button class="icon-btn" data-qn-task="${n.id}" aria-label="Virar tarefa" title="Virar tarefa">✅</button>
+          <button class="icon-btn" data-qn-del="${n.id}" aria-label="Apagar nota" title="Apagar">${ICON.x}</button>
+        </span></div>
+      </div>`).join('')}</div>
+      ${notes.length > 6 ? `<button class="btn sm ghost" data-qn-all style="margin-top:10px">${qnAll ? 'mostrar menos' : `ver todas (${notes.length})`}</button>` : ''}` : ''}
+      <p class="muted" style="font-size:12px;margin:10px 0 0">💡 vira ideia de conteúdo · ✅ vira tarefa de hoje</p>
+    </div>`;
+  }
+  function bindQuickNotes(root) {
+    const add = () => {
+      const ta = $('#qn-text', root);
+      const text = ta ? ta.value.trim() : '';
+      if (!text) { toast('Escreva a nota primeiro.'); return; }
+      S.notes.push({ id: uid(), text, at: Date.now() });
+      save(); rerender();
+      setTimeout(() => $('#qn-text', root)?.focus(), 0);
+    };
+    on(root, 'submit', '#qn-add', (e) => { e.preventDefault(); add(); });
+    root.addEventListener('keydown', (e) => {
+      if (e.target.id === 'qn-text' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); add(); }
+      const ed = e.target.closest && e.target.closest('[data-qn-edit]');
+      if (ed && e.key === 'Enter') { e.preventDefault(); editNote(ed.dataset.qnEdit); }
+    });
+    const take = (id) => { const n = S.notes.find((x) => x.id === id); S.notes = S.notes.filter((x) => x.id !== id); return n; };
+    on(root, 'click', '[data-qn-del]', (e, b) => {
+      const n = take(b.dataset.qnDel); save(); rerender();
+      toast('Nota apagada.');
+      if (n) { clearTimeout(bindQuickNotes._u); bindQuickNotes._last = n; }
+    });
+    on(root, 'click', '[data-qn-idea]', (e, b) => {
+      const n = take(b.dataset.qnIdea); if (!n) return;
+      const first = n.text.split('\n')[0];
+      S.biz.posts.push({ id: uid(), title: first.length > 80 ? first.slice(0, 77) + '…' : first, folderId: S.biz.folders[0]?.id || '', platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: n.text, checklist: [], createdAt: today() });
+      save(); rerender(); toast('Virou ideia de conteúdo 💡 (Conteúdo → Ideias)');
+    });
+    on(root, 'click', '[data-qn-task]', (e, b) => {
+      const n = take(b.dataset.qnTask); if (!n) return;
+      S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text: n.text.split('\n')[0].slice(0, 140), done: false, prio: 'normal', due: today(), notes: n.text.includes('\n') ? n.text : '', remind: '' });
+      save(); rerender(); toast('Virou tarefa de hoje ✅');
+    });
+    on(root, 'click', '[data-qn-edit]', (e, b) => editNote(b.dataset.qnEdit));
+    on(root, 'click', '[data-qn-all]', () => { qnAll = !qnAll; rerender(); });
+  }
+  function editNote(id) {
+    const n = S.notes.find((x) => x.id === id);
+    if (!n) return;
+    modal({
+      title: 'editar nota',
+      fields: [{ name: 'text', label: 'Nota', type: 'textarea', value: n.text, required: true, rows: 5 }],
+      onSave: (v) => { n.text = v.text.trim(); save(); rerender(); },
+      onDelete: () => { S.notes = S.notes.filter((x) => x.id !== id); save(); rerender(); toast('Nota apagada.'); },
+    });
+  }
+
   /* =========================================================
      HOJE
      ========================================================= */
@@ -1784,6 +1872,7 @@
                 ${MOODS.map(([k, e, l]) => `<button class="mood ${S.mood[t] === k ? 'on' : ''}" data-mood="${k}" aria-pressed="${S.mood[t] === k}"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}
               </div>
             </div>
+            ${quickNotesCard()}
             ${bizTodayCard()}
             <div class="card">
               ${CLIP}
@@ -1836,6 +1925,7 @@
     bindTaskActions(el);
     bindHabitActions(el);
     bindPostActions(el);
+    bindQuickNotes(el);
     return { render };
   })();
 
