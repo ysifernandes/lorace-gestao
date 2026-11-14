@@ -647,6 +647,109 @@
     .vb-wrap { border-width: 5px; }
     .task-meta { max-width: 42%; }
   }
+  /* ---------- Negócio ---------- */
+  .nav-label { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: rgba(253,231,241,.45); padding: 12px 12px 4px; }
+  .pcard { position: relative; background: var(--surface); border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 16px -12px rgba(59,35,38,.65); border-left: 4px solid var(--c); cursor: pointer; transition: transform .12s ease; }
+  .pcard:hover { transform: translateY(-1px); }
+  .pcard:focus-visible { outline: 2.5px solid var(--brand); }
+  .pc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .pc-plat { font-size: 16px; line-height: 1; }
+  .pc-ex { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed var(--line); padding: 0 6px; border-radius: 99px; margin-left: auto; }
+  .pc-title { font-weight: 600; line-height: 1.3; overflow-wrap: break-word; }
+  .pc-meta { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-soft); margin-top: 3px; }
+  .pc-score { display: inline-flex; gap: 6px; align-items: center; margin-top: 7px; font-size: 11.5px; font-weight: 600; color: color-mix(in srgb, var(--c) 80%, black); background: color-mix(in srgb, var(--c) 14%, white); padding: 2px 9px; border-radius: 99px; }
+  .pc-score b { font-family: var(--f-mono); font-weight: 500; }
+  .pc-move { display: flex; justify-content: flex-end; gap: 2px; margin-top: 4px; }
+  .cont-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-h { font-family: var(--f-mono); font-size: 10px; text-transform: uppercase; color: var(--ink-soft); text-align: center; padding: 2px 0 6px; }
+  .cal-cell { min-height: 106px; background: var(--surface-2); border-radius: 8px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cal-cell.out { opacity: .45; }
+  .cal-cell.today .cal-dn { color: var(--brand); font-weight: 600; }
+  .cal-cell.sel { box-shadow: inset 0 0 0 2px var(--brand); background: var(--accent-soft); }
+  .cal-cell.over { background: var(--accent); }
+  .cal-dn { font-family: var(--f-mono); font-size: 11.5px; }
+  .cal-chip { display: flex; gap: 4px; align-items: center; font-size: 11.5px; background: var(--surface); border-left: 3px solid var(--c); border-radius: 4px; padding: 2px 5px; min-width: 0; cursor: grab; }
+  .cal-chip .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .cal-chip.pub { opacity: .6; }
+  .cal-more { font-family: var(--f-mono); font-size: 10px; color: var(--ink-soft); }
+  .day-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .kanban { display: grid; grid-template-columns: repeat(6, minmax(230px, 1fr)); gap: 14px; overflow-x: auto; padding: 4px 2px 12px; }
+  .kcol { background: color-mix(in srgb, var(--surface) 72%, transparent); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-height: 220px; }
+  .kcol.over { outline: 2.5px dashed var(--brand); }
+  .khead { display: flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: color-mix(in srgb, var(--c) 70%, black); padding: 2px 2px 4px; }
+  .khead .count { margin-left: auto; opacity: .7; }
+  .kadd { all: unset; cursor: pointer; text-align: center; font-size: 12.5px; color: var(--ink-soft); padding: 8px; border-radius: 8px; border: 1.5px dashed var(--line); }
+  .kadd:hover { color: var(--brand); border-color: var(--brand-2); }
+  .idea-add { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; }
+  .ideas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; margin-top: 22px; }
+  .idea-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .rec-sum { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .rec-sum .big { font-family: var(--f-serif); font-size: 46px; color: var(--brand); line-height: 1; }
+  .rec-group { margin: 30px 0 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .rec-group h3 { font-size: 34px; color: var(--title); }
+  .rec-group span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--bg-ink-soft); }
+  .rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px 20px; }
+  .rec-grid .card + .card { margin-top: 0; }
+  .rec { border-top: 4px solid var(--c); }
+  .rec .ttl { font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .02em; overflow-wrap: break-word; }
+  .rec .hook { font-family: var(--f-hand); font-size: 25px; color: var(--cherry); line-height: 1.1; margin: 8px 0; }
+  .rec .det { font-family: var(--f-mono); font-size: 11px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .rec details { margin: 10px 0 0; }
+  .rec summary { cursor: pointer; font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--brand); }
+  .rec details p { white-space: pre-wrap; margin: 6px 0 0; font-size: 14px; }
+  .rec .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .rec.done { opacity: .6; }
+  .tele { height: min(58dvh, 520px); overflow-y: auto; background: #2b1c1f; color: #fff; border-radius: 10px; padding: 26dvh 22px; font-size: 30px; line-height: 1.45; font-weight: 500; white-space: pre-wrap; scrollbar-width: none; margin-bottom: 12px; }
+  .tele::-webkit-scrollbar { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 26px; }
+  .stats .card + .card { margin-top: 0; }
+  .stat { padding: 16px 18px; }
+  .stat .v { font-family: var(--f-serif); font-size: 42px; color: var(--brand); line-height: 1; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .conn { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; }
+  .conn .card + .card { margin-top: 0; }
+  .conn .card { display: flex; gap: 14px; align-items: center; }
+  .conn .ic { font-size: 28px; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); flex-shrink: 0; }
+  .conn .txt { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft); }
+  .conn .txt b { display: block; color: var(--ink); font-size: 15px; }
+  .bars h4, .ai-box h4 { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin: 16px 0 6px; font-weight: 400; }
+  .bars h4:first-child, .ai-box h4:first-child { margin-top: 0; }
+  .bar-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 30px; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; }
+  .bar-row .bl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .bt { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .bar-row .bt i { display: block; height: 100%; background: repeating-linear-gradient(45deg, var(--brand) 0 6px, var(--brand-2) 6px 12px); border-radius: 99px; }
+  .bar-row b { font-family: var(--f-mono); font-weight: 500; text-align: right; }
+  .prow { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1.5px dashed var(--line); flex-wrap: wrap; }
+  .prow:last-child { border-bottom: 0; }
+  .prow .tt { flex: 1; min-width: 160px; }
+  .prow .tt .n { font-weight: 600; overflow-wrap: break-word; }
+  .prow .tt .m { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-soft); }
+  .ai-box p { margin: 0 0 6px; }
+  .ai-box ul { margin: 2px 0 6px; padding-left: 18px; }
+  .ai-box li { margin: 3px 0; }
+  .ai-idea { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .ai-idea:last-child { border-bottom: 0; }
+  .biz-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .ex-note { font-size: 12.5px; color: var(--ink-soft); background: var(--butter); border-radius: 8px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
+  @media (max-width: 1080px) {
+    .idea-add { grid-template-columns: 1fr 1fr; }
+    .idea-add .input:first-child, .idea-add .btn { grid-column: 1 / -1; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    .nav-label { display: none; }
+    .kanban { grid-template-columns: repeat(6, minmax(78vw, 1fr)); scroll-snap-type: x mandatory; margin: 0 -16px; padding: 4px 16px 12px; }
+    .kcol { scroll-snap-align: start; }
+  }
+  @media (max-width: 700px) {
+    .cal-cell { min-height: 56px; padding: 4px; gap: 2px; }
+    .cal-chip .t { display: none; }
+    .cal-chip { padding: 1px 2px; border-left-width: 2px; font-size: 11px; justify-content: center; }
+    .cal-more { font-size: 9px; }
+    .conn { grid-template-columns: 1fr; }
+    .stat .v { font-size: 34px; }
+    .bar-row { grid-template-columns: 90px minmax(0, 1fr) 28px; }
+  }
 </style>
 </head>
 <body>
@@ -657,6 +760,11 @@
       <div><div class="brand-name">Bloom</div><div class="brand-sub">planner ✦</div></div>
     </div>
     <button class="nav-btn" data-page="hoje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Hoje</button>
+    <div class="nav-label">meu negócio</div>
+    <button class="nav-btn" data-page="conteudo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9.5v5l4.2-2.5z" fill="currentColor"/></svg>Conteúdo</button>
+    <button class="nav-btn" data-page="gravar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="M15.5 10.5l6-3v9l-6-3z"/></svg>Gravar</button>
+    <button class="nav-btn" data-page="insights"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/></svg>Insights</button>
+    <div class="nav-label">minha vida</div>
     <button class="nav-btn" data-page="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</button>
     <button class="nav-btn" data-page="tarefas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l2 2 3-3M4 13l2 2 3-3M4 20l2 2 3-3"/><path d="M13 7h7M13 14h7M13 21h7"/></svg>Tarefas</button>
     <button class="nav-btn" data-page="habitos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Hábitos</button>
@@ -676,6 +784,9 @@
       <button class="round-btn" id="btn-bell" aria-label="Lembretes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge" id="bell-badge" hidden>0</span></button>
     </div>
     <section class="page" id="pg-hoje"></section>
+    <section class="page" id="pg-conteudo" hidden></section>
+    <section class="page" id="pg-gravar" hidden></section>
+    <section class="page" id="pg-insights" hidden></section>
     <section class="page" id="pg-agenda" hidden></section>
     <section class="page" id="pg-tarefas" hidden></section>
     <section class="page" id="pg-habitos" hidden></section>
@@ -808,6 +919,12 @@
   const PIN_COLORS = ['#e0609a', '#f2c230', '#8f5fd6', '#5fb35a', '#e2463b', '#4a8fe0'];
   const HABIT_EMOJIS = ['💧', '🏃‍♀️', '📚', '🧴', '🧘‍♀️', '🥗', '😴', '✍️', '💊', '🙏', '💸', '🎀', '🌸', '☀️', '🦷', '🚶‍♀️'];
   const STICKERS = ['🎀', '🌷', '🦋', '💌', '🍓', '☕', '✨', '🌸', '💖', '🐞', '📚', '✈️', '🏡', '💍', '🧘‍♀️', '💸', '🌙', '☀️', '🫶', '💅', '🍰', '🎧', '📷', '🌊', '⭐', '🌹', '👑', '🐚', '🍒', '💎'];
+  const PLATFORMS = { instagram: { label: 'Instagram', icon: '📸' }, tiktok: { label: 'TikTok', icon: '🎵' }, youtube: { label: 'YouTube', icon: '▶️' }, pinterest: { label: 'Pinterest', icon: '📌' }, email: { label: 'E-mail', icon: '💌' }, whatsapp: { label: 'WhatsApp', icon: '💬' } };
+  const FORMATS = { reels: 'Reels', curto: 'Vídeo curto', stories: 'Stories', carrossel: 'Carrossel', post: 'Post / foto', live: 'Live', video: 'Vídeo longo', texto: 'Texto / e-mail' };
+  const VIDEO_FORMATS = ['reels', 'curto', 'stories', 'live', 'video'];
+  const STATUSES = { ideia: { label: 'Ideia', color: '#9161b5' }, roteiro: { label: 'Roteiro', color: '#5b6fa8' }, gravar: { label: 'Gravar', color: '#d0713f' }, editar: { label: 'Editar', color: '#c08a2a' }, agendado: { label: 'Agendado', color: '#d4669a' }, publicado: { label: 'Publicado', color: '#5f8a52' } };
+  const ST_ORDER = Object.keys(STATUSES);
+  const FOLDER_EMOJIS = ['🛍️', '🎬', '💡', '💬', '🚀', '🎀', '📦', '✨', '💸', '📚', '🌸', '🎁', '📸', '🧴', '👗', '☕'];
   const MOODS = [['radiante', '🌸', 'Radiante'], ['bem', '😊', 'Bem'], ['ok', '😌', 'Ok'], ['cansada', '😴', 'Cansada'], ['triste', '🥺', 'Pra baixo']];
   const AFFIRMATIONS = [
     ['Eu mereço tudo de bom', 'que estou construindo.'],
@@ -832,10 +949,37 @@
   const STORE_KEY = 'lorace_planner_v1';
   const nextYear = new Date().getFullYear() + 1;
 
+  function bizSeed() {
+    const t = today();
+    const F = (name, emoji, color) => ({ id: uid(), name, emoji, color });
+    const folders = [F('Produto', '🛍️', '#d4669a'), F('Bastidores', '🎬', '#c08a2a'), F('Dicas', '💡', '#5b6fa8'), F('Depoimentos', '💬', '#5f8a52'), F('Lançamento', '🚀', '#b04a74')];
+    const [fp, fb, fd, fdep, fl] = folders.map((f) => f.id);
+    const P = (o) => Object.assign({ id: uid(), example: true, date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '', checklist: [], createdAt: t }, o);
+    return {
+      folders,
+      posts: [
+        P({ title: 'Bastidores da embalagem', folderId: fb, platform: 'instagram', format: 'reels', status: 'publicado', date: addDays(t, -6), time: '19:00', hook: 'Embalando o pedido de uma cliente especial', metrics: { views: 4200, reach: 3800, likes: 310, comments: 24, saves: 41, shares: 18, follows: 22, sales: 1, at: t } }),
+        P({ title: '3 dicas para presentear', folderId: fd, platform: 'instagram', format: 'carrossel', status: 'publicado', date: addDays(t, -4), time: '12:00', metrics: { views: 2100, reach: 1900, likes: 160, comments: 9, saves: 70, shares: 12, follows: 8, at: t } }),
+        P({ title: 'Unboxing da coleção nova', folderId: fp, platform: 'tiktok', format: 'curto', status: 'publicado', date: addDays(t, -2), time: '20:00', hook: 'Abri a caixa e olha isso', metrics: { views: 12800, likes: 950, comments: 61, shares: 77, follows: 95, sales: 4, at: t } }),
+        P({ title: 'Depoimento de cliente', folderId: fdep, platform: 'instagram', format: 'stories', status: 'agendado', date: addDays(t, 1), time: '10:00' }),
+        P({ title: 'Tour pelo ateliê', folderId: fb, platform: 'instagram', format: 'reels', status: 'gravar', date: addDays(t, 3), time: '19:00', hook: 'Vem ver onde a mágica acontece', script: 'Cena 1: porta do ateliê abrindo.\nCena 2: mesa com os materiais.\nCena 3: eu finalizando uma peça.\nFinal: "me conta nos comentários qual parte você mais gostou!"', scene: 'Ateliê', look: 'Look rosa', duration: '30s', notes: 'tripé, luz de anel' }),
+        P({ title: 'Como usar o produto', folderId: fp, platform: 'tiktok', format: 'curto', status: 'roteiro', date: addDays(t, 5), time: '20:00', hook: 'Você está usando errado', scene: 'Bancada', look: 'Look rosa', duration: '20s' }),
+        P({ title: 'Live de lançamento', folderId: fl, platform: 'instagram', format: 'live', status: 'ideia' }),
+      ],
+      goals: [
+        { id: uid(), title: 'Seguidores novos no mês', kind: 'follows', target: 500 },
+        { id: uid(), title: 'Vendas pelo conteúdo', kind: 'sales', target: 30 },
+        { id: uid(), title: 'Posts publicados no mês', kind: 'posts', target: 12 },
+      ],
+      analysis: null,
+    };
+  }
+
   function seed() {
     const t = today();
     const lists = [
       { id: 'l-pessoal', name: 'Pessoal', color: '#d4669a' },
+      { id: 'l-negocio', name: 'Negócio', color: '#c2185b' },
       { id: 'l-trabalho', name: 'Trabalho', color: '#b04a74' },
       { id: 'l-estudos', name: 'Estudos', color: '#5b6fa8' },
       { id: 'l-casa', name: 'Casa', color: '#5f8a52' },
@@ -885,7 +1029,8 @@
       anoSel: nextYear,
       maps: [{ id: uid(), name: `Meu ${nextYear}`, nodes, view: null }],
       mapSel: null,
-      ui: { taskList: 'all', taskFilter: 'pend', metaFilter: 'todas' },
+      biz: bizSeed(),
+      ui: { taskList: 'all', taskFilter: 'pend', metaFilter: 'todas', contTab: 'cal', contFolder: 'all', recGroup: 'scene' },
     };
   }
 
@@ -910,6 +1055,9 @@
     });
     s.notified = s.notified || {};
     s.snoozes = s.snoozes || [];
+    if (!s.biz || typeof s.biz !== 'object') s.biz = bizSeed();
+    s.biz.folders = s.biz.folders || []; s.biz.posts = s.biz.posts || []; s.biz.goals = s.biz.goals || [];
+    if (!s.tasks.lists.find((l) => l.id === 'l-negocio')) s.tasks.lists.splice(1, 0, { id: 'l-negocio', name: 'Negócio', color: '#c2185b' });
     return s;
   }
 
@@ -934,8 +1082,8 @@
     on: false, db: null, uid: null, assets: null,
     last: {}, timer: null, chain: Promise.resolve(),
     split(st) {
-      const { maps, mapSel, vision, ...core } = st;
-      return { core: { body: core }, maps: { body: { maps, mapSel } }, vision: { body: { vision } } };
+      const { maps, mapSel, vision, biz, ...core } = st;
+      return { core: { body: core }, maps: { body: { maps, mapSel } }, vision: { body: { vision } }, biz: { body: { biz } } };
     },
     ref(name) { return this.db.doc(`data/users/${this.uid}/${name}`); },
     schedule() { if (!this.on) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 900); },
@@ -967,7 +1115,7 @@
         if (!id) return;
         this.db = db; this.uid = id;
         setSync('loading');
-        const snaps = await Promise.all(['core', 'maps', 'vision'].map((n) => this.ref(n).get()));
+        const snaps = await Promise.all(['core', 'maps', 'vision', 'biz'].map((n) => this.ref(n).get()));
         const docs = snaps.map((sn) => (sn.exists ? sn.data() : null));
         if (docs.every((d) => !d)) {
           this.on = true;
@@ -1228,6 +1376,7 @@
         ${rem ? `<span>${esc(rem)}</span>` : ''}
         ${dueLabel ? `<span class="${late ? 'late' : ''}">${late ? 'atrasada · ' : ''}${dueLabel}</span>` : ''}
         ${showList ? `<span class="tagpill" style="--c:${l.color}">${esc(l.name)}</span>` : ''}
+        ${it.postId && S.biz.posts.find((p) => p.id === it.postId) ? `<span title="Conteúdo ligado">🎬 ${esc(S.biz.posts.find((p) => p.id === it.postId).title.slice(0, 22))}</span>` : ''}
       </div>
       <button class="icon-btn" data-task-edit="${it.id}" aria-label="Editar tarefa">${ICON.edit}</button>
     </div>`;
@@ -1347,6 +1496,7 @@
                 ${MOODS.map(([k, e, l]) => `<button class="mood ${S.mood[t] === k ? 'on' : ''}" data-mood="${k}" aria-pressed="${S.mood[t] === k}"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}
               </div>
             </div>
+            ${bizTodayCard()}
             <div class="card">
               ${CLIP}
               <div class="card-head"><h3>compromissos de hoje</h3><button class="btn sm secondary" data-new-ev>+ compromisso</button></div>
@@ -1397,6 +1547,7 @@
     bindEventActions(el);
     bindTaskActions(el);
     bindHabitActions(el);
+    bindPostActions(el);
     return { render };
   })();
 
@@ -2378,6 +2529,558 @@
 
 
   /* =========================================================
+     NEGÓCIO: conteúdo, gravação e insights
+     ========================================================= */
+  const B = () => S.biz;
+  const folderOf = (p) => B().folders.find((f) => f.id === p.folderId) || { id: '', name: 'Sem pasta', emoji: '🗂️', color: '#a08c90' };
+  const platOf = (p) => PLATFORMS[p.platform] || PLATFORMS.instagram;
+  const stOf = (p) => STATUSES[p.status] || STATUSES.ideia;
+  const num = (v) => Number(v) || 0;
+  function engOf(m) {
+    if (!m) return null;
+    const base = num(m.reach) || num(m.views);
+    if (!base) return null;
+    return (num(m.likes) + 2 * num(m.comments) + 3 * num(m.saves) + 3 * num(m.shares)) / base;
+  }
+  const median = (arr) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+  function scoreOf(p) {
+    const e = engOf(p.metrics);
+    if (e == null) return null;
+    const others = B().posts.filter((x) => x !== p && engOf(x.metrics) != null);
+    const be = others.length >= 2 ? median(others.map((x) => engOf(x.metrics))) : 0.06;
+    const bv = others.length >= 2 ? median(others.map((x) => num(x.metrics.views))) : num(p.metrics.views);
+    const er = be ? e / be : 1;
+    const vr = bv ? num(p.metrics.views) / bv : 1;
+    return clamp(Math.round(50 * (0.7 * er + 0.3 * vr)), 0, 100);
+  }
+  function badgeOf(s) {
+    if (s == null) return null;
+    if (s >= 85) return { t: 'viralizou 🔥', c: '#d61f45' };
+    if (s >= 60) return { t: 'acima da média ✨', c: '#5f8a52' };
+    if (s >= 40) return { t: 'na média', c: '#c08a2a' };
+    return { t: 'abaixo da média', c: '#8a7a7e' };
+  }
+  const fmtNum = (n) => (n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace('.', ',') + ' mil' : String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
+
+  function postCard(p, opts = {}) {
+    const f = folderOf(p), st = stOf(p), s = scoreOf(p), bd = badgeOf(s);
+    const i = ST_ORDER.indexOf(p.status);
+    return `<div class="pcard" style="--c:${f.color}" data-post="${p.id}" tabindex="0" ${opts.drag ? 'draggable="true"' : ''}>
+      <div class="pc-top"><span class="pc-plat" title="${platOf(p).label}" aria-label="${platOf(p).label}">${platOf(p).icon}</span><span class="tagpill" style="--c:${st.color}">${st.label}</span>${p.example ? '<span class="pc-ex">exemplo</span>' : ''}</div>
+      <div class="pc-title">${esc(p.title)}</div>
+      <div class="pc-meta">${f.emoji} ${esc(f.name)} · ${esc(FORMATS[p.format] || '')}${p.date ? ` · ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}` : ''}</div>
+      ${bd ? `<div class="pc-score" style="--c:${bd.c}"><b>${s}</b> ${bd.t}</div>` : ''}
+      ${opts.move ? `<div class="pc-move"><button class="icon-btn" data-pmove="${p.id}:-1" aria-label="Voltar uma etapa" ${i <= 0 ? 'disabled' : ''}>${ICON.left}</button><button class="icon-btn" data-pmove="${p.id}:1" aria-label="Avançar uma etapa" ${i >= ST_ORDER.length - 1 ? 'disabled' : ''}>${ICON.right}</button></div>` : ''}
+    </div>`;
+  }
+  const folderOptions = () => [{ value: '', label: '🗂️ Sem pasta' }, ...B().folders.map((f) => ({ value: f.id, label: `${f.emoji} ${f.name}` }))];
+
+  function postModal(p, defaults = {}) {
+    const isNew = !p;
+    p = p || Object.assign({ title: '', folderId: S.ui.contFolder && S.ui.contFolder !== 'all' ? S.ui.contFolder : (B().folders[0]?.id || ''), platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '' }, defaults);
+    const linked = isNew ? [] : S.tasks.items.filter((t) => t.postId === p.id);
+    modal({
+      title: isNew ? 'novo conteúdo' : 'editar conteúdo',
+      fields: [
+        { name: 'title', label: 'Título / ideia', value: p.title, required: true, full: true, placeholder: 'Ex: Bastidores da embalagem' },
+        { name: 'folderId', label: 'Pasta', type: 'select', value: p.folderId, options: folderOptions() },
+        { name: 'status', label: 'Etapa', type: 'select', value: p.status, options: ST_ORDER.map((k) => ({ value: k, label: STATUSES[k].label })) },
+        { name: 'platform', label: 'Rede', type: 'select', value: p.platform, options: Object.entries(PLATFORMS).map(([k, v]) => ({ value: k, label: `${v.icon} ${v.label}` })) },
+        { name: 'format', label: 'Formato', type: 'select', value: p.format, options: Object.entries(FORMATS).map(([k, v]) => ({ value: k, label: v })) },
+        { name: 'date', label: 'Data de postar', type: 'date', value: p.date },
+        { name: 'time', label: 'Horário', type: 'time', value: p.time },
+        { name: 'hook', label: 'Gancho (primeira frase)', value: p.hook, full: true, placeholder: 'Ex: Você está embalando errado…' },
+        { name: 'script', label: 'Roteiro', type: 'textarea', value: p.script, full: true, rows: 4, placeholder: 'Cena 1: …' },
+        { name: 'scene', label: 'Cenário', value: p.scene, placeholder: 'Ex: Ateliê' },
+        { name: 'look', label: 'Look', value: p.look, placeholder: 'Ex: Vestido rosa' },
+        { name: 'duration', label: 'Duração', value: p.duration, placeholder: 'Ex: 30s' },
+        { name: 'link', label: 'Link do post', type: 'url', value: p.link, placeholder: 'https://…' },
+        { name: 'caption', label: 'Legenda', type: 'textarea', value: p.caption, full: true, rows: 3 },
+        { name: 'hashtags', label: 'Hashtags', value: p.hashtags, full: true, placeholder: '#empreendedorismo #feitoamao' },
+        { name: 'notes', label: 'Anotações / o que levar', value: p.notes, full: true },
+      ],
+      extraHTML: isNew ? '' : `<div class="settings-block">
+          <div class="eyebrow" style="margin-bottom:6px">tarefas deste conteúdo</div>
+          <div id="pm-tasks">${linked.map((t) => `<label class="row" style="padding:4px 0;flex-wrap:nowrap"><input type="checkbox" class="check" data-pm-task="${t.id}" ${t.done ? 'checked' : ''}><span style="${t.done ? 'text-decoration:line-through;color:var(--ink-soft)' : ''}">${esc(t.text)}</span></label>`).join('') || '<p style="margin:0 0 6px">Nenhuma tarefa ligada ainda.</p>'}</div>
+          <div class="quick-add"><input class="input" id="pm-task-in" placeholder="Ex: comprar fundo para foto" aria-label="Nova tarefa do conteúdo"><button type="button" class="btn sm secondary" id="pm-task-add">Adicionar</button></div>
+        </div>
+        <div class="row" style="margin:6px 0 4px">
+          <button type="button" class="btn sm secondary" id="pm-metrics">📊 resultados</button>
+          ${p.script ? '<button type="button" class="btn sm secondary" id="pm-tele">🎬 teleprompter</button>' : ''}
+        </div>`,
+      onOpen: (form) => {
+        if (isNew) return;
+        const addT = () => {
+          const inp = $('#pm-task-in', form);
+          const text = inp.value.trim();
+          if (!text) return;
+          S.tasks.items.push({ id: uid(), listId: (S.tasks.lists.find((l) => l.id === 'l-negocio') || S.tasks.lists[0]).id, text, done: false, prio: 'normal', due: p.date || '', notes: '', remind: '', postId: p.id });
+          save();
+          $('#pm-tasks', form).insertAdjacentHTML('beforeend', `<label class="row" style="padding:4px 0;flex-wrap:nowrap"><input type="checkbox" class="check" disabled><span>${esc(text)}</span></label>`);
+          const empty = $('#pm-tasks p', form); if (empty) empty.remove();
+          inp.value = ''; inp.focus();
+        };
+        $('#pm-task-add', form).addEventListener('click', addT);
+        $('#pm-task-in', form).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addT(); } });
+        on(form, 'change', '[data-pm-task]', (e, c) => { const t = S.tasks.items.find((x) => x.id === c.dataset.pmTask); if (t) { t.done = c.checked; t.doneAt = c.checked ? today() : null; save(); } });
+        $('#pm-metrics', form).addEventListener('click', () => { dlg.close(); metricsModal(p); });
+        const tb = $('#pm-tele', form); if (tb) tb.addEventListener('click', () => { dlg.close(); teleprompter(p); });
+      },
+      onSave: (v) => {
+        if (v.link && !/^https?:\/\//i.test(v.link)) v.link = 'https://' + v.link;
+        if (isNew) B().posts.push({ id: uid(), checklist: [], createdAt: today(), ...v });
+        else {
+          if (v.date !== p.date || v.time !== p.time) Object.keys(S.notified).forEach((k) => { if (k.startsWith('p:' + p.id + ':')) delete S.notified[k]; });
+          Object.assign(p, v);
+          if (p.example) delete p.example;
+        }
+        save(); rerender();
+        toast(isNew ? 'Conteúdo criado ♥' : 'Conteúdo atualizado.');
+      },
+      onDelete: isNew ? null : () => confirmBox('excluir conteúdo?', `“${p.title}” será removido.`, () => {
+        B().posts = B().posts.filter((x) => x.id !== p.id);
+        S.tasks.items.forEach((t) => { if (t.postId === p.id) delete t.postId; });
+        save(); rerender();
+      }),
+    });
+  }
+
+  function metricsModal(p) {
+    const m = p.metrics || {};
+    const nf = (name, label) => ({ name, label, type: 'number', value: m[name] ?? '', placeholder: '0' });
+    modal({
+      title: 'resultados do post',
+      message: `${platOf(p).icon} ${p.title}. Até a conexão automática com Instagram e TikTok ficar pronta, os números entram por aqui.`,
+      fields: [
+        nf('views', 'Visualizações'), nf('reach', 'Alcance'), nf('likes', 'Curtidas'), nf('comments', 'Comentários'),
+        nf('saves', 'Salvamentos'), nf('shares', 'Compartilhamentos'), nf('follows', 'Seguidores ganhos'), nf('clicks', 'Cliques'),
+        nf('sales', 'Vendas'),
+        { name: 'rating', label: 'Minha nota', type: 'select', value: String(p.rating || ''), options: [{ value: '', label: '—' }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: '★'.repeat(n) + '☆'.repeat(5 - n) }))] },
+        { name: 'worked', label: 'O que funcionou', type: 'textarea', value: p.worked || '', full: true, rows: 2 },
+        { name: 'change', label: 'O que eu mudaria', type: 'textarea', value: p.change || '', full: true, rows: 2 },
+      ],
+      onSave: (v) => {
+        const keys = ['views', 'reach', 'likes', 'comments', 'saves', 'shares', 'follows', 'clicks', 'sales'];
+        const metrics = {};
+        keys.forEach((k) => { if (v[k] !== '' && v[k] != null) metrics[k] = Math.max(0, Number(v[k]) || 0); });
+        p.metrics = Object.keys(metrics).length ? Object.assign(metrics, { at: today() }) : null;
+        p.rating = Number(v.rating) || 0; p.worked = v.worked; p.change = v.change;
+        if (p.metrics && p.status !== 'publicado') { p.status = 'publicado'; if (!p.date) p.date = today(); }
+        if (p.example) delete p.example;
+        save(); rerender();
+        const s = scoreOf(p);
+        if (s != null) { toast(`Nota ${s}: ${badgeOf(s).t}`); if (s >= 85) confetti(); }
+      },
+    });
+  }
+
+  function teleprompter(p) {
+    let speed = 1, playing = false, raf = 0, last = 0;
+    modal({
+      title: 'teleprompter',
+      extraHTML: `<div class="tele" id="tele">${p.hook ? esc(p.hook) + '\n\n' : ''}${esc(p.script || 'Sem roteiro ainda.')}</div>
+        <div class="row"><button type="button" class="btn" id="tl-play">▶ começar</button><button type="button" class="btn sm secondary" id="tl-slow">− devagar</button><button type="button" class="btn sm secondary" id="tl-fast">+ rápido</button><span class="muted mono" id="tl-sp" style="font-family:var(--f-mono);font-size:12px">velocidade 1x</span></div>`,
+      cancelLabel: 'Fechar',
+      onOpen: (form) => {
+        const box = $('#tele', form);
+        const step = (ts) => { if (!playing) return; if (last) box.scrollTop += (ts - last) * 0.035 * speed; last = ts; raf = requestAnimationFrame(step); };
+        $('#tl-play', form).addEventListener('click', (e) => { playing = !playing; e.currentTarget.textContent = playing ? '❚❚ pausar' : '▶ continuar'; last = 0; if (playing) raf = requestAnimationFrame(step); });
+        const setSp = (d) => { speed = clamp(Math.round((speed + d) * 10) / 10, 0.4, 3); $('#tl-sp', form).textContent = `velocidade ${String(speed).replace('.', ',')}x`; };
+        $('#tl-slow', form).addEventListener('click', () => setSp(-0.2));
+        $('#tl-fast', form).addEventListener('click', () => setSp(0.2));
+        dlg.addEventListener('close', () => { playing = false; cancelAnimationFrame(raf); }, { once: true });
+      },
+    });
+  }
+
+  function movePost(id, dir) {
+    const p = B().posts.find((x) => x.id === id);
+    if (!p) return;
+    const i = clamp(ST_ORDER.indexOf(p.status) + dir, 0, ST_ORDER.length - 1);
+    p.status = ST_ORDER[i];
+    if (p.example) delete p.example;
+    save(); rerender();
+    if (p.status === 'publicado' && !p.metrics) toast('Publicado! Anote os resultados quando tiver ♥');
+  }
+  function bindPostActions(root) {
+    root.addEventListener('click', (e) => {
+      const mv = e.target.closest('[data-pmove]');
+      if (mv && root.contains(mv)) { const [id, d] = mv.dataset.pmove.split(':'); movePost(id, Number(d)); return; }
+      if (e.target.closest('button, a, input, select, textarea')) return;
+      const card = e.target.closest('[data-post]');
+      if (card && root.contains(card)) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) postModal(p); }
+    });
+    root.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const card = e.target.closest('.pcard[data-post]');
+      if (card && e.target === card) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) postModal(p); }
+    });
+    root.addEventListener('dragstart', (e) => {
+      const d = e.target.closest('[data-post][draggable]');
+      if (d) { e.dataTransfer.setData('text/plain', d.dataset.post); e.dataTransfer.effectAllowed = 'move'; }
+    });
+    root.addEventListener('dragover', (e) => {
+      const t = e.target.closest('[data-day], [data-col]');
+      if (!t) return;
+      e.preventDefault();
+      $$('.over', root).forEach((x) => x !== t && x.classList.remove('over'));
+      t.classList.add('over');
+    });
+    root.addEventListener('dragleave', (e) => { const t = e.target.closest('[data-day], [data-col]'); if (t && !t.contains(e.relatedTarget)) t.classList.remove('over'); });
+    root.addEventListener('drop', (e) => {
+      const t = e.target.closest('[data-day], [data-col]');
+      if (!t) return;
+      e.preventDefault();
+      const p = B().posts.find((x) => x.id === e.dataTransfer.getData('text/plain'));
+      if (!p) return;
+      if (t.dataset.day) { p.date = t.dataset.day; Object.keys(S.notified).forEach((k) => { if (k.startsWith('p:' + p.id + ':')) delete S.notified[k]; }); }
+      if (t.dataset.col) p.status = t.dataset.col;
+      if (p.example) delete p.example;
+      save(); rerender();
+    });
+  }
+  function folderModal(f) {
+    const isNew = !f;
+    f = f || { name: '', emoji: FOLDER_EMOJIS[B().folders.length % FOLDER_EMOJIS.length], color: LIST_COLORS[B().folders.length % LIST_COLORS.length] };
+    modal({
+      title: isNew ? 'nova pasta' : 'editar pasta',
+      fields: [
+        { name: 'name', label: 'Nome da pasta', value: f.name, required: true, full: true, placeholder: 'Ex: Lançamento de verão' },
+        { name: 'emoji', label: 'Ícone', type: 'emoji', value: f.emoji, full: true, options: FOLDER_EMOJIS },
+        { name: 'color', label: 'Cor', type: 'swatch', value: f.color, full: true, options: LIST_COLORS },
+      ],
+      onSave: (v) => {
+        const data = { name: v.name.trim(), emoji: v.emoji || f.emoji, color: v.color || f.color };
+        if (isNew) { const nf = { id: uid(), ...data }; B().folders.push(nf); S.ui.contFolder = nf.id; } else Object.assign(f, data);
+        save(); rerender();
+      },
+      onDelete: isNew ? null : () => confirmBox('excluir pasta?', `Os conteúdos de “${f.name}” continuam salvos, mas ficam sem pasta.`, () => {
+        B().folders = B().folders.filter((x) => x.id !== f.id);
+        B().posts.forEach((p) => { if (p.folderId === f.id) p.folderId = ''; });
+        S.ui.contFolder = 'all'; save(); rerender();
+      }),
+    });
+  }
+  function exampleNote() {
+    return B().posts.some((p) => p.example) ? `<div class="ex-note"><span>Itens marcados como <b>exemplo</b> mostram como funciona.</span><button class="btn sm ghost" data-clear-ex>apagar exemplos</button></div>` : '';
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-clear-ex]')) return;
+    confirmBox('apagar exemplos?', 'Os conteúdos de exemplo serão removidos. Os seus continuam.', () => {
+      B().posts = B().posts.filter((p) => !p.example); save(); rerender();
+    }, 'Apagar');
+  });
+
+  /* CONTEÚDO */
+  PAGES.conteudo = (() => {
+    const el = $('#pg-conteudo');
+    let month = today().slice(0, 7);
+    let sel = today();
+    function filtered() { const f = S.ui.contFolder || 'all'; return B().posts.filter((p) => f === 'all' || p.folderId === f); }
+    function render() {
+      const tab = S.ui.contTab || 'cal';
+      const f = S.ui.contFolder || 'all';
+      if (f !== 'all' && !B().folders.find((x) => x.id === f)) S.ui.contFolder = 'all';
+      const posts = filtered();
+      const count = (id) => B().posts.filter((p) => p.folderId === id && p.status !== 'publicado').length;
+      let body = '';
+      if (tab === 'cal') {
+        const [y, m] = month.split('-').map(Number);
+        const gridStart = weekStart(`${month}-01`);
+        const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+        const t = today();
+        const byDay = (d) => posts.filter((p) => p.date === d).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+        const selPosts = byDay(sel);
+        body = `<div class="card taped">
+            <div class="card-head"><div class="row" style="gap:6px"><button class="icon-btn" data-cm="-1" aria-label="Mês anterior">${ICON.left}</button><h3>${MONTHS[m - 1]} ${y}</h3><button class="icon-btn" data-cm="1" aria-label="Próximo mês">${ICON.right}</button></div><span class="muted">arraste os posts para mudar o dia</span></div>
+            <div class="cal-grid">
+              ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="cal-h">${d}</div>`).join('')}
+              ${cells.map((d) => { const ps = byDay(d); return `<div class="cal-cell ${parseISO(d).getMonth() !== m - 1 ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-day="${d}" role="button" tabindex="0" aria-label="${fmtLong(d)}, ${ps.length} conteúdo(s)">
+                <div class="cal-dn">${parseISO(d).getDate()}</div>
+                ${ps.slice(0, 3).map((p) => `<div class="cal-chip ${p.status === 'publicado' ? 'pub' : ''}" draggable="true" data-post="${p.id}" style="--c:${folderOf(p).color}" title="${esc(p.title)}"><span>${platOf(p).icon}</span><span class="t">${esc(p.title)}</span></div>`).join('')}
+                ${ps.length > 3 ? `<div class="cal-more">+${ps.length - 3}</div>` : ''}
+              </div>`; }).join('')}
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>${esc(fmtLong(sel))}</h3><button class="btn sm secondary" data-new-post-day="${sel}">+ conteúdo neste dia</button></div>
+            ${selPosts.length ? `<div class="day-posts">${selPosts.map((p) => postCard(p, { drag: true })).join('')}</div>` : '<div class="empty"><span class="hand">nada programado ♡</span>toque em “+ conteúdo neste dia” ou arraste uma ideia</div>'}
+          </div>`;
+      } else if (tab === 'kanban') {
+        body = `<div class="kanban">${ST_ORDER.map((k) => { const ps = posts.filter((p) => p.status === k).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')); return `<div class="kcol" data-col="${k}" style="--c:${STATUSES[k].color}">
+            <div class="khead"><i class="dot" style="--c:${STATUSES[k].color}"></i>${STATUSES[k].label}<span class="count">${ps.length}</span></div>
+            ${ps.map((p) => postCard(p, { drag: true, move: true })).join('')}
+            <button class="kadd" data-new-post-status="${k}">+ adicionar</button>
+          </div>`; }).join('')}</div>`;
+      } else {
+        const ideas = posts.filter((p) => p.status === 'ideia');
+        body = `<div class="card taped t-left">
+            <form class="idea-add" id="idea-add">
+              <input class="input" name="title" placeholder="anote a ideia antes que ela fuja…" aria-label="Nova ideia" autocomplete="off">
+              <select class="input" name="folderId" aria-label="Pasta">${folderOptions().map((o) => `<option value="${o.value}" ${o.value === (f !== 'all' ? f : (B().folders[0]?.id || '')) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+              <select class="input" name="platform" aria-label="Rede">${Object.entries(PLATFORMS).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}</select>
+              <select class="input" name="format" aria-label="Formato">${Object.entries(FORMATS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+              <button class="btn" type="submit">Guardar ideia</button>
+            </form>
+          </div>
+          ${ideas.length ? `<div class="ideas-grid">${ideas.map((p) => `<div class="idea-wrap">${postCard(p)}<button class="btn sm secondary" data-sched="${p.id}">📅 agendar</button></div>`).join('')}</div>` : '<div class="card empty" style="margin-top:22px"><span class="hand">seu banco de ideias está vazio</span>anote tudo o que vier na cabeça ♡</div>'}`;
+      }
+      el.innerHTML = `
+        <div class="page-head">
+          <div><h1>conteúdo</h1><div class="sub">calendário · produção · <b>ideias</b></div></div>
+          <button class="btn" data-new-post>+ novo conteúdo</button>
+        </div>
+        ${exampleNote()}
+        <div class="cont-bar">
+          <div class="tabs" role="tablist">${[['cal', '📅 Calendário'], ['kanban', '🎞️ Produção'], ['ideias', '💡 Ideias']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-ctab="${k}" role="tab" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+          ${f !== 'all' ? '<button class="btn sm paper" data-edit-folder>editar pasta</button>' : ''}
+        </div>
+        <div class="chips scroll" style="margin-bottom:20px">
+          <button class="chip ${f === 'all' ? 'on' : ''}" data-cf="all">Todas as pastas</button>
+          ${B().folders.map((x) => `<button class="chip ${f === x.id ? 'on' : ''}" data-cf="${x.id}"><span aria-hidden="true">${x.emoji}</span>${esc(x.name)} <span class="count">${count(x.id)}</span></button>`).join('')}
+          <button class="chip" data-new-folder>+ nova pasta</button>
+        </div>
+        ${body}`;
+    }
+    on(el, 'click', '[data-ctab]', (e, b) => { S.ui.contTab = b.dataset.ctab; save(); render(); });
+    on(el, 'click', '[data-cf]', (e, b) => { S.ui.contFolder = b.dataset.cf; save(); render(); });
+    on(el, 'click', '[data-new-folder]', () => folderModal());
+    on(el, 'click', '[data-edit-folder]', () => folderModal(B().folders.find((x) => x.id === S.ui.contFolder)));
+    on(el, 'click', '[data-new-post]', () => postModal(null, (S.ui.contTab || 'cal') === 'cal' ? { date: sel } : {}));
+    on(el, 'click', '[data-new-post-day]', (e, b) => postModal(null, { date: b.dataset.newPostDay, status: 'roteiro' }));
+    on(el, 'click', '[data-new-post-status]', (e, b) => postModal(null, { status: b.dataset.newPostStatus }));
+    on(el, 'click', '[data-cm]', (e, b) => { const [y, m] = month.split('-').map(Number); const d = new Date(y, m - 1 + Number(b.dataset.cm), 1); month = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; render(); });
+    el.addEventListener('click', (e) => {
+      const cell = e.target.closest('.cal-cell');
+      if (!cell || e.target.closest('.cal-chip')) return;
+      sel = cell.dataset.day; render();
+    });
+    el.addEventListener('keydown', (e) => { const cell = e.target.closest('.cal-cell'); if (cell && e.target === cell && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sel = cell.dataset.day; render(); } });
+    el.addEventListener('dblclick', (e) => { const cell = e.target.closest('.cal-cell'); if (cell && !e.target.closest('.cal-chip')) postModal(null, { date: cell.dataset.day, status: 'roteiro' }); });
+    on(el, 'submit', '#idea-add', (e, f) => {
+      e.preventDefault();
+      const title = f.elements.title.value.trim();
+      if (!title) { toast('Escreva a ideia primeiro.'); return; }
+      B().posts.push({ id: uid(), title, folderId: f.elements.folderId.value, platform: f.elements.platform.value, format: f.elements.format.value, status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '', checklist: [], createdAt: today() });
+      save(); render(); toast('Ideia guardada 💡');
+      setTimeout(() => $('#idea-add input[name=title]', el)?.focus(), 0);
+    });
+    on(el, 'click', '[data-sched]', (e, b) => {
+      const p = B().posts.find((x) => x.id === b.dataset.sched);
+      modal({
+        title: 'agendar conteúdo', message: p.title,
+        fields: [{ name: 'date', label: 'Data de postar', type: 'date', value: p.date || addDays(today(), 1), required: true }, { name: 'time', label: 'Horário', type: 'time', value: p.time || '19:00' }],
+        onSave: (v) => { p.date = v.date; p.time = v.time; p.status = 'roteiro'; if (p.example) delete p.example; save(); render(); toast(`Agendado para ${fmtShort(v.date)} ♥`); },
+      });
+    });
+    bindPostActions(el);
+    return { render };
+  })();
+
+  /* GRAVAR */
+  PAGES.gravar = (() => {
+    const el = $('#pg-gravar');
+    function render() {
+      const t = today();
+      const list = B().posts.filter((p) => VIDEO_FORMATS.includes(p.format) && (p.status === 'roteiro' || p.status === 'gravar')).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+      const doneToday = B().posts.filter((p) => p.recordedAt === t);
+      const g = S.ui.recGroup || 'scene';
+      const keyOf = (p) => g === 'scene' ? (p.scene || 'Sem cenário definido') : g === 'look' ? (p.look || 'Sem look definido') : (p.date ? fmtLong(p.date) : 'Sem data');
+      const icon = g === 'scene' ? '📍' : g === 'look' ? '👗' : '📅';
+      const groups = {};
+      list.forEach((p) => { (groups[keyOf(p)] = groups[keyOf(p)] || []).push(p); });
+      const total = list.length + doneToday.length;
+      el.innerHTML = `
+        <div class="page-head">
+          <div><h1>gravar</h1><div class="sub">roteiros · cenários · <b>dia de gravação</b></div></div>
+          <button class="btn" data-new-video>+ novo vídeo</button>
+        </div>
+        ${exampleNote()}
+        <div class="card taped t-left">
+          <div class="rec-sum">
+            <div class="big">${doneToday.length}<span style="font-size:24px;color:var(--ink-soft)"> / ${total}</span></div>
+            <div style="flex:1;min-width:180px"><div class="eyebrow">gravados hoje</div><div class="progress" style="margin-top:8px"><span style="width:${total ? Math.round((doneToday.length / total) * 100) : 0}%"></span></div></div>
+            <div><div class="eyebrow" style="margin-bottom:6px">agrupar por</div><div class="tabs">${[['scene', '📍 Cenário'], ['look', '👗 Look'], ['date', '📅 Data']].map(([k, l]) => `<button class="tab ${g === k ? 'on' : ''}" data-rg="${k}">${l}</button>`).join('')}</div></div>
+          </div>
+          <p class="muted" style="margin:12px 0 0;font-size:13px">Dica: agrupe por cenário e por look para gravar vários vídeos de uma vez, sem trocar de roupa nem de lugar.</p>
+        </div>
+        ${list.length ? Object.entries(groups).map(([k, ps]) => `
+          <div class="rec-group"><h3>${icon} ${esc(k)}</h3><span>${ps.length} ${ps.length === 1 ? 'vídeo' : 'vídeos'}</span></div>
+          <div class="rec-grid">${ps.map((p) => { const f = folderOf(p); return `<div class="card rec" style="--c:${f.color}">
+            <div class="pc-top"><span class="pc-plat">${platOf(p).icon}</span><span class="tagpill" style="--c:${stOf(p).color}">${stOf(p).label}</span><span class="pc-meta" style="margin:0 0 0 auto">${p.date ? fmtShort(p.date) : 'sem data'}</span></div>
+            <div class="ttl">${esc(p.title)}</div>
+            ${p.hook ? `<div class="hook">“${esc(p.hook)}”</div>` : ''}
+            <div class="det">${p.scene ? `<span>📍 ${esc(p.scene)}</span>` : ''}${p.look ? `<span>👗 ${esc(p.look)}</span>` : ''}${p.duration ? `<span>⏱ ${esc(p.duration)}</span>` : ''}<span>${f.emoji} ${esc(f.name)}</span></div>
+            ${p.script ? `<details><summary>ver roteiro</summary><p>${esc(p.script)}</p></details>` : ''}
+            ${p.notes ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">🎒 ${esc(p.notes)}</p>` : ''}
+            <div class="acts"><button class="btn sm" data-recorded="${p.id}">✓ gravado</button>${p.script || p.hook ? `<button class="btn sm secondary" data-tele="${p.id}">🎬 teleprompter</button>` : ''}<button class="btn sm ghost" data-edit-post="${p.id}">editar</button></div>
+          </div>`; }).join('')}</div>`).join('') : `<div class="card empty" style="margin-top:24px"><span class="hand">${doneToday.length ? 'tudo gravado, arrasou! 🎬' : 'nenhum vídeo na fila'}</span>vídeos nas etapas “roteiro” e “gravar” aparecem aqui</div>`}
+        ${doneToday.length ? `<div class="rec-group"><h3>✓ gravados hoje</h3></div><div class="biz-strip">${doneToday.map((p) => postCard(p)).join('')}</div>` : ''}`;
+    }
+    on(el, 'click', '[data-rg]', (e, b) => { S.ui.recGroup = b.dataset.rg; save(); render(); });
+    on(el, 'click', '[data-new-video]', () => postModal(null, { status: 'gravar', format: 'reels' }));
+    on(el, 'click', '[data-edit-post]', (e, b) => postModal(B().posts.find((x) => x.id === b.dataset.editPost)));
+    on(el, 'click', '[data-tele]', (e, b) => teleprompter(B().posts.find((x) => x.id === b.dataset.tele)));
+    on(el, 'click', '[data-recorded]', (e, b) => {
+      const p = B().posts.find((x) => x.id === b.dataset.recorded);
+      if (!p) return;
+      p.status = 'editar'; p.recordedAt = today(); if (p.example) delete p.example;
+      save(); render();
+      const left = B().posts.filter((x) => VIDEO_FORMATS.includes(x.format) && (x.status === 'roteiro' || x.status === 'gravar')).length;
+      if (!left) { confetti(); toast('Todos os vídeos gravados! 🎬'); } else toast(`Gravado! Faltam ${left}.`);
+    });
+    bindPostActions(el);
+    return { render };
+  })();
+
+  /* INSIGHTS */
+  PAGES.insights = (() => {
+    const el = $('#pg-insights');
+    let busy = false;
+    function groupAvg(posts, keyFn, labelFn) {
+      const g = {};
+      posts.forEach((p) => { const k = keyFn(p); (g[k] = g[k] || []).push(scoreOf(p)); });
+      return Object.entries(g).map(([k, arr]) => ({ k, label: labelFn(k), v: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length), n: arr.length })).sort((a, b) => b.v - a.v);
+    }
+    const bars = (rows) => rows.map((r) => `<div class="bar-row"><span class="bl" title="${esc(r.label)}">${esc(r.label)}</span><span class="bt"><i style="width:${r.v}%"></i></span><b>${r.v}</b></div>`).join('');
+    function goalCurrent(g) {
+      const mo = today().slice(0, 7);
+      const pubs = B().posts.filter((p) => p.status === 'publicado' && (p.date || '').startsWith(mo));
+      if (g.kind === 'posts') return pubs.length;
+      return pubs.reduce((a, p) => a + num(p.metrics && p.metrics[g.kind]), 0);
+    }
+    const GOAL_KINDS = { follows: 'Seguidores ganhos', sales: 'Vendas', views: 'Visualizações', posts: 'Posts publicados' };
+    function render() {
+      const mo = today().slice(0, 7);
+      const scored = B().posts.filter((p) => scoreOf(p) != null);
+      const pubs = B().posts.filter((p) => p.status === 'publicado').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      const pubMonth = pubs.filter((p) => (p.date || '').startsWith(mo));
+      const avg = scored.length ? Math.round(scored.reduce((a, p) => a + scoreOf(p), 0) / scored.length) : null;
+      const sum = (k) => pubMonth.reduce((a, p) => a + num(p.metrics && p.metrics[k]), 0);
+      const top = [...scored].sort((a, b) => scoreOf(b) - scoreOf(a)).slice(0, 3);
+      const band = (p) => { if (!p.time) return 'sem horário'; const h = Number(p.time.slice(0, 2)); return h < 12 ? 'manhã (até 12h)' : h < 18 ? 'tarde (12h–18h)' : 'noite (após 18h)'; };
+      const ai = B().analysis && B().analysis.data;
+      el.innerHTML = `
+        <div class="page-head">
+          <div><h1>insights</h1><div class="sub">resultados · nota · <b>o que repetir</b></div></div>
+        </div>
+        ${exampleNote()}
+        <div class="conn">
+          ${['instagram', 'tiktok'].map((k) => `<div class="card"><span class="ic" aria-hidden="true">${PLATFORMS[k].icon}</span><div class="txt"><b>${PLATFORMS[k].label}</b>Números automáticos todo dia: chega na próxima etapa.</div><button class="btn sm secondary" disabled style="opacity:.6;cursor:default">em breve</button></div>`).join('')}
+        </div>
+        <div class="stats">
+          <div class="card stat"><div class="eyebrow">publicados no mês</div><div class="v">${pubMonth.length}</div></div>
+          <div class="card stat"><div class="eyebrow">nota média</div><div class="v">${avg ?? '—'}</div></div>
+          <div class="card stat"><div class="eyebrow">seguidores no mês</div><div class="v">${fmtNum(sum('follows'))}</div></div>
+          <div class="card stat"><div class="eyebrow">visualizações no mês</div><div class="v">${fmtNum(sum('views'))}</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="stack">
+            <div class="card taped">
+              <div class="card-head"><h3>posts publicados</h3><span class="muted">nota 0–100 vs. a sua média</span></div>
+              ${pubs.length ? pubs.map((p) => { const s = scoreOf(p), bd = badgeOf(s); return `<div class="prow">
+                <span class="pc-plat" aria-label="${platOf(p).label}">${platOf(p).icon}</span>
+                <div class="tt"><div class="n">${esc(p.title)}</div><div class="m">${p.date ? fmtShort(p.date) : ''} · ${esc(FORMATS[p.format] || '')} · ${folderOf(p).emoji} ${esc(folderOf(p).name)}${p.metrics ? ` · ${fmtNum(num(p.metrics.views))} visualizações` : ''}</div></div>
+                ${bd ? `<span class="pc-score" style="--c:${bd.c};margin:0"><b>${s}</b> ${bd.t}</span>` : ''}
+                <button class="btn sm ${p.metrics ? 'ghost' : 'secondary'}" data-metrics="${p.id}">${p.metrics ? 'ver números' : 'anotar números'}</button>
+              </div>`; }).join('') : '<div class="empty"><span class="hand">nenhum post publicado ainda</span>quando um conteúdo chega em “publicado”, ele aparece aqui</div>'}
+            </div>
+            <div class="card">
+              ${CLIP}
+              <div class="card-head"><h3>metas do negócio</h3><button class="btn sm secondary" data-new-bgoal>+ meta</button></div>
+              ${B().goals.length ? B().goals.map((g) => { const c = goalCurrent(g); const pct = g.target ? Math.min(100, Math.round((c / g.target) * 100)) : 0; return `<div class="mini-goal"><div class="row"><span>${esc(g.title)} <button class="icon-btn" data-edit-bgoal="${g.id}" aria-label="Editar meta" style="width:24px;height:24px;vertical-align:middle">${ICON.edit}</button></span><strong>${fmtNum(c)} / ${fmtNum(num(g.target))}</strong></div><div class="progress"><span style="width:${pct}%"></span></div></div>`; }).join('') : '<div class="empty">crie metas com número: seguidores, vendas, posts…</div>'}
+              <p class="muted" style="font-size:12px;margin:10px 0 0">Contam os posts publicados neste mês.</p>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="card taped t-sage">
+              <div class="card-head"><h3>análise da Claude</h3><button class="btn sm" data-ai ${busy ? 'disabled' : ''}>${busy ? 'analisando…' : (ai ? 'analisar de novo' : '✨ analisar')}</button></div>
+              ${ai ? `<div class="ai-box">
+                ${ai.resumo ? `<p>${esc(ai.resumo)}</p>` : ''}
+                ${Array.isArray(ai.fazer_mais) && ai.fazer_mais.length ? `<h4>faça mais</h4><ul>${ai.fazer_mais.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+                ${Array.isArray(ai.ganchos) && ai.ganchos.length ? `<h4>ganchos para repetir</h4><ul>${ai.ganchos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+                ${ai.melhor_horario ? `<h4>melhor horário</h4><p>${esc(ai.melhor_horario)}</p>` : ''}
+                ${Array.isArray(ai.evitar) && ai.evitar.length ? `<h4>evite</h4><ul>${ai.evitar.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+                ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">+ ideia</button></div>`).join('')}` : ''}
+                <p class="muted" style="font-size:11.5px;margin-top:8px">Análise de ${new Date(B().analysis.at).toLocaleDateString('pt-BR')}</p>
+              </div>` : `<p class="muted" style="margin:0">A Claude lê os resultados dos seus posts e diz o que postar mais, que ganchos repetir e o melhor horário. ${inClaude ? '' : 'Funciona quando o Bloom é aberto pelo link do Claude.'}</p>`}
+            </div>
+            <div class="card bars">
+              <div class="card-head"><h3>o que funciona melhor</h3></div>
+              ${scored.length ? `<h4>por formato</h4>${bars(groupAvg(scored, (p) => p.format, (k) => FORMATS[k] || k))}
+                <h4>por pasta</h4>${bars(groupAvg(scored, (p) => p.folderId || '', (k) => { const f = B().folders.find((x) => x.id === k); return f ? `${f.emoji} ${f.name}` : 'Sem pasta'; }))}
+                <h4>por rede</h4>${bars(groupAvg(scored, (p) => p.platform, (k) => (PLATFORMS[k] || PLATFORMS.instagram).label))}
+                <h4>por dia da semana</h4>${bars(groupAvg(scored.filter((p) => p.date), (p) => String(dow(p.date)), (k) => DOW_LONG[Number(k)]))}
+                <h4>por horário</h4>${bars(groupAvg(scored, band, (k) => k))}` : '<div class="empty">anote os números de alguns posts para ver o que funciona melhor</div>'}
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>campeões para repetir 🏆</h3></div>
+              ${top.length ? top.map((p) => postCard(p)).join('<div style="height:10px"></div>') : '<div class="empty">seus melhores posts aparecem aqui</div>'}
+            </div>
+          </div>
+        </div>`;
+    }
+    function goalModal(g) {
+      const isNew = !g;
+      g = g || { title: '', kind: 'follows', target: '' };
+      modal({
+        title: isNew ? 'nova meta do negócio' : 'editar meta',
+        fields: [
+          { name: 'title', label: 'Meta', value: g.title, required: true, full: true, placeholder: 'Ex: 500 seguidores novos' },
+          { name: 'kind', label: 'O que contar', type: 'select', value: g.kind, full: true, options: Object.entries(GOAL_KINDS).map(([k, v]) => ({ value: k, label: v + ' no mês' })) },
+          { name: 'target', label: 'Número alvo', type: 'number', value: g.target, required: true, full: true },
+        ],
+        onSave: (v) => { const d = { title: v.title.trim(), kind: v.kind, target: Number(v.target) || 0 }; if (isNew) B().goals.push({ id: uid(), ...d }); else Object.assign(g, d); save(); render(); },
+        onDelete: isNew ? null : () => { B().goals = B().goals.filter((x) => x.id !== g.id); save(); render(); },
+      });
+    }
+    async function analyze() {
+      const withData = B().posts.filter((p) => p.metrics);
+      if (withData.length < 2) { toast('Anote os números de pelo menos 2 posts para a análise.'); return; }
+      const sample = inClaude ? await window.claude.use('sample') : null;
+      if (!sample) { toast('A análise da Claude funciona quando o Bloom é aberto pelo link do Claude.'); return; }
+      const data = withData.map((p) => ({ titulo: p.title, rede: platOf(p).label, formato: FORMATS[p.format], pasta: folderOf(p).name, data: p.date, dia_semana: p.date ? DOW_LONG[dow(p.date)] : '', hora: p.time, gancho: p.hook, nota_0_100: scoreOf(p), minha_avaliacao: p.rating || null, o_que_funcionou: p.worked || '', ...p.metrics }));
+      const prompt = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Analise os resultados dos posts abaixo (JSON). A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).\n\nResponda SOMENTE com um objeto JSON neste formato:\n{"resumo": "2 a 3 frases", "fazer_mais": ["até 3 itens"], "ganchos": ["até 3 ganchos que funcionaram ou variações deles"], "melhor_horario": "uma frase", "evitar": ["até 2 itens"], "proximas_ideias": [{"titulo": "...", "formato": "...", "por_que": "..."}]}\n\nRegras: português do Brasil, tom carinhoso e direto, baseie-se apenas nos dados, 3 próximas ideias.\n\nPosts:\n${JSON.stringify(data)}`;
+      busy = true; render();
+      try {
+        const res = await sample.json(prompt, { modelTier: 'default' });
+        B().analysis = { at: Date.now(), data: res };
+        save(); toast('Análise pronta ✨');
+      } catch (e) {
+        const c = e && e.code;
+        toast(c === 'not_granted' ? 'A análise precisa da sua permissão para usar a Claude.' : c === 'rate_limited' ? 'Muitas análises seguidas. Tente de novo em alguns minutos.' : 'Não consegui fazer a análise agora. Tente de novo.');
+      } finally { busy = false; render(); }
+    }
+    on(el, 'click', '[data-metrics]', (e, b) => metricsModal(B().posts.find((x) => x.id === b.dataset.metrics)));
+    on(el, 'click', '[data-new-bgoal]', () => goalModal());
+    on(el, 'click', '[data-edit-bgoal]', (e, b) => goalModal(B().goals.find((x) => x.id === b.dataset.editBgoal)));
+    on(el, 'click', '[data-ai]', () => { if (!busy) analyze(); });
+    on(el, 'click', '[data-ai-idea]', (e, b) => {
+      const x = B().analysis.data.proximas_ideias[Number(b.dataset.aiIdea)];
+      if (!x) return;
+      B().posts.push({ id: uid(), title: x.titulo || 'Nova ideia', folderId: B().folders[0]?.id || '', platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: x.por_que || '', checklist: [], createdAt: today() });
+      save(); b.disabled = true; b.textContent = '✓ guardada'; toast('Ideia guardada no banco de ideias 💡');
+    });
+    bindPostActions(el);
+    return { render };
+  })();
+
+  function bizTodayCard() {
+    const t = today();
+    const todayPosts = B().posts.filter((p) => p.date === t && p.status !== 'publicado').sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+    const toRec = B().posts.filter((p) => VIDEO_FORMATS.includes(p.format) && (p.status === 'roteiro' || p.status === 'gravar')).length;
+    const noMetrics = B().posts.filter((p) => p.status === 'publicado' && !p.metrics).length;
+    return `<div class="card taped t-butter">
+      <div class="card-head"><h3>meu negócio hoje</h3><button class="btn sm ghost" data-go="conteudo">calendário</button></div>
+      ${todayPosts.length ? `<div class="biz-strip">${todayPosts.map((p) => postCard(p)).join('')}</div>` : '<div class="empty" style="padding:10px"><span class="hand">nenhum post para hoje</span></div>'}
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm secondary" data-go="gravar">🎬 ${toRec} ${toRec === 1 ? 'vídeo' : 'vídeos'} para gravar</button>
+        ${noMetrics ? `<button class="btn sm secondary" data-go="insights">📊 ${noMetrics} sem números</button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* =========================================================
      LEMBRETES (notificações)
      ========================================================= */
   let audioCtx = null;
@@ -2409,6 +3112,7 @@
         if (st.slice(0, 10) !== t) return;
         out.push({ at: st.slice(11), title: ev.title, kind: 'compromisso', key: 'e:' + ev.id + ':' + d, when: `${d === t ? 'hoje' : 'amanhã'} às ${ev.start}` });
       }));
+      S.biz.posts.forEach((p) => { if (p.date === t && p.time && p.status !== 'publicado') out.push({ at: p.time, title: 'postar: ' + p.title, kind: 'conteúdo', key: 'p:' + p.id + ':' + p.date + 'T' + p.time }); });
       S.snoozes.forEach((z) => { const st = msToStamp(z.at); if (st.slice(0, 10) === t) out.push({ at: st.slice(11), title: z.title, kind: 'adiado', key: z.id }); });
       return out.sort((a, b) => a.at.localeCompare(b.at));
     },
@@ -2432,6 +3136,14 @@
         S.notified[key] = now;
         if (now - fire < 3 * 3600000) due.push({ title: ev.title, kind: 'compromisso', when: `${d === today() ? 'hoje' : d === addDays(today(), 1) ? 'amanhã' : fmtShort(d)} às ${ev.start}` });
       }));
+      S.biz.posts.forEach((p) => {
+        if (!p.date || !p.time || p.status === 'publicado') return;
+        const st = p.date + 'T' + p.time;
+        const key = 'p:' + p.id + ':' + st;
+        if (S.notified[key] || st > stamp) return;
+        S.notified[key] = now;
+        if (now - stampToMs(st) < 3 * 3600000) due.push({ title: 'hora de postar: ' + p.title, kind: 'conteúdo', when: platOf(p).label + ' · ' + p.time });
+      });
       S.snoozes = S.snoozes.filter((z) => { if (z.at <= now) { due.push({ title: z.title, kind: z.kind, taskId: z.taskId, when: 'adiado' }); return false; } return true; });
       if (due.length) { save(); due.forEach(showAlert); chime(); }
       updateBell();
@@ -2497,6 +3209,11 @@
       const [d, t] = it.remind.split('T');
       const end = plus(d, t, 15);
       L.push('BEGIN:VEVENT', `UID:${it.id}-task@bloom`, `DTSTAMP:${stamp}`, 'DTSTART:' + DT(d, t), 'DTEND:' + DT(end.slice(0, 10), end.slice(11)), 'SUMMARY:' + E('✓ ' + it.text), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + E(it.text), 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT');
+    });
+    S.biz.posts.forEach((p) => {
+      if (!p.date || !p.time || p.status === 'publicado') return;
+      const end = plus(p.date, p.time, 15);
+      L.push('BEGIN:VEVENT', `UID:${p.id}-post@bloom`, `DTSTAMP:${stamp}`, 'DTSTART:' + DT(p.date, p.time), 'DTEND:' + DT(end.slice(0, 10), end.slice(11)), 'SUMMARY:' + E(`${platOf(p).icon} Postar: ${p.title}`), 'DESCRIPTION:' + E([p.hook, p.caption, p.hashtags].filter(Boolean).join('\n\n')), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + E('Hora de postar: ' + p.title), 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT');
     });
     L.push('END:VCALENDAR');
     return L.join('\r\n');
