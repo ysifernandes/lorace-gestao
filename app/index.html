@@ -908,6 +908,39 @@
   :root[data-style="clean"] .qn { border-radius: 10px; transform: none; box-shadow: none; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
   :root[data-style="clean"] .qn p { font-size: 14.5px; line-height: 1.45; }
   :root[data-style="clean"] .qn-foot, :root[data-style="clean"] .qn-acts .icon-btn { color: var(--ink-soft); }
+  /* ---------- Ajustes de tela pequena (iPhone) ---------- */
+  @media (max-width: 860px) {
+    /* letra de 16px nos campos evita o zoom automático do iPhone ao digitar */
+    .input, .field input, .field select, .field textarea, .area-box textarea, .month-box textarea, .qn-add .input { font-size: 16px; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body { overflow-x: hidden; }
+    main { padding-top: max(10px, env(safe-area-inset-top, 0px)); }
+  }
+  .habits .d1 { display: none; }
+  @media (max-width: 560px) {
+    .habits .d3 { display: none; }
+    .habits .d1 { display: inline; }
+    .habits { table-layout: auto; }
+    .habits th, .habits td { padding-left: 0; padding-right: 0; }
+    .habits td:first-child { padding-right: 4px; font-size: 12.5px; }
+    .habits .hcell { width: 22px; height: 22px; }
+    .habits .hcell.on::after { font-size: 10px; }
+    .habits th:last-child, .habits td.hcount { display: none; }
+    .hname { gap: 4px; }
+    .hname .em { font-size: 15px; }
+    .hname .icon-btn { width: 22px; height: 22px; }
+    .hname .icon-btn svg { width: 13px; height: 13px; }
+  }
+  @media (max-width: 420px) {
+    .task-add, .idea-add { grid-template-columns: minmax(0, 1fr); }
+    .task-add > *, .idea-add > * { min-width: 0; }
+  }
+  @media (max-width: 360px) {
+    .habits .hcell { width: 20px; height: 20px; }
+    .hname .icon-btn { display: none; }
+    .clock { font-size: 62px; }
+    .page-head h1 { font-size: 44px; }
+  }
 </style>
 </head>
 <body>
@@ -1897,7 +1930,7 @@
             <div class="card taped t-sage">
               <div class="card-head"><h3>hábitos da semana</h3><button class="btn sm ghost" data-go="habitos">ver tudo</button></div>
               ${S.habits.length ? `<table class="habits">
-                <thead><tr><th>hábito</th>${week.map((d) => `<th class="${d === t ? 'today' : ''}">${DOW[dow(d)].slice(0, 3)}</th>`).join('')}<th></th></tr></thead>
+                <thead><tr><th>hábito</th>${week.map((d) => `<th class="${d === t ? 'today' : ''}"><span class="d3">${DOW[dow(d)].slice(0, 3)}</span><span class="d1" aria-hidden="true">${DOW[dow(d)].charAt(0)}</span></th>`).join('')}<th></th></tr></thead>
                 <tbody>${S.habits.map((hb) => `<tr style="--c:${hb.color}"><td><div class="hname"><span class="em" aria-hidden="true">${hb.emoji}</span><span class="nm">${esc(hb.name)}</span><button class="icon-btn" data-habit-edit="${hb.id}" aria-label="Editar ${esc(hb.name)}">${ICON.edit}</button></div></td>${week.map((d) => `<td><button class="hcell ${hb.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${hb.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(hb.name)}, ${DOW_LONG[dow(d)]}" aria-pressed="${!!hb.days[d]}"></button></td>`).join('')}<td class="hcount">${weekCount(hb)}/${hb.goal}</td></tr>`).join('')}</tbody>
               </table>` : '<div class="empty"><span class="hand">crie seus hábitos ♡</span></div>'}
               <button class="btn sm secondary" data-new-habit style="margin-top:12px">+ novo hábito</button>
