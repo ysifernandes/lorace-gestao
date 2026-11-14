@@ -1052,6 +1052,16 @@
   .cal-imp { color: #e0a100; font-size: .85em; }
   .hol-line.t-imp { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 8px 12px; margin: 2px 0 8px; border-radius: 10px; font-size: 13.5px; background: color-mix(in srgb, #f0c24b 28%, var(--surface)); }
   .hol-line.t-imp .muted { font-size: 11.5px; margin-left: auto; }
+  /* ---------- Pendentes (insistir até concluir) ---------- */
+  .chk { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--brand); }
+  .pend-list { display: flex; flex-direction: column; gap: 10px; }
+  .pend-row { padding: 12px; border-radius: 12px; background: var(--accent-soft); display: flex; flex-direction: column; gap: 8px; }
+  .pend-txt { display: flex; flex-direction: column; min-width: 0; }
+  .pend-txt b { overflow-wrap: anywhere; }
+  .pend-txt .muted { font-size: 12.5px; }
+  .pend-act { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pend-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px; border-radius: 12px; background: color-mix(in srgb, var(--butter) 70%, var(--surface)); }
 </style>
 </head>
 <body>
@@ -1900,11 +1910,14 @@
         { name: 'repeat', label: 'Repetir', type: 'select', value: it.repeat || 'none', options: Object.entries(REPEATS).map(([k, v]) => ({ value: k, label: v })) },
         { name: 'remindMin', label: 'Lembrete', type: 'select', value: it.remindMin ?? '', options: Object.entries(REMINDS).map(([k, v]) => ({ value: k, label: v })) },
         { name: 'prio', label: 'Prioridade', type: 'select', value: it.prio || 'normal', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta' }] },
+        { name: 'nag', label: 'Se eu não concluir', type: 'select', value: it.nag === 'off' ? 'off' : '', options: [{ value: '', label: 'Lembrar de novo até concluir' }, { value: 'off', label: 'Avisar só uma vez' }] },
         { name: 'notes', label: 'Anotações', value: it.notes || '', full: true, placeholder: 'Endereço, o que levar, detalhes…' },
       ],
       onSave: (v) => {
         if ((v.repeat !== 'none' || v.remindMin !== '' || v.time) && !v.due) v.due = today();
-        const data = { text: v.text.trim(), listId: v.listId, prio: v.prio, due: v.due, time: v.time, end: v.time ? v.end : '', repeat: v.repeat, remindMin: v.remindMin, notes: v.notes };
+        if (isNew && v.time && v.remindMin === '' && defaults.remindMin === undefined) v.remindMin = '0'; // com horário, avisa na hora
+        const data = { text: v.text.trim(), listId: v.listId, prio: v.prio, due: v.due, time: v.time, end: v.time ? v.end : '', repeat: v.repeat, remindMin: v.remindMin, nag: v.nag === 'off' ? 'off' : '', notes: v.notes };
+        if (!isNew && (v.due !== it.due || v.time !== it.time)) delete it.snooze;
         if (!isNew && (v.due !== it.due || v.time !== it.time || v.remindMin !== it.remindMin || v.repeat !== it.repeat)) Object.keys(S.notified).forEach((k) => { if (k.startsWith('i:' + it.id + ':')) delete S.notified[k]; });
         if (isNew) S.tasks.items.push({ id: uid(), done: false, doneDates: {}, ...data });
         else { Object.assign(it, data); delete it.remind; }
@@ -2323,7 +2336,7 @@
       const [a1, a2] = AFFIRMATIONS[doy % AFFIRMATIONS.length];
       const todayItems = itemsOn(t);
       const timed = todayItems.filter((i) => i.time);
-      const extra = S.tasks.items.filter((i) => !isRep(i) && !i.time && !i.done && ((i.due && i.due < t) || (!i.due && i.prio === 'alta')));
+      const extra = S.tasks.items.filter((i) => !isRep(i) && !i.done && ((i.due && i.due < t) || (!i.due && !i.time && i.prio === 'alta')));
       const untimed = [...extra, ...todayItems.filter((i) => !i.time)].sort((a, b) => (isDoneOn(a, t) - isDoneOn(b, t)) || ((b.prio === 'alta') - (a.prio === 'alta')));
       const dayAll = [...timed, ...untimed];
       const ws = weekStart(t);
@@ -4206,6 +4219,15 @@
         S.notified[key] = now;
         if (now - stampToMs(st) < 3 * 3600000) due.push({ title: 'hora de postar: ' + p.title, kind: 'conteúdo', when: platOf(p).label + ' · ' + p.time });
       });
+      const nowMin = Math.floor(now / 60000), every = nagEvery();
+      pendingTasks().forEach(({ it, d }) => {
+        const slot = nagSlot(Math.floor(remindAt(it, d) / 60000), it.snooze ? Math.floor(stampToMs(it.snooze) / 60000) : 0, nowMin, it.nag === 'off' ? 0 : every, 10);
+        if (!slot || (slot.k > 0 && quietNow())) return;
+        const key = `n:${it.id}:${d}:${slot.anchor}:${slot.k}`;
+        if (S.notified[key]) return;
+        S.notified[key] = now;
+        due.push({ title: it.text, kind: 'ainda pendente', taskId: it.id, date: d, when: sinceLabel(it, d) });
+      });
       S.snoozes = S.snoozes.filter((z) => { if (z.at <= now) { due.push({ title: z.title, kind: z.kind, taskId: z.taskId, date: z.date, when: 'adiado' }); return false; } return true; });
       if (due.length) { save(); due.forEach(showAlert); chime(); }
       updateBell();
@@ -4216,18 +4238,102 @@
     },
   };
 
+  /* Insistir até concluir: depois do 1º lembrete, repete até a tarefa ser marcada como feita */
+  const nagEvery = () => (S.ui.nagMin === undefined || S.ui.nagMin === null ? 30 : Number(S.ui.nagMin) || 0);
+  const NAG_OPTS = { '0': 'Não, avisar só uma vez', '15': 'A cada 15 minutos', '30': 'A cada 30 minutos', '60': 'A cada 1 hora', '120': 'A cada 2 horas' };
+  function nagSlot(base, snooze, now, every, win) { // tudo em minutos
+    let anchor = base, k0 = 1;
+    if (snooze && snooze > base) { if (now < snooze) return null; anchor = snooze; k0 = 0; }
+    if (now < anchor) return null;
+    if (!every) return k0 === 0 && now - anchor < win ? { anchor, k: 0 } : null;
+    const k = Math.floor((now - anchor) / every);
+    if (k < k0) return null;
+    return now - (anchor + k * every) < win ? { anchor, k } : null;
+  }
+  const quietNow = () => { const h = new Date().getHours(); return S.ui.nagQuiet !== false && (h >= 22 || h < 8); };
+  // tarefas com lembrete que já passaram da hora e não foram concluídas
+  function pendingTasks() {
+    const t = today(), now = Date.now(), oldest = addDays(t, -14), out = [];
+    S.tasks.items.forEach((it) => {
+      if (!hasRemind(it)) return;
+      const dates = isRep(it) ? [t] : (it.due <= t && it.due >= oldest ? [it.due] : []);
+      dates.forEach((d) => {
+        if (!occursOn(it, d) || isDoneOn(it, d)) return;
+        if (remindAt(it, d) > now) return;
+        out.push({ it, d });
+      });
+    });
+    return out;
+  }
+  function sinceLabel(it, d) { return d === today() ? (it.time ? `era às ${it.time}` : 'era para hoje') : `atrasada desde ${DOW[dow(d)]} ${fmtShort(d)}`; }
+  function snoozeTask(it, minutes) {
+    let at;
+    if (minutes === 'manha') { const d = addDays(today(), 1); at = `${d}T09:00`; }
+    else at = msToStamp(Date.now() + minutes * 60000);
+    it.snooze = at;
+    return at;
+  }
+  function markDone(it, d) {
+    if (isRep(it)) { it.doneDates = it.doneDates || {}; it.doneDates[d || today()] = true; } else { it.done = true; it.doneAt = today(); }
+    delete it.snooze;
+  }
+  function pendingModal(only) {
+    let list = pendingTasks();
+    if (only && only.length) {
+      const want = new Set(only);
+      const picked = list.filter((x) => want.has(x.it.id + ':' + x.d) || want.has(x.it.id));
+      if (picked.length) list = picked;
+    }
+    if (!list.length) { toast('Nada pendente agora ♥'); return; }
+    const row = ({ it, d }) => `<div class="pend-row" data-pend="${it.id}" data-d="${d}">
+        <div class="pend-txt"><b>${esc(it.text)}</b><span class="muted">${sinceLabel(it, d)}${it.snooze && stampToMs(it.snooze) > Date.now() ? ` · adiada até ${it.snooze.slice(0, 10) === today() ? it.snooze.slice(11) : 'amanhã ' + it.snooze.slice(11)}` : ''}</span></div>
+        <div class="pend-act">
+          <button type="button" class="btn sm" data-pa="done">✓ Concluí</button>
+          <button type="button" class="btn sm secondary" data-pa="30">+30 min</button>
+          <button type="button" class="btn sm secondary" data-pa="60">+1 h</button>
+          <button type="button" class="btn sm ghost" data-pa="manha">amanhã 9h</button>
+        </div>
+      </div>`;
+    modal({
+      title: list.length === 1 ? 'ainda pendente' : `${list.length} tarefas pendentes`,
+      extraHTML: `<p class="muted" style="margin:0 0 10px">Conclua ou escolha quando te lembro de novo. Vou continuar avisando até você marcar como feita.</p><div class="pend-list">${list.map(row).join('')}</div>`,
+      cancelLabel: 'Fechar',
+      onOpen: (form) => {
+        form.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-pa]'); if (!b) return;
+          const r = b.closest('[data-pend]');
+          const it = S.tasks.items.find((x) => x.id === r.dataset.pend); if (!it) return;
+          const a = b.dataset.pa;
+          if (a === 'done') { markDone(it, r.dataset.d); toast('Concluída ♥ Arrasou!'); }
+          else { const at = snoozeTask(it, a === 'manha' ? 'manha' : Number(a)); toast(`Combinado, te lembro ${at.slice(0, 10) === today() ? 'às ' + at.slice(11) : 'amanhã às ' + at.slice(11)}.`); }
+          save(); rerender(); updateBell();
+          r.remove();
+          if (!$('.pend-row', form)) dlg.close();
+        });
+      },
+    });
+  }
+  // abrir pelo toque na notificação (?task=id:data,id:data)
+  function openFromUrl(url) {
+    try {
+      const q = new URL(url, location.href).searchParams.get('task');
+      if (q) setTimeout(() => pendingModal(q.split(',').filter(Boolean)), 300);
+    } catch (e) {}
+  }
+
   function showAlert(a) {
     const box = $('#alerts');
     const div = document.createElement('div');
     div.className = 'alert taped';
     div.innerHTML = `<div class="eyebrow">🔔 lembrete · ${esc(a.kind)}${a.when ? ' · ' + esc(a.when) : ''}</div>
       <div class="ttl">${esc(a.title)}</div>
-      <div class="row">${a.taskId ? '<button class="btn sm" data-al="done">Concluir</button>' : ''}<button class="btn sm secondary" data-al="snooze">Adiar 10 min</button><button class="btn sm ghost" data-al="ok">Ok</button></div>`;
+      <div class="row">${a.taskId ? '<button class="btn sm" data-al="done">Concluir</button>' : ''}<button class="btn sm secondary" data-al="snooze">${a.taskId ? 'Adiar 30 min' : 'Adiar 10 min'}</button><button class="btn sm ghost" data-al="ok">Ok</button></div>`;
     div.addEventListener('click', (e) => {
       const b = e.target.closest('[data-al]');
       if (!b) return;
-      if (b.dataset.al === 'done') { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { if (isRep(it)) { it.doneDates = it.doneDates || {}; it.doneDates[a.date || today()] = true; } else { it.done = true; it.doneAt = today(); } toast('Concluída ♥'); } }
-      if (b.dataset.al === 'snooze') { S.snoozes.push({ id: uid(), at: Date.now() + 10 * 60000, title: a.title, kind: a.kind, taskId: a.taskId, date: a.date }); toast('Vou te lembrar de novo em 10 minutos.'); }
+      if (b.dataset.al === 'done') { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { markDone(it, a.date); toast('Concluída ♥'); } }
+      if (b.dataset.al === 'snooze' && a.taskId) { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { snoozeTask(it, 30); toast('Vou te lembrar de novo em 30 minutos.'); } }
+      else if (b.dataset.al === 'snooze') { S.snoozes.push({ id: uid(), at: Date.now() + 10 * 60000, title: a.title, kind: a.kind, taskId: a.taskId, date: a.date }); toast('Vou te lembrar de novo em 10 minutos.'); }
       save(); div.remove(); rerender();
     });
     box.appendChild(div);
@@ -4374,6 +4480,13 @@
       extraHTML: `
         <div class="eyebrow" style="margin-bottom:6px">hoje</div>
         ${list.length ? `<ul class="rem-list">${list.map((r) => `<li class="${r.at < hm || S.notified[r.key] ? 'past' : ''}"><span class="tm">${r.at}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(r.title)}${r.when ? ` <span class="muted">(${esc(r.when)})</span>` : ''}</span><span class="tagpill" style="--c:#b04a74">${r.kind}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0 0 12px">Nenhum lembrete para hoje. Coloque um horário ou um lembrete numa tarefa.</p>'}
+        ${(() => { const pend = pendingTasks(); return pend.length ? `<div class="pend-banner"><span>⏰ <b>${pend.length}</b> ${pend.length === 1 ? 'tarefa ainda pendente' : 'tarefas ainda pendentes'}</span><button type="button" class="btn sm" id="pend-open">ver e concluir</button></div>` : ''; })()}
+        <div class="settings-block">
+          <div class="eyebrow" style="margin-bottom:6px">insistir até eu concluir</div>
+          <p style="margin:0 0 8px">Depois do lembrete, se a tarefa não for marcada como feita, eu aviso de novo:</p>
+          <select class="input" id="nag-every" aria-label="Repetir o lembrete">${Object.entries(NAG_OPTS).map(([k, v]) => `<option value="${k}" ${String(nagEvery()) === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+          <label class="chk" style="margin-top:8px"><input type="checkbox" id="nag-quiet" ${S.ui.nagQuiet !== false ? 'checked' : ''}> Não insistir entre 22h e 8h</label>
+        </div>
         <div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">notificações</div>
           ${inSupa && pushSt !== 'nologin' ? Push.html(pushSt, pushN) : `<p>${permText}</p>
@@ -4386,6 +4499,9 @@
         </div>`,
       cancelLabel: 'Fechar',
       onOpen: (form) => {
+        const po = $('#pend-open', form); if (po) po.addEventListener('click', () => { dlg.close(); setTimeout(() => pendingModal(), 50); });
+        $('#nag-every', form).addEventListener('change', (e) => { S.ui.nagMin = Number(e.target.value); save(); toast(S.ui.nagMin ? 'Vou insistir até você concluir ♥' : 'Ok, aviso só uma vez.'); });
+        $('#nag-quiet', form).addEventListener('change', (e) => { S.ui.nagQuiet = e.target.checked; save(); });
         $('#rem-ics', form).addEventListener('click', () => saveFile(`bloom-lembretes-${today()}.ics`, new Blob([icsText()], { type: 'text/calendar' }), 'Arquivo do calendário salvo. Abra-o para importar.'));
         const on1 = $('#push-on', form);
         if (on1) on1.addEventListener('click', () => {
@@ -4512,6 +4628,8 @@
   window.addEventListener('hashchange', () => { const p = location.hash.slice(1); if (p && p !== current && PAGES[p]) go(p); });
   Reminders.prune();
   Reminders.tick();
+  if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });
   Cloud.start();
   let lastDay = today();
   setInterval(() => {

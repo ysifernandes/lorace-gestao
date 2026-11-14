@@ -232,8 +232,42 @@ function occursOn(it: any, date: string) {
 }
 const isDoneOn = (it: any, date: string) => (it.repeat && it.repeat !== 'none' ? !!(it.doneDates && it.doneDates[date]) : !!it.done);
 
+// "Insistir até concluir": depois do 1º lembrete, repete a cada N minutos até a tarefa ser concluída.
+// Com "adiar" (it.snooze = 'AAAA-MM-DDTHH:MM'), volta a avisar nesse horário e segue repetindo dali.
+function nagSlot(base: number, snooze: number, now: number, every: number, win: number) {
+  let anchor = base, k0 = 1;
+  if (snooze && snooze > base) { if (now < snooze) return null; anchor = snooze; k0 = 0; }
+  if (now < anchor) return null;
+  if (!every) return k0 === 0 && now - anchor < win ? { anchor, k: 0 } : null;
+  const k = Math.floor((now - anchor) / every);
+  if (k < k0) return null;
+  return now - (anchor + k * every) < win ? { anchor, k } : null;
+}
+const snoozeMin = (it: any) => (typeof it.snooze === 'string' && it.snooze.length >= 16 ? naive(it.snooze.slice(0, 10), it.snooze.slice(11, 16)) : 0);
+function pendingNags(core: any, nowN: number) {
+  const out: { key: string; id: string; date: string; text: string; since: string }[] = [];
+  const every = core?.ui?.nagMin === undefined || core?.ui?.nagMin === null ? 30 : Number(core.ui.nagMin) || 0;
+  const hour = Math.floor((((nowN % 1440) + 1440) % 1440) / 60);
+  const quiet = core?.ui?.nagQuiet !== false && (hour >= 22 || hour < 8);
+  const today = isoDay(nowN * 60000);
+  const oldest = isoDay((nowN - 14 * 1440) * 60000);
+  for (const it of core?.tasks?.items ?? []) {
+    if (it.remindMin === undefined || it.remindMin === null || it.remindMin === '' || !it.due) continue;
+    const rep = it.repeat && it.repeat !== 'none';
+    const dates = rep ? [today] : (it.due <= today && it.due >= oldest ? [it.due] : []);
+    for (const d of dates) {
+      if (!occursOn(it, d) || isDoneOn(it, d)) continue;
+      const base = naive(d, it.time || '09:00') - Number(it.remindMin);
+      const slot = nagSlot(base, snoozeMin(it), nowN, it.nag === 'off' ? 0 : every, 15);
+      if (!slot || (quiet && slot.k > 0)) continue;
+      out.push({ key: `n:${it.id}:${d}:${slot.anchor}:${slot.k}`, id: it.id, date: d, text: it.text, since: d === today ? (it.time ? `era às ${it.time}` : 'era para hoje') : `atrasada desde ${d.slice(8)}/${d.slice(5, 7)}` });
+    }
+  }
+  return out;
+}
+
 function dueReminders(core: any, biz: any, nowN: number) {
-  const out: { key: string; title: string; body: string }[] = [];
+  const out: { key: string; title: string; body: string; tag?: string; url?: string }[] = [];
   const WINDOW = 15; // minutos de tolerância para atrasos do agendador
   const today = isoDay(nowN * 60000);
   const days = [isoDay((nowN - 1440) * 60000), today, isoDay((nowN + 1440) * 60000)];
@@ -244,7 +278,7 @@ function dueReminders(core: any, biz: any, nowN: number) {
       const fire = naive(d, it.time || '09:00') - Number(it.remindMin);
       if (fire <= nowN && fire > nowN - WINDOW) {
         const when = it.time ? (d === today ? `hoje às ${it.time}` : `amanhã às ${it.time}`) : 'para hoje';
-        out.push({ key: `i:${it.id}:${d}`, title: `⏰ ${it.text}`, body: `Lembrete: ${when}` });
+        out.push({ key: `i:${it.id}:${d}`, title: `⏰ ${it.text}`, body: `Lembrete: ${when} · toque para concluir ou adiar`, tag: `t:${it.id}`, url: `?task=${encodeURIComponent(it.id + ':' + d)}` });
       }
     }
   }
@@ -277,10 +311,27 @@ async function pushTick() {
     try { core = JSON.parse(docs?.find((d) => d.name === 'core')?.json ?? '{}'); } catch { /* vazio */ }
     try { biz = JSON.parse(docs?.find((d) => d.name === 'biz')?.json ?? '{}').biz ?? {}; } catch { /* vazio */ }
     const nowN = localNowNaive(list[0].tz || 'America/Sao_Paulo');
+    const base = (APP_URL || '') + '/';
     for (const r of dueReminders(core, biz, nowN)) {
       const { error } = await admin.from('push_sent').insert({ user_id: uid, key: r.key });
       if (error) continue; // já enviado
-      for (const sub of list) if (await sendTo(sub, { title: r.title, body: r.body, url: APP_URL || '/' })) sent++;
+      for (const sub of list) if (await sendTo(sub, { title: r.title, body: r.body, url: base + (r.url || ''), tag: r.tag || '' })) sent++;
+    }
+    // tarefas que continuam sem concluir: um aviso só, juntando todas
+    const nags = [];
+    for (const n of pendingNags(core, nowN)) {
+      const { error } = await admin.from('push_sent').insert({ user_id: uid, key: n.key });
+      if (!error) nags.push(n);
+    }
+    if (nags.length) {
+      const one = nags.length === 1;
+      const payload = {
+        title: one ? `⏰ Ainda pendente: ${nags[0].text}` : `⏰ ${nags.length} tarefas ainda pendentes`,
+        body: one ? `${nags[0].since} · toque para concluir ou adiar` : nags.slice(0, 4).map((n) => '• ' + n.text).join('\n') + (nags.length > 4 ? `\n+ ${nags.length - 4}` : ''),
+        url: base + '?task=' + encodeURIComponent(nags.map((n) => n.id + ':' + n.date).join(',')),
+        tag: 'bloom-pendentes',
+      };
+      for (const sub of list) if (await sendTo(sub, payload)) sent++;
     }
   }
   await admin.from('push_sent').delete().lt('sent_at', new Date(Date.now() - 4 * 864e5).toISOString());
