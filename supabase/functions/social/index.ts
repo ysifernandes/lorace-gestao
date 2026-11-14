@@ -100,6 +100,14 @@ async function fbGet(path: string, token: string) {
   if (!r.ok || j.error) throw new Error(`facebook ${path.split('?')[0]}: ${j.error?.message ?? r.status}`);
   return j;
 }
+async function pool<T, R>(items: T[], size: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (i < items.length) { const k = i++; out[k] = await fn(items[k]); }
+  }));
+  return out;
+}
 async function igInsights(mediaId: string, token: string, get = igGet) {
   const out: Record<string, number> = {};
   const sets = ['reach,saved,shares,views,total_interactions', 'reach,saved,shares,total_interactions', 'reach,saved,shares', 'reach,saved'];
@@ -109,10 +117,11 @@ async function igInsights(mediaId: string, token: string, get = igGet) {
       if (typeof v === 'number') out[d.name === 'saved' ? 'saves' : d.name] = v;
     }
   };
+  const follows = get(`${mediaId}/insights?metric=follows`, token).catch(() => null); // nem todo post tem
   for (const s of sets) {
     try { read(await get(`${mediaId}/insights?metric=${s}`, token)); break; } catch { /* tenta um conjunto menor */ }
   }
-  try { read(await get(`${mediaId}/insights?metric=follows`, token)); } catch { /* nem todo post tem */ }
+  const f = await follows; if (f) read(f);
   return out;
 }
 async function syncInstagram(userId: string, tok: any) {
@@ -131,16 +140,15 @@ async function syncInstagram(userId: string, tok: any) {
   }
   const me = await get(fbIg ? `${fbIg}?fields=id,username,profile_picture_url,followers_count,media_count` : 'me?fields=user_id,username,profile_picture_url,followers_count,media_count', access);
   const media = await get(`${fbIg || 'me'}/media?fields=id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count&limit=40`, access);
-  const rows = [];
-  for (const m of media.data ?? []) {
+  const rows = await pool((media.data ?? []) as any[], 10, async (m) => {
     const metrics: Record<string, number> = { likes: m.like_count ?? 0, comments: m.comments_count ?? 0 };
     Object.assign(metrics, await igInsights(m.id, access, get));
-    rows.push({
+    return {
       user_id: userId, platform: 'instagram', ext_id: String(m.id), caption: m.caption ?? '', permalink: m.permalink ?? '',
       media_type: m.media_product_type === 'REELS' ? 'reels' : m.media_type === 'CAROUSEL_ALBUM' ? 'carrossel' : m.media_type === 'VIDEO' ? 'reels' : 'post',
       thumbnail_url: m.thumbnail_url ?? m.media_url ?? null, posted_at: m.timestamp ?? null, metrics, synced_at: nowIso(),
-    });
-  }
+    };
+  });
   if (rows.length) {
     const { error } = await admin.from('social_posts').upsert(rows);
     if (error) throw new Error('db: ' + error.message);
