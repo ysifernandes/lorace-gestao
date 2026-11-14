@@ -687,7 +687,9 @@
   .cal-chip.pub { opacity: .6; }
   .cal-more { font-family: var(--f-mono); font-size: 10px; color: var(--ink-soft); }
   .day-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .kanban { display: grid; grid-template-columns: repeat(6, minmax(230px, 1fr)); gap: 14px; overflow-x: auto; padding: 4px 2px 12px; }
+  .kanban { display: grid; grid-template-columns: repeat(6, minmax(230px, 1fr)); gap: 14px; overflow-x: auto; padding: 4px 2px 12px; align-items: start; }
+  .kmore { all: unset; cursor: pointer; text-align: center; font-size: 12.5px; color: var(--brand); padding: 6px; border-radius: 8px; }
+  .kmore:hover { background: var(--accent-soft); }
   .kcol { background: color-mix(in srgb, var(--surface) 72%, transparent); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-height: 220px; }
   .kcol.over { outline: 2.5px dashed var(--brand); }
   .khead { display: flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: color-mix(in srgb, var(--c) 70%, black); padding: 2px 2px 4px; }
@@ -3913,6 +3915,7 @@
   PAGES.conteudo = (() => {
     const el = $('#pg-conteudo');
     let month = today().slice(0, 7);
+    const kanOpen = {}; // colunas da produção abertas por inteiro
     let sel = today();
     function filtered() { const f = S.ui.contFolder || 'all'; return B().posts.filter((p) => f === 'all' || p.folderId === f); }
     function render() {
@@ -3946,10 +3949,17 @@
             ${selPosts.length ? `<div class="day-posts">${selPosts.map((p) => postCard(p, { drag: true })).join('')}</div>` : '<div class="empty"><span class="hand">nada programado ♡</span>toque em “+ conteúdo neste dia” ou arraste uma ideia</div>'}
           </div>`;
       } else if (tab === 'kanban') {
-        body = `<div class="kanban">${ST_ORDER.map((k) => { const ps = posts.filter((p) => p.status === k).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')); return `<div class="kcol" data-col="${k}" style="--c:${STATUSES[k].color}">
+        // colunas curtas: "publicado" mostra só os mais recentes (o resto fica em Insights); as outras mostram até 5
+        body = `<div class="kanban">${ST_ORDER.map((k) => {
+          const pub = k === 'publicado';
+          const ps = posts.filter((p) => p.status === k).sort((a, b) => (pub ? -1 : 1) * (a.date || '9999').localeCompare(b.date || '9999'));
+          const lim = pub ? 3 : (kanOpen[k] ? Infinity : 5);
+          return `<div class="kcol" data-col="${k}" style="--c:${STATUSES[k].color}">
             <div class="khead"><i class="dot" style="--c:${STATUSES[k].color}"></i>${STATUSES[k].label}<span class="count">${ps.length}</span></div>
-            ${ps.map((p) => postCard(p, { drag: true, move: true })).join('')}
-            <button class="kadd" data-new-post-status="${k}">+ adicionar</button>
+            ${ps.slice(0, lim).map((p) => postCard(p, { drag: true, move: true })).join('')}
+            ${ps.length > lim ? (pub ? `<button class="kmore" data-go-ins>ver os ${ps.length} publicados em Insights →</button>` : `<button class="kmore" data-kmore="${k}">mostrar mais ${ps.length - lim}</button>`) : ''}
+            ${kanOpen[k] && !pub && ps.length > 5 ? `<button class="kmore" data-kmore="${k}">mostrar menos</button>` : ''}
+            ${pub ? '' : `<button class="kadd" data-new-post-status="${k}">+ adicionar</button>`}
           </div>`; }).join('')}</div>`;
       } else {
         const ideas = posts.filter((p) => p.status === 'ideia');
@@ -3989,6 +3999,8 @@
     on(el, 'click', '[data-new-post]', () => postModal(null, (S.ui.contTab || 'cal') === 'cal' ? { date: sel } : {}));
     on(el, 'click', '[data-new-post-day]', (e, b) => postModal(null, { date: b.dataset.newPostDay, status: 'roteiro' }));
     on(el, 'click', '[data-new-post-status]', (e, b) => postModal(null, { status: b.dataset.newPostStatus }));
+    on(el, 'click', '[data-kmore]', (e, b) => { kanOpen[b.dataset.kmore] = !kanOpen[b.dataset.kmore]; render(); });
+    on(el, 'click', '[data-go-ins]', () => go('insights'));
     on(el, 'click', '[data-cm]', (e, b) => { const [y, m] = month.split('-').map(Number); const d = new Date(y, m - 1 + Number(b.dataset.cm), 1); month = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; render(); });
     el.addEventListener('click', (e) => {
       const cell = e.target.closest('.cal-cell');
