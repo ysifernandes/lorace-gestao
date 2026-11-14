@@ -1,0 +1,44 @@
+name: youtube-ai-autopilot
+
+on:
+  push:
+    paths: ["youtube-ai-autopilot/**", ".github/workflows/youtube-ai-autopilot.yml"]
+  pull_request:
+    paths: ["youtube-ai-autopilot/**", ".github/workflows/youtube-ai-autopilot.yml"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: youtube-ai-autopilot
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: youtube-ai-autopilot/backend/requirements.txt
+      - name: FFmpeg e fontes
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: pip install -r backend/requirements.txt ruff
+      - run: ruff check backend
+      - name: Testes (adaptadores demo, sem segredos)
+        working-directory: youtube-ai-autopilot/backend
+        run: python -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: youtube-ai-autopilot/frontend/package-lock.json
+      - working-directory: youtube-ai-autopilot/frontend
+        run: npm ci && npm run build
