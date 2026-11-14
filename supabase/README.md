@@ -10,6 +10,7 @@
 | `META_APP_ID` / `META_APP_SECRET` / `META_CONFIG_ID` | App da Meta (apps novos): Instagram pelo Login do Facebook para Empresas. A conta profissional do Instagram precisa estar ligada a uma página do Facebook |
 | `IG_APP_ID` / `IG_APP_SECRET` | Só para apps antigos com "API com login do Instagram" (usado se os segredos META_* não existirem) |
 | `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET` | App do TikTok for Developers |
+| `ANTHROPIC_API_KEY` | Chave da API da Claude (console.anthropic.com) para a "análise da Claude" em Insights; limite de 10 análises por usuária por dia |
 | `APP_URL` | Endereço do site (já configurado) |
 | `CRON_SECRET` | Usado pela atualização diária (já configurado) |
 

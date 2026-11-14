@@ -7,6 +7,7 @@
 //   POST /sync                {}                                     (usuária logada: atualiza agora)
 //   POST /sync                header x-cron-secret                   (agendamento diário: todas as contas)
 //   POST /choices / /choose   { ext_id }                             (usuária logada: escolher a conta do Instagram)
+//   POST /analyze             { posts }                              (usuária logada: análise dos resultados pela Claude)
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -20,6 +21,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import webpush from 'npm:web-push@3.6.7';
+import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -35,6 +37,8 @@ const igConfigured = () => fbMode() || !!(IG_APP_ID && IG_APP_SECRET);
 const TT_KEY = Deno.env.get('TIKTOK_CLIENT_KEY') ?? '';
 const TT_SECRET = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? '';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
+const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+const AI_PER_DAY = 10; // análises por usuária por dia
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://bloom-planner-nine.vercel.app';
@@ -375,6 +379,77 @@ async function pushTick() {
   return { users: byUser.size, sent };
 }
 
+/* ---------------- Análise dos resultados (Claude) ---------------- */
+const AI_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['resumo', 'fazer_mais', 'ganchos', 'melhor_horario', 'evitar', 'proximas_ideias'],
+  properties: {
+    resumo: { type: 'string' },
+    fazer_mais: { type: 'array', items: { type: 'string' } },
+    ganchos: { type: 'array', items: { type: 'string' } },
+    melhor_horario: { type: 'string' },
+    evitar: { type: 'array', items: { type: 'string' } },
+    proximas_ideias: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false, required: ['titulo', 'formato', 'por_que'],
+        properties: { titulo: { type: 'string' }, formato: { type: 'string' }, por_que: { type: 'string' } },
+      },
+    },
+  },
+};
+const AI_SYSTEM = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Você recebe os resultados dos posts de uma empreendedora (JSON) e devolve uma análise curta e prática, em português do Brasil, com tom acolhedor e direto.
+A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).
+Baseie cada conclusão nos números recebidos; se houver poucos posts, diga que a conclusão é preliminar. Não invente números.
+Campos: "resumo" (2 a 3 frases), "fazer_mais" (até 3 itens), "ganchos" (até 3 ganchos ou começos que funcionaram, citando o post), "melhor_horario" (1 frase), "evitar" (até 2 itens), "proximas_ideias" (3 ideias de post com titulo, formato e por_que).`;
+// mantém só campos conhecidos e textos curtos: o que vai para a Claude é decidido aqui, não pelo app
+function cleanPosts(raw: unknown) {
+  const keys = ['titulo', 'rede', 'formato', 'pasta', 'data', 'dia_semana', 'hora', 'gancho', 'nota_0_100', 'minha_avaliacao', 'o_que_funcionou', 'views', 'reach', 'likes', 'comments', 'saves', 'shares', 'follows', 'clicks', 'sales'];
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 150).map((p: any) => {
+    const o: Record<string, unknown> = {};
+    for (const k of keys) {
+      const v = p?.[k];
+      if (typeof v === 'number' && Number.isFinite(v)) o[k] = v;
+      else if (typeof v === 'string' && v.trim()) o[k] = v.slice(0, 200);
+    }
+    return o;
+  });
+}
+async function analyzePosts(userId: string, raw: unknown) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const posts = cleanPosts(raw);
+  if (posts.length < 2) return { status: 400, body: { error: 'few_posts' } };
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const { count } = await admin.from('ai_usage').select('user_id', { count: 'exact', head: true }).eq('user_id', userId).gte('at', since);
+  if ((count ?? 0) >= AI_PER_DAY) return { status: 429, body: { error: 'rate_limited' } };
+  await admin.from('ai_usage').insert({ user_id: userId });
+  const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
+  try {
+    const resp: any = await client.beta.messages.create({
+      model: 'claude-opus-5-5',
+      max_tokens: 16000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default', // se o pedido for recusado, a própria API tenta de novo em outro modelo
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: AI_SCHEMA } },
+      system: AI_SYSTEM,
+      messages: [{ role: 'user', content: `Resultados dos posts (JSON):\n${JSON.stringify(posts)}` }],
+    } as any);
+    if (resp.stop_reason === 'refusal') return { status: 422, body: { error: 'refused' } };
+    if (resp.stop_reason === 'max_tokens') return { status: 502, body: { error: 'truncated' } };
+    const text = (resp.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('');
+    return { status: 200, body: { ok: true, data: JSON.parse(text) } };
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError) { console.error('ai auth'); return { status: 400, body: { error: 'bad_key' } }; }
+    if (e instanceof Anthropic.RateLimitError) return { status: 429, body: { error: 'rate_limited' } };
+    if (e instanceof Anthropic.APIError) { console.error('ai api', e.status, e.message); return { status: 502, body: { error: 'api', status: e.status } }; }
+    if (e instanceof SyntaxError) { console.error('ai json'); return { status: 502, body: { error: 'bad_output' } }; }
+    console.error('ai', e);
+    return { status: 500, body: { error: 'failed' } };
+  }
+}
+
 /* ---------------- Rotas ---------------- */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -472,6 +547,14 @@ Deno.serve(async (req) => {
       const results = [];
       for (const a of accounts ?? []) results.push(await syncAccount(user.id, a.platform as Platform));
       return json({ ok: true, results });
+    }
+
+    if (route[0] === 'analyze' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { posts } = await req.json().catch(() => ({}));
+      const r = await analyzePosts(user.id, posts);
+      return json(r.body, r.status);
     }
 
     if (route[0] === 'choices' && req.method === 'POST') {

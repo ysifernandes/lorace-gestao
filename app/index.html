@@ -1070,6 +1070,38 @@
   .ig-opt img, .ig-av { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center; background: var(--surface); }
   .ig-t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .ig-t .muted { font-size: 12.5px; }
+  /* ---------- Insights: lista compacta e detalhes do post ---------- */
+  .pl-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .pl-tools .input.sm { width: auto; flex: 1 1 140px; padding: 7px 10px; }
+  .plist { display: flex; flex-direction: column; }
+  .prow2 { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 4px; border-bottom: 1.5px dashed var(--line); }
+  .prow2:last-child { border-bottom: 0; }
+  .prow2:hover { background: var(--accent-soft); border-radius: 10px; }
+  .prow2:focus-visible { outline: 2px solid var(--brand); border-radius: 10px; }
+  .prow2 .tt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .prow2 .n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow2 .m { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .psc { flex: none; min-width: 34px; height: 28px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; background: var(--c, #999); }
+  .psc.none { background: transparent; color: var(--ink-soft); font-weight: 400; }
+  .psc.big { height: auto; padding: 6px 10px; border-radius: 12px; font-size: 20px; line-height: 1; text-align: center; }
+  .psc.big small { display: block; font-size: 10px; font-weight: 500; margin-top: 3px; }
+  .pl-more { margin-top: 10px; width: 100%; justify-content: center; }
+  .pinfo { display: flex; flex-direction: column; gap: 12px; }
+  .pinfo-head { display: flex; gap: 10px; align-items: flex-start; }
+  .pinfo-head > div { flex: 1; min-width: 0; }
+  .pinfo-head b { overflow-wrap: anywhere; }
+  .pinfo-head .muted { font-size: 12.5px; }
+  .pinfo-link { justify-content: center; text-decoration: none; }
+  .pinfo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .pm { background: var(--accent-soft); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .pm .ic { font-size: 14px; }
+  .pm b { font-size: 20px; font-family: var(--f-serif); }
+  .pm span:last-child { font-size: 11.5px; color: var(--ink-soft); }
+  @media (max-width: 480px) { .pinfo-grid { grid-template-columns: repeat(2, 1fr); } }
+  .pinfo-src { font-size: 12px; margin: 0; }
+  .pinfo-cap summary { cursor: pointer; font-size: 13px; color: var(--ink-soft); }
+  .pinfo-cap p { white-space: pre-wrap; font-size: 13px; margin: 6px 0 0; overflow-wrap: anywhere; }
+  .pinfo-notes { font-size: 13px; display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 12px; border: 1.5px dashed var(--line); }
 </style>
 </head>
 <body>
@@ -3610,7 +3642,60 @@
     });
   }
 
+  // números que vêm do Instagram/TikTok: só leitura, com link para o post
+  const METRIC_LABELS = [['views', 'Visualizações', '👁'], ['reach', 'Alcance', '📣'], ['likes', 'Curtidas', '♥'], ['comments', 'Comentários', '💬'], ['saves', 'Salvamentos', '🔖'], ['shares', 'Compartilhamentos', '↗'], ['follows', 'Seguidores ganhos', '➕'], ['clicks', 'Cliques', '🔗'], ['sales', 'Vendas', '🛍️']];
+  function safeLink(u) { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (e) { return ''; } }
+  function postInfo(p) {
+    if (!p) return;
+    if (!(p.metrics && p.metrics.auto)) { metricsModal(p); return; }
+    const m = p.metrics, sc = scoreOf(p), bd = badgeOf(sc), link = safeLink(p.link);
+    modal({
+      title: 'resultados do post',
+      extraHTML: `<div class="pinfo">
+          <div class="pinfo-head"><span class="pc-plat" aria-hidden="true">${platOf(p).icon}</span><div><b>${esc(p.title)}</b><div class="muted">${p.date ? `${DOW[dow(p.date)]} ${fmtShort(p.date)}${p.time ? ' · ' + p.time : ''}` : ''}${FORMATS[p.format] ? ' · ' + esc(FORMATS[p.format]) : ''}</div></div>${bd ? `<span class="psc big" style="--c:${bd.c}">${sc}<small>${bd.t}</small></span>` : ''}</div>
+          ${link ? `<a class="btn pinfo-link" href="${esc(link)}" target="_blank" rel="noopener">abrir no ${platOf(p).label} ↗</a>` : ''}
+          <div class="pinfo-grid">${METRIC_LABELS.filter(([k]) => m[k] != null).map(([k, l, ic]) => `<div class="pm"><span class="ic" aria-hidden="true">${ic}</span><b>${fmtNum(num(m[k]))}</b><span>${l}</span></div>`).join('')}</div>
+          <p class="muted pinfo-src">Números do ${platOf(p).label}${m.at ? `, atualizados em ${fmtShort(m.at)}` : ''}. Eles vêm sozinhos e não podem ser editados.</p>
+          ${p.caption ? `<details class="pinfo-cap"><summary>legenda</summary><p>${esc(p.caption)}</p></details>` : ''}
+          ${p.rating || p.worked || p.change ? `<div class="pinfo-notes">${p.rating ? `<div>${'★'.repeat(p.rating)}${'☆'.repeat(5 - p.rating)}</div>` : ''}${p.worked ? `<div><b>funcionou:</b> ${esc(p.worked)}</div>` : ''}${p.change ? `<div><b>mudaria:</b> ${esc(p.change)}</div>` : ''}</div>` : ''}
+          <div class="row"><button type="button" class="btn sm secondary" data-pi-notes>${p.rating || p.worked || p.change ? 'editar minhas anotações' : '✍️ anotar o que funcionou'}</button><button type="button" class="btn sm ghost" data-pi-sales>cliques e vendas</button></div>
+        </div>`,
+      cancelLabel: 'Fechar',
+      onOpen: (form) => {
+        $('[data-pi-notes]', form).addEventListener('click', () => { dlg.close(); setTimeout(() => notesModal(p), 50); });
+        $('[data-pi-sales]', form).addEventListener('click', () => { dlg.close(); setTimeout(() => salesModal(p), 50); });
+      },
+    });
+  }
+  function notesModal(p) {
+    modal({
+      title: 'minhas anotações',
+      message: p.title,
+      fields: [
+        { name: 'rating', label: 'Minha nota', type: 'select', value: String(p.rating || ''), full: true, options: [{ value: '', label: '—' }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: '★'.repeat(n) + '☆'.repeat(5 - n) }))] },
+        { name: 'worked', label: 'O que funcionou', type: 'textarea', value: p.worked || '', full: true, rows: 2 },
+        { name: 'change', label: 'O que eu mudaria', type: 'textarea', value: p.change || '', full: true, rows: 2 },
+      ],
+      onSave: (v) => { p.rating = Number(v.rating) || 0; p.worked = v.worked; p.change = v.change; save(); rerender(); setTimeout(() => postInfo(p), 50); },
+    });
+  }
+  function salesModal(p) { // o Instagram não sabe das vendas: só isso ela completa
+    const m = p.metrics || {};
+    modal({
+      title: 'cliques e vendas',
+      message: 'O Instagram não informa quantas vendas um post trouxe. Se você souber, anote aqui.',
+      fields: [
+        { name: 'clicks', label: 'Cliques no link', type: 'number', value: m.clicks ?? '', placeholder: '0' },
+        { name: 'sales', label: 'Vendas', type: 'number', value: m.sales ?? '', placeholder: '0' },
+      ],
+      onSave: (v) => {
+        ['clicks', 'sales'].forEach((k) => { if (v[k] === '' || v[k] == null) delete p.metrics[k]; else p.metrics[k] = Math.max(0, Number(v[k]) || 0); });
+        save(); rerender(); setTimeout(() => postInfo(p), 50);
+      },
+    });
+  }
   function metricsModal(p) {
+    if (p.metrics && p.metrics.auto) { postInfo(p); return; }
     const m = p.metrics || {};
     const nf = (name, label) => ({ name, label, type: 'number', value: m[name] ?? '', placeholder: '0' });
     modal({
@@ -4056,6 +4141,9 @@
   PAGES.insights = (() => {
     const el = $('#pg-insights');
     let busy = false;
+    const LIST_STEP = 8;
+    let listN = LIST_STEP;
+    const ui = () => (S.ui.insList = S.ui.insList || { plat: 'all', sort: 'recent' });
     function groupAvg(posts, keyFn, labelFn) {
       const g = {};
       posts.forEach((p) => { const k = keyFn(p); (g[k] = g[k] || []).push(scoreOf(p)); });
@@ -4096,13 +4184,27 @@
         <div class="grid-2">
           <div class="stack">
             <div class="card taped">
-              <div class="card-head"><h3>posts publicados</h3><span class="muted">nota 0–100 vs. a sua média</span></div>
-              ${pubs.length ? pubs.map((p) => { const s = scoreOf(p), bd = badgeOf(s); return `<div class="prow">
-                <span class="pc-plat" aria-label="${platOf(p).label}">${platOf(p).icon}</span>
-                <div class="tt"><div class="n">${esc(p.title)}</div><div class="m">${p.date ? fmtShort(p.date) : ''} · ${esc(FORMATS[p.format] || '')} · ${folderOf(p).emoji} ${esc(folderOf(p).name)}${p.metrics ? ` · ${fmtNum(num(p.metrics.views))} visualizações` : ''}</div></div>
-                ${bd ? `<span class="pc-score" style="--c:${bd.c};margin:0"><b>${s}</b> ${bd.t}</span>` : ''}
-                <button class="btn sm ${p.metrics ? 'ghost' : 'secondary'}" data-metrics="${p.id}">${p.metrics ? 'ver números' : 'anotar números'}</button>
-              </div>`; }).join('') : '<div class="empty"><span class="hand">nenhum post publicado ainda</span>quando um conteúdo chega em “publicado”, ele aparece aqui</div>'}
+              <div class="card-head"><h3>posts publicados</h3><span class="muted">${pubs.length} · nota 0–100 vs. a sua média</span></div>
+              ${(() => {
+                if (!pubs.length) return '<div class="empty"><span class="hand">nenhum post publicado ainda</span>quando um conteúdo chega em “publicado”, ele aparece aqui</div>';
+                const f = ui();
+                let list = pubs.filter((p) => f.plat === 'all' || p.platform === f.plat);
+                if (f.sort === 'score') list = [...list].sort((a, b) => (scoreOf(b) ?? -1) - (scoreOf(a) ?? -1));
+                if (f.sort === 'views') list = [...list].sort((a, b) => num(b.metrics && b.metrics.views) - num(a.metrics && a.metrics.views));
+                const plats = [...new Set(pubs.map((p) => p.platform))];
+                const shown = list.slice(0, listN);
+                return `<div class="pl-tools">
+                    ${plats.length > 1 ? `<select class="input sm" data-pl-plat aria-label="Rede"><option value="all">todas as redes</option>${plats.map((k) => `<option value="${k}" ${f.plat === k ? 'selected' : ''}>${(PLATFORMS[k] || PLATFORMS.instagram).label}</option>`).join('')}</select>` : ''}
+                    <select class="input sm" data-pl-sort aria-label="Ordenar"><option value="recent" ${f.sort === 'recent' ? 'selected' : ''}>mais recentes</option><option value="score" ${f.sort === 'score' ? 'selected' : ''}>maior nota</option><option value="views" ${f.sort === 'views' ? 'selected' : ''}>mais visualizações</option></select>
+                  </div>
+                  <div class="plist">${shown.map((p) => { const sc = scoreOf(p), bd = badgeOf(sc); return `<button type="button" class="prow2" data-pinfo="${p.id}">
+                    <span class="pc-plat" aria-hidden="true">${platOf(p).icon}</span>
+                    <span class="tt"><span class="n">${esc(p.title)}</span><span class="m">${p.date ? fmtShort(p.date) : ''}${FORMATS[p.format] ? ' · ' + esc(FORMATS[p.format]) : ''}${p.metrics ? ` · 👁 ${fmtNum(num(p.metrics.views))}` : ' · sem números'}</span></span>
+                    ${bd ? `<span class="psc" style="--c:${bd.c}" title="${bd.t}">${sc}</span>` : '<span class="psc none">—</span>'}
+                  </button>`; }).join('')}</div>
+                  ${list.length > listN ? `<button type="button" class="btn sm secondary pl-more" data-pl-more>ver mais (faltam ${list.length - listN})</button>` : ''}
+                  ${listN > LIST_STEP ? '<button type="button" class="btn sm ghost pl-more" data-pl-less>mostrar menos</button>' : ''}`;
+              })()}
             </div>
             <div class="card">
               ${CLIP}
@@ -4122,7 +4224,7 @@
                 ${Array.isArray(ai.evitar) && ai.evitar.length ? `<h4>evite</h4><ul>${ai.evitar.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
                 ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">+ ideia</button></div>`).join('')}` : ''}
                 <p class="muted" style="font-size:11.5px;margin-top:8px">Análise de ${new Date(B().analysis.at).toLocaleDateString('pt-BR')}</p>
-              </div>` : `<p class="muted" style="margin:0">A Claude lê os resultados dos seus posts e diz o que postar mais, que ganchos repetir e o melhor horário. ${inClaude ? '' : 'Funciona quando o Bloom é aberto pelo link do Claude.'}</p>`}
+              </div>` : `<p class="muted" style="margin:0">A Claude lê os resultados dos seus posts e diz o que postar mais, que ganchos repetir e o melhor horário. </p>`}
             </div>
             <div class="card bars">
               <div class="card-head"><h3>o que funciona melhor</h3></div>
@@ -4157,10 +4259,27 @@
       const withData = B().posts.filter((p) => p.metrics);
       if (withData.length < 2) { toast('Anote os números de pelo menos 2 posts para a análise.'); return; }
       const sample = inClaude ? await window.claude.use('sample') : null;
-      if (!sample) { toast('A análise da Claude funciona quando o Bloom é aberto pelo link do Claude.'); return; }
+      if (!sample && !inSupa) { toast('Entre no app Bloom para usar a análise da Claude.'); return; }
       const data = withData.map((p) => ({ titulo: p.title, rede: platOf(p).label, formato: FORMATS[p.format], pasta: folderOf(p).name, data: p.date, dia_semana: p.date ? DOW_LONG[dow(p.date)] : '', hora: p.time, gancho: p.hook, nota_0_100: scoreOf(p), minha_avaliacao: p.rating || null, o_que_funcionou: p.worked || '', ...p.metrics }));
       const prompt = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Analise os resultados dos posts abaixo (JSON). A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).\n\nResponda SOMENTE com um objeto JSON neste formato:\n{"resumo": "2 a 3 frases", "fazer_mais": ["até 3 itens"], "ganchos": ["até 3 ganchos que funcionaram ou variações deles"], "melhor_horario": "uma frase", "evitar": ["até 2 itens"], "proximas_ideias": [{"titulo": "...", "formato": "...", "por_que": "..."}]}\n\nRegras: português do Brasil, tom carinhoso e direto, baseie-se apenas nos dados, 3 próximas ideias.\n\nPosts:\n${JSON.stringify(data)}`;
       busy = true; render();
+      if (!sample) { // app Bloom: o servidor chama a Claude
+        try {
+          const j = await Social.call('analyze', { posts: data.slice(0, 150) });
+          B().analysis = { at: Date.now(), data: j.data };
+          save(); toast('Análise pronta ✨');
+        } catch (e) {
+          const msg = {
+            not_configured: 'A análise da Claude ainda não foi ativada no servidor do Bloom (falta a chave da API).',
+            bad_key: 'A chave da API da Claude no servidor não funcionou. Confira o segredo ANTHROPIC_API_KEY.',
+            rate_limited: 'Você já fez muitas análises hoje. Tente de novo amanhã.',
+            few_posts: 'Preciso dos números de pelo menos 2 posts para analisar.',
+            refused: 'A Claude não conseguiu analisar estes posts. Tente de novo mais tarde.',
+          }[e.code] || 'Não consegui fazer a análise agora. Tente de novo em alguns minutos.';
+          toast(msg);
+        } finally { busy = false; render(); }
+        return;
+      }
       try {
         const res = await sample.json(prompt, { modelTier: 'default' });
         B().analysis = { at: Date.now(), data: res };
@@ -4171,6 +4290,13 @@
       } finally { busy = false; render(); }
     }
     on(el, 'click', '[data-metrics]', (e, b) => metricsModal(B().posts.find((x) => x.id === b.dataset.metrics)));
+    on(el, 'click', '[data-pinfo]', (e, b) => postInfo(B().posts.find((x) => x.id === b.dataset.pinfo)));
+    on(el, 'click', '[data-pl-more]', () => { listN += LIST_STEP; render(); });
+    on(el, 'click', '[data-pl-less]', () => { listN = LIST_STEP; render(); $('.plist', el)?.scrollIntoView({ block: 'nearest' }); });
+    el.addEventListener('change', (e) => {
+      if (e.target.matches('[data-pl-plat]')) { ui().plat = e.target.value; listN = LIST_STEP; save(); render(); }
+      if (e.target.matches('[data-pl-sort]')) { ui().sort = e.target.value; listN = LIST_STEP; save(); render(); }
+    });
     on(el, 'click', '[data-sconnect]', (e, b) => Social.connect(b.dataset.sconnect));
     on(el, 'click', '[data-ssync]', () => Social.syncNow());
     on(el, 'click', '[data-sdisc]', (e, b) => Social.disconnect(b.dataset.sdisc));

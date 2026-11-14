@@ -115,3 +115,12 @@ create table if not exists public.social_choices (
   primary key (user_id, platform, ext_id)
 );
 alter table public.social_choices enable row level security;
+
+-- Análises da Claude feitas por usuária (limite diário). Só o servidor lê e escreve.
+create table if not exists public.ai_usage (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists ai_usage_user_at on public.ai_usage (user_id, at);
+alter table public.ai_usage enable row level security;
