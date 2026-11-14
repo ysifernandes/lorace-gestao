@@ -966,6 +966,11 @@
   .nav-opt input:checked + span::after { content: '♥'; margin-left: auto; color: var(--brand); }
   :root[data-style="clean"] .nav-opt input:checked + span::after { content: '✓'; }
   .nav-opt input:focus-visible + span { outline: 2px solid var(--brand); }
+  /* ---------- Mapa ligado ao planner ---------- */
+  .mm-act { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mm-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; background: var(--surface); border-radius: 10px; padding: 8px 12px; margin: -8px 0 12px; box-shadow: 0 6px 12px -10px rgba(59,35,38,.6); }
+  .mm-link[hidden] { display: none; }
+  .mm-node[data-mark]::after { content: attr(data-mark); position: absolute; top: -11px; right: -11px; width: 24px; height: 24px; border-radius: 50%; background: #fffdf8; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.25); font-family: system-ui; }
 </style>
 </head>
 <body>
@@ -2282,7 +2287,7 @@
           return `<article class="card goal taped" style="--c:${a.color}">
             <div class="goal-head">
               <div><span class="tagpill" style="--c:${a.color}">${a.label}</span><h3>${esc(g.title)}</h3></div>
-              <button class="icon-btn" data-edit-goal="${g.id}" aria-label="Editar meta">${ICON.edit}</button>
+              <div class="row" style="gap:0;flex-wrap:nowrap"><button class="icon-btn" data-goal-map="${g.id}" aria-label="Abrir mapa da meta" title="Mapa da meta">🧠</button><button class="icon-btn" data-edit-goal="${g.id}" aria-label="Editar meta">${ICON.edit}</button></div>
             </div>
             ${g.why ? `<p class="goal-why">“${esc(g.why)}”</p>` : ''}
             <div>
@@ -2319,6 +2324,7 @@
     function findStep(key) { const [gid, sid] = key.split(':'); const g = S.goals.find((x) => x.id === gid); return [g, g && g.steps.find((s) => s.id === sid)]; }
     on(el, 'click', '[data-new-goal]', () => goalModal());
     on(el, 'click', '[data-edit-goal]', (e, b) => goalModal(S.goals.find((g) => g.id === b.dataset.editGoal)));
+    on(el, 'click', '[data-goal-map]', (e, b) => openLinkedMap('goal', b.dataset.goalMap));
     on(el, 'click', '[data-mf]', (e, b) => { S.ui.metaFilter = b.dataset.mf; save(); render(); });
     on(el, 'change', '[data-step]', (e, c) => {
       const [g, s] = findStep(c.dataset.step);
@@ -2715,6 +2721,7 @@
         <div class="page-head" style="margin-bottom:16px">
           <div><h1>mapa mental</h1><div class="sub">ideias · sonhos · <b>projetos</b></div></div>
         </div>
+        <div class="mm-link" id="mm-link" hidden></div>
         <div class="mm-toolbar">
           <select class="input" id="mm-select" aria-label="Escolher mapa"></select>
           <button class="btn sm secondary" data-mm="new-map">+ Novo mapa</button>
@@ -2726,6 +2733,12 @@
           <button class="btn sm ghost" data-mm="edit">Editar</button>
           <div class="mm-colors" aria-label="Cor do ramo">${MM_COLORS.map((c) => `<button style="--c:${c}" data-mm-color="${c}" aria-label="Cor ${c}"></button>`).join('')}</div>
           <button class="btn sm danger-ghost" data-mm="del">Excluir</button>
+          <span class="sep"></span>
+          <div class="mm-act" role="group" aria-label="Transformar a ideia selecionada">
+            <button class="btn sm secondary" data-mm="to-idea">💡 Virar ideia</button>
+            <button class="btn sm secondary" data-mm="to-task">✅ Virar tarefa</button>
+            <button class="btn sm secondary" data-mm="to-step">🎯 Virar passo de meta</button>
+          </div>
         </div>
         <div class="mm-canvas" id="mm-canvas" tabindex="0" aria-label="Mapa mental. Use Tab para criar ramo, Enter para criar irmão, Delete para excluir.">
           <div class="mm-layer" id="mm-layer"><svg id="mm-svg" aria-hidden="true"></svg><div id="mm-nodes"></div></div>
@@ -2790,16 +2803,49 @@
     }
     function drawNodes() {
       const m = map();
-      nodesBox.innerHTML = m.nodes.map((n) => `<div class="mm-node ${n.parent === null ? 'root' : ''} ${n.id === selId ? 'sel' : ''}" data-id="${n.id}" style="left:${n.x}px;top:${n.y}px;--c:${n.color}">${esc(n.text)}</div>`).join('');
+      nodesBox.innerHTML = m.nodes.map((n) => `<div class="mm-node ${n.parent === null ? 'root' : ''} ${n.id === selId ? 'sel' : ''}" data-id="${n.id}" ${n.mark ? `data-mark="${n.mark}"` : ''} style="left:${n.x}px;top:${n.y}px;--c:${n.color}">${esc(n.text)}</div>`).join('');
     }
 
     function render() {
       if (!built) build();
       if (!map()) { S.maps = seed().maps; S.mapSel = S.maps[0].id; }
-      $('#mm-select', el).innerHTML = S.maps.map((m) => `<option value="${m.id}" ${m.id === S.mapSel ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+      $('#mm-select', el).innerHTML = S.maps.map((m) => `<option value="${m.id}" ${m.id === S.mapSel ? 'selected' : ''}>${m.link ? (m.link.type === 'goal' ? '🎯 ' : '🗂️ ') : ''}${esc(m.name)}</option>`).join('');
+      const lk = map().link;
+      const lkEl = $('#mm-link', el);
+      if (lkEl) {
+        let html = '';
+        if (lk && lk.type === 'folder') { const f = S.biz.folders.find((x) => x.id === lk.id); if (f) html = `<span>🗂️ Mapa de ideias da pasta <b>${esc(f.emoji + ' ' + f.name)}</b>. “Virar ideia” já salva nessa pasta.</span><button class="btn sm ghost" data-mm-goto="folder">abrir pasta</button>`; }
+        else if (lk && lk.type === 'goal') { const g = S.goals.find((x) => x.id === lk.id); if (g) html = `<span>🎯 Mapa da meta <b>${esc(g.title)}</b>. “Virar passo” já adiciona nessa meta.</span><button class="btn sm ghost" data-mm-goto="goal">abrir metas</button>`; }
+        lkEl.innerHTML = html; lkEl.hidden = !html;
+      }
       if (selId && !byId(selId)) selId = null;
       drawEdges(); drawNodes();
       requestAnimationFrame(applyView);
+    }
+
+    function convertNode(n, a) {
+      const m = map();
+      const text = n.text.trim();
+      const from = `Do mapa “${m.name}”`;
+      if (a === 'to-idea') {
+        const folderId = m.link && m.link.type === 'folder' && S.biz.folders.find((f) => f.id === m.link.id) ? m.link.id : (S.biz.folders[0]?.id || '');
+        S.biz.posts.push({ id: uid(), title: text.length > 80 ? text.slice(0, 77) + '…' : text, folderId, platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: from, checklist: [], createdAt: today() });
+        n.mark = '💡'; save(); drawNodes(); toast('Virou ideia de conteúdo 💡 (Conteúdo → Ideias)');
+      } else if (a === 'to-task') {
+        S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text: text.slice(0, 140), done: false, prio: 'normal', due: today(), notes: from, remind: '' });
+        n.mark = '✅'; save(); drawNodes(); toast('Virou tarefa de hoje ✅');
+      } else {
+        const addStep = (g) => { g.steps = g.steps || []; g.steps.push({ id: uid(), text: text.slice(0, 140), done: false }); n.mark = '🎯'; save(); drawNodes(); toast(`Virou passo da meta “${g.title}” 🎯`); };
+        const linked = m.link && m.link.type === 'goal' && S.goals.find((g) => g.id === m.link.id);
+        if (linked) { addStep(linked); return; }
+        if (!S.goals.length) { toast('Crie uma meta primeiro (Mais → Metas).'); return; }
+        modal({
+          title: 'virar passo de qual meta?',
+          fields: [{ name: 'goal', label: 'Meta', type: 'select', value: S.goals[0].id, options: S.goals.map((g) => ({ value: g.id, label: g.title })) }],
+          saveLabel: 'Adicionar passo',
+          onSave: (v) => { const g = S.goals.find((x) => x.id === v.goal); if (g) addStep(g); },
+        });
+      }
     }
 
     function select(id) {
@@ -2909,6 +2955,17 @@
         else if (a === 'edit') { if (selId) startEdit(selId, true); else toast('Selecione uma ideia primeiro.'); }
         else if (a === 'del') { if (selId) deleteNode(selId); else toast('Selecione uma ideia primeiro.'); }
         else if (a === 'center') { centerView(); applyView(); save(); }
+        else if (a === 'to-idea' || a === 'to-task' || a === 'to-step') {
+          const n = selId && byId(selId);
+          if (!n) { toast('Toque numa ideia do mapa primeiro.'); return; }
+          convertNode(n, a);
+        }
+      });
+      on(el, 'click', '[data-mm-goto]', (e, b) => {
+        const lk = map().link;
+        if (!lk) return;
+        if (b.dataset.mmGoto === 'folder') { S.ui.contFolder = lk.id; S.ui.contTab = 'ideias'; save(); go('conteudo'); }
+        else go('metas');
       });
       on(el, 'click', '[data-mm-color]', (e, b) => {
         if (!selId) { toast('Selecione uma ideia para mudar a cor.'); return; }
@@ -3332,7 +3389,7 @@
         ${exampleNote()}
         <div class="cont-bar">
           <div class="tabs" role="tablist">${[['cal', '📅 Calendário'], ['kanban', '🎞️ Produção'], ['ideias', '💡 Ideias']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-ctab="${k}" role="tab" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
-          ${f !== 'all' ? '<button class="btn sm paper" data-edit-folder>editar pasta</button>' : ''}
+          ${f !== 'all' ? '<div class="row" style="gap:6px"><button class="btn sm secondary" data-folder-map>🧠 mapa de ideias</button><button class="btn sm paper" data-edit-folder>editar pasta</button></div>' : ''}
         </div>
         <div class="chips scroll" style="margin-bottom:20px">
           <button class="chip ${f === 'all' ? 'on' : ''}" data-cf="all">Todas as pastas</button>
@@ -3345,6 +3402,7 @@
     on(el, 'click', '[data-cf]', (e, b) => { S.ui.contFolder = b.dataset.cf; save(); render(); });
     on(el, 'click', '[data-new-folder]', () => folderModal());
     on(el, 'click', '[data-edit-folder]', () => folderModal(B().folders.find((x) => x.id === S.ui.contFolder)));
+    on(el, 'click', '[data-folder-map]', () => openLinkedMap('folder', S.ui.contFolder));
     on(el, 'click', '[data-new-post]', () => postModal(null, (S.ui.contTab || 'cal') === 'cal' ? { date: sel } : {}));
     on(el, 'click', '[data-new-post-day]', (e, b) => postModal(null, { date: b.dataset.newPostDay, status: 'roteiro' }));
     on(el, 'click', '[data-new-post-status]', (e, b) => postModal(null, { status: b.dataset.newPostStatus }));
@@ -3681,6 +3739,26 @@
         ${noMetrics ? `<button class="btn sm secondary" data-go="insights">📊 ${noMetrics} sem números</button>` : ''}
       </div>
     </div>`;
+  }
+
+  function openLinkedMap(type, id) {
+    let m = S.maps.find((x) => x.link && x.link.type === type && x.link.id === id);
+    if (!m) {
+      const src = type === 'folder' ? S.biz.folders.find((f) => f.id === id) : S.goals.find((g) => g.id === id);
+      if (!src) return;
+      const name = type === 'folder' ? `${src.emoji} ${src.name}` : src.title;
+      const color = type === 'folder' ? src.color : (AREAS[src.area] || AREAS.carreira).color;
+      const rootId = uid();
+      m = { id: uid(), name, nodes: [{ id: rootId, parent: null, x: 0, y: 0, text: name, color }], view: null, link: { type, id } };
+      const seeds = type === 'goal' ? (src.steps || []).map((st) => ({ text: st.text, mark: '🎯' })) : S.biz.posts.filter((p) => p.folderId === id && p.status === 'ideia').map((p) => ({ text: p.title, mark: '💡' }));
+      seeds.slice(0, 8).forEach((sd, i, arr) => {
+        const ang = (i * 2 * Math.PI) / arr.length - Math.PI / 2;
+        m.nodes.push({ id: uid(), parent: rootId, x: Math.round(Math.cos(ang) * 290), y: Math.round(Math.sin(ang) * 180), text: sd.text, color: MM_COLORS[(i + 1) % MM_COLORS.length], mark: sd.mark });
+      });
+      S.maps.push(m);
+      toast(type === 'folder' ? 'Mapa de ideias criado para essa pasta 🧠' : 'Mapa da meta criado 🧠');
+    }
+    S.mapSel = m.id; save(); go('mapa');
   }
 
   /* =========================================================
