@@ -1031,6 +1031,27 @@
   .vb-fs span { color: #fff; opacity: .7; font-size: 11px; letter-spacing: .04em; padding: 0 2px; }
   .vb-fs button { all: unset; cursor: pointer; width: 36px; height: 34px; border-radius: 99px; color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 700; }
   .vb-fs button:hover, .vb-fs button:active { background: #c0587a; }
+  /* ---------- Contagem regressiva e dias importantes ---------- */
+  .cd-row { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 4px; border-bottom: 1px dashed var(--line); }
+  .cd-row:last-of-type { border-bottom: 0; }
+  .cd-row:hover { background: var(--accent-soft); border-radius: 10px; }
+  .cd-row:focus-visible { outline: 2px solid var(--brand); border-radius: 10px; }
+  .cd-emo { font-size: 22px; width: 30px; text-align: center; flex: none; }
+  .cd-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .cd-txt b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cd-txt .muted { font-size: 12px; }
+  .cd-num { flex: none; text-align: right; min-width: 52px; line-height: 1; }
+  .cd-num strong { display: block; font-family: var(--f-serif); font-size: 26px; color: var(--brand); }
+  .cd-num small { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .cd-num .cd-today { font-size: 15px; font-family: var(--f-sans); }
+  .cd-row.is-today { background: color-mix(in srgb, var(--butter) 60%, transparent); border-radius: 10px; }
+  .cd-hint { font-size: 13px; margin: 8px 0 0; }
+  .day-imp { position: absolute; top: 3px; left: 5px; font-size: 11px; line-height: 1; color: #e0a100; }
+  .day.imp:not(.sel) { box-shadow: inset 0 0 0 1.5px #f0c24b; }
+  .mday.imp::before { content: '★'; position: absolute; top: -3px; right: -1px; font-size: 9px; color: #e0a100; line-height: 1; }
+  .cal-imp { color: #e0a100; font-size: .85em; }
+  .hol-line.t-imp { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 8px 12px; margin: 2px 0 8px; border-radius: 10px; font-size: 13.5px; background: color-mix(in srgb, #f0c24b 28%, var(--surface)); }
+  .hol-line.t-imp .muted { font-size: 11.5px; margin-left: auto; }
 </style>
 </head>
 <body>
@@ -1301,6 +1322,7 @@
       notified: {},
       snoozes: [],
       notes: [],
+      special: [],
       vision: {
         title: `Meu ${nextYear}`,
         bg: 'cortica',
@@ -2011,6 +2033,86 @@
     return out;
   }
 
+  /* Contagem regressiva: aniversários e datas especiais, Natal e tarefas de prioridade alta */
+  const SP_EMOJI = [['🎂', 'aniversário'], ['🎉', 'festa'], ['💍', 'casamento / bodas'], ['✈️', 'viagem'], ['🎓', 'formatura / curso'], ['🚀', 'lançamento'], ['💐', 'homenagem'], ['🏆', 'conquista'], ['⭐', 'especial']];
+  const specials = () => (S.special = Array.isArray(S.special) ? S.special : []);
+  const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  function occIn(sp, y) { let md = sp.date.slice(5); if (md === '02-29' && !isLeap(y)) md = '02-28'; return `${y}-${md}`; }
+  function nextOcc(sp, from) {
+    if (!sp.date) return null;
+    if (!sp.yearly) return sp.date >= from ? sp.date : null;
+    const y = Number(from.slice(0, 4));
+    const d = occIn(sp, y);
+    return d >= from ? d : occIn(sp, y + 1);
+  }
+  function spSub(sp, d) {
+    if (sp.yearly && sp.emoji === '🎂' && sp.year) { const n = Number(d.slice(0, 4)) - sp.year; if (n > 0) return `faz ${n} ${n === 1 ? 'ano' : 'anos'}`; }
+    if (sp.yearly && sp.year) { const n = Number(d.slice(0, 4)) - sp.year; if (n > 0) return `${n} ${n === 1 ? 'ano' : 'anos'}`; }
+    return '';
+  }
+  const showXmas = () => S.ui.cdNatal !== false;
+  function specialsOn(date) {
+    const out = specials().filter((sp) => sp.date && (sp.yearly ? occIn(sp, Number(date.slice(0, 4))) === date : sp.date === date)).map((sp) => ({ emoji: sp.emoji || '⭐', name: sp.name, sub: spSub(sp, date), id: sp.id }));
+    if (showXmas() && date.slice(5) === '12-25') out.push({ emoji: '🎄', name: 'Natal', sub: '' });
+    return out;
+  }
+  const highOn = (date) => S.tasks.items.filter((i) => i.prio === 'alta' && !isRep(i) && i.due === date && !i.done);
+  const isImportant = (date) => specialsOn(date).length > 0 || highOn(date).length > 0;
+  function countdowns(from) {
+    const out = [];
+    specials().forEach((sp) => { const d = nextOcc(sp, from); if (d) out.push({ date: d, emoji: sp.emoji || '⭐', name: sp.name, sub: spSub(sp, d), sp: sp.id }); });
+    if (showXmas()) { const y = Number(from.slice(0, 4)); const d = `${y}-12-25` >= from ? `${y}-12-25` : `${y + 1}-12-25`; out.push({ date: d, emoji: '🎄', name: 'Natal', sub: '', xmas: true }); }
+    S.tasks.items.filter((i) => i.prio === 'alta' && !isRep(i) && !i.done && i.due && i.due >= from).forEach((i) => out.push({ date: i.due, emoji: '❗', name: i.text, sub: 'prioridade alta', task: i.id }));
+    out.forEach((c) => { c.left = diffDays(from, c.date); });
+    return out.sort((a, b) => a.left - b.left || a.name.localeCompare(b.name));
+  }
+  function cdLeft(n) { return n === 0 ? '<strong class="cd-today">é hoje!</strong>' : n === 1 ? '<strong>1</strong><small>dia</small>' : `<strong>${n}</strong><small>dias</small>`; }
+  let cdAll = false;
+  function countdownCard() {
+    const t = today();
+    const all = countdowns(t);
+    const list = cdAll ? all : all.slice(0, 5);
+    return `<div class="card cd-card">
+      <div class="card-head"><h3>contagem regressiva</h3><button class="btn sm ghost" data-sp-new>+ data especial</button></div>
+      ${list.map((c) => `<button type="button" class="cd-row ${c.left === 0 ? 'is-today' : ''}" ${c.sp ? `data-sp="${c.sp}"` : c.task ? `data-cd-task="${c.task}"` : 'data-cd-xmas'}>
+        <span class="cd-emo" aria-hidden="true">${c.emoji}</span>
+        <span class="cd-txt"><b>${esc(c.name)}</b><span class="muted">${DOW[dow(c.date)]} ${fmtShort(c.date)}${Number(c.date.slice(0, 4)) !== Number(t.slice(0, 4)) ? '/' + c.date.slice(2, 4) : ''}${c.sub ? ' · ' + esc(c.sub) : ''}</span></span>
+        <span class="cd-num">${cdLeft(c.left)}</span>
+      </button>`).join('')}
+      ${all.length > 5 ? `<button type="button" class="btn sm ghost" data-cd-all style="margin-top:6px">${cdAll ? 'mostrar menos' : `ver todas (${all.length})`}</button>` : ''}
+      ${specials().length ? '' : '<p class="muted cd-hint">Marque aniversários e datas importantes para ver quantos dias faltam. Tarefas com <b>prioridade alta</b> e data também aparecem aqui.</p>'}
+    </div>`;
+  }
+  function specialModal(sp, defaults) {
+    const isNew = !sp;
+    sp = sp || Object.assign({ name: '', date: today(), yearly: true, emoji: '🎂' }, defaults);
+    const full = sp.year && sp.date ? `${sp.year}${sp.date.slice(4)}` : sp.date;
+    modal({
+      title: isNew ? 'nova data especial' : 'data especial',
+      fields: [
+        { name: 'name', label: 'Nome', type: 'text', value: sp.name, required: true, placeholder: 'ex.: aniversário da mamãe, viagem para Paris', full: true },
+        { name: 'emoji', label: 'Tipo', type: 'select', value: sp.emoji, options: SP_EMOJI.map(([e, l]) => ({ value: e, label: `${e} ${l}` })) },
+        { name: 'date', label: 'Data', type: 'date', value: full, required: true },
+        { name: 'yearly', label: 'Repete', type: 'select', value: sp.yearly ? '1' : '0', options: [{ value: '1', label: 'Todo ano (aniversário, data comemorativa)' }, { value: '0', label: 'Só uma vez (viagem, evento, prazo)' }], full: true },
+      ],
+      onSave: (v) => {
+        if (!v.name.trim() || !v.date) { toast('Coloque o nome e a data.'); return false; }
+        const yearly = v.yearly === '1';
+        const data = { name: v.name.trim(), emoji: v.emoji, yearly, date: v.date, year: yearly ? Number(v.date.slice(0, 4)) : null };
+        if (isNew) specials().push(Object.assign({ id: uid() }, data)); else Object.assign(sp, data);
+        save(); rerender(); toast(isNew ? 'Data marcada ★' : 'Data atualizada.');
+      },
+      onDelete: isNew ? null : () => { S.special = specials().filter((x) => x.id !== sp.id); save(); rerender(); toast('Data removida.'); },
+    });
+  }
+  function bindCountdown(root) {
+    on(root, 'click', '[data-sp-new]', (e, b) => specialModal(null, b.dataset.spDate ? { date: b.dataset.spDate } : undefined));
+    on(root, 'click', '[data-sp]', (e, b) => { const sp = specials().find((x) => x.id === b.dataset.sp); if (sp) specialModal(sp); });
+    on(root, 'click', '[data-cd-task]', (e, b) => { const it = S.tasks.items.find((x) => x.id === b.dataset.cdTask); if (it) taskModal(it); });
+    on(root, 'click', '[data-cd-all]', () => { cdAll = !cdAll; rerender(); });
+    on(root, 'click', '[data-cd-xmas]', () => modal({ title: 'Natal 🎄', message: 'O Natal aparece sozinho na contagem. Quer esconder?', saveLabel: 'Esconder o Natal', onSave: () => { S.ui.cdNatal = false; save(); rerender(); } }));
+  }
+
   /* Entende data e hora escritas ou faladas em português:
      "amanhã às 15h reunião", "sexta 9 da manhã academia", "dia 20 pagar boleto", "20/11 às 14:30" */
   const WEEKDAYS = { domingo: 0, segunda: 1, 'terça': 2, terca: 2, quarta: 3, quinta: 4, sexta: 5, 'sábado': 6, sabado: 6 };
@@ -2256,6 +2358,7 @@
               </form>
               <p class="muted qa-hint">🎤 Dica: fale “amanhã às 15h reunião com a cliente” e o Bloom já marca a data e a hora.</p>
             </div>
+            ${countdownCard()}
             <div class="card lined focus-card taped t-left">
               <div class="eyebrow">meu foco de hoje</div>
               <input class="focus-input" id="focus-in" placeholder="a coisa mais importante de hoje é…" value="${esc(S.focus[t] || '')}" aria-label="Foco do dia">
@@ -2289,6 +2392,7 @@
     el.addEventListener('input', (e) => { if (e.target.id === 'focus-in') { S.focus[today()] = e.target.value; save(); } });
     on(el, 'click', '[data-mood]', (e, b) => { const t = today(); S.mood[t] = S.mood[t] === b.dataset.mood ? null : b.dataset.mood; save(); render(); });
     on(el, 'click', '[data-go]', (e, b) => go(b.dataset.go));
+    bindCountdown(el);
     on(el, 'submit', '#quick-task', (e, f) => {
       e.preventDefault();
       const raw = f.elements.text.value.trim();
@@ -2342,10 +2446,11 @@
               <button class="round-btn" data-week="7" aria-label="Próxima semana">${ICON.right}</button>
             </div>
             <div class="week">
-              ${week.map((d) => { const es = itemsOn(d).filter((x) => !isDoneOn(x, d)).slice(0, 4); const hs = holidaysOn(d); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''} ${isHoliday(d) ? 'hol' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${hs.length ? ', ' + esc(hs.map((h) => h.name).join(', ')) : ''}" title="${esc(hs.map((h) => h.name).join(' · '))}">${hs.length ? `<span class="day-hol" aria-hidden="true">${hs[0].emoji}</span>` : ''}<div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${listById(ev.listId).color}"></i>`).join('')}</div></button>`; }).join('')}
+              ${week.map((d) => { const es = itemsOn(d).filter((x) => !isDoneOn(x, d)).slice(0, 4); const hs = holidaysOn(d); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''} ${isHoliday(d) ? 'hol' : ''} ${isImportant(d) ? 'imp' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${hs.length ? ', ' + esc(hs.map((h) => h.name).join(', ')) : ''}${isImportant(d) ? ', dia importante' : ''}" title="${esc(hs.map((h) => h.name).join(' · '))}">${hs.length ? `<span class="day-hol" aria-hidden="true">${hs[0].emoji}</span>` : ''}${isImportant(d) ? '<span class="day-imp" aria-hidden="true">★</span>' : ''}<div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${listById(ev.listId).color}"></i>`).join('')}</div></button>`; }).join('')}
             </div>
             <div class="card notebook">
               <div class="card-head"><h3 class="day-title"><em>${sel === t ? 'hoje' : DOW_LONG[dow(sel)]}</em>${parseISO(sel).getDate()} de ${MONTHS[sd.getMonth()]}</h3><button class="btn sm secondary" data-new-ev>+ adicionar</button></div>
+              ${specialsOn(sel).map((x) => `<button type="button" class="hol-line t-imp" ${x.id ? `data-sp="${x.id}"` : 'data-cd-xmas'}><span aria-hidden="true">${x.emoji}</span><b>${esc(x.name)}</b><span class="muted">${x.sub ? esc(x.sub) + ' · ' : ''}data especial ★</span></button>`).join('')}
               ${holidaysOn(sel).map((h) => `<div class="hol-line t-${h.type}"><span aria-hidden="true">${h.emoji}</span><b>${esc(h.name)}</b><span class="muted">${holLabel(h)}</span></div>`).join('')}
               ${evs.length ? evs.map((ev) => dayRow(ev, sel)).join('') : '<div class="empty"><span class="hand">nada marcado ♡</span>dia livre para o que você quiser</div>'}
             </div>
@@ -2357,12 +2462,12 @@
               </div>
               <div class="month">
                 ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="mh">${d}</div>`).join('')}
-                ${cells.map((d) => `<button class="mday ${parseISO(d).getMonth() !== sd.getMonth() ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''} ${itemsOn(d).length ? 'has' : ''} ${isHoliday(d) ? 'hol' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${holidaysOn(d).length ? ', ' + esc(holidaysOn(d).map((h) => h.name).join(', ')) : ''}" title="${esc(holidaysOn(d).map((h) => h.name).join(' · '))}">${parseISO(d).getDate()}</button>`).join('')}
+                ${cells.map((d) => `<button class="mday ${parseISO(d).getMonth() !== sd.getMonth() ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''} ${itemsOn(d).length ? 'has' : ''} ${isHoliday(d) ? 'hol' : ''} ${isImportant(d) ? 'imp' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${isImportant(d) ? ', dia importante' : ''}${holidaysOn(d).length ? ', ' + esc(holidaysOn(d).map((h) => h.name).join(', ')) : ''}" title="${esc(holidaysOn(d).map((h) => h.name).join(' · '))}">${parseISO(d).getDate()}</button>`).join('')}
               </div>
               <div class="legend">${S.tasks.lists.map((c) => `<span><i class="dot" style="--c:${c.color}"></i>${esc(c.name)}</span>`).join('')}</div>
             </div>
             <div class="card">
-              <div class="card-head"><h3>datas importantes</h3><button class="btn sm ghost" data-toggle-com>${showCommercial() ? 'esconder datas comerciais' : 'mostrar datas comerciais'}</button></div>
+              <div class="card-head"><h3>datas importantes</h3><button class="btn sm secondary" data-sp-new data-sp-date="${sel}">+ ★ data especial</button><button class="btn sm ghost" data-toggle-com>${showCommercial() ? 'esconder datas comerciais' : 'mostrar datas comerciais'}</button></div>
               ${(() => { const nd = nextDates(t, 75).slice(0, 6); return nd.length ? nd.map(([d, h]) => { const left = diffDays(t, d); return `<div class="task hol-row t-${h.type}"><span aria-hidden="true" style="font-size:18px">${h.emoji}</span><div class="task-text">${esc(h.name)}<div class="muted" style="font-size:12px">${holLabel(h)}</div></div><div class="task-meta">${DOW[dow(d)]} ${fmtShort(d)} · ${left === 0 ? 'hoje' : left === 1 ? 'amanhã' : 'em ' + left + ' dias'}</div></div>`; }).join('') : '<div class="empty">nenhuma data nos próximos meses.</div>'; })()}
             </div>
             <div class="card">
@@ -2376,6 +2481,7 @@
     on(el, 'click', '[data-week]', (e, b) => { sel = addDays(sel, Number(b.dataset.week)); render(); });
     on(el, 'click', '[data-month]', (e, b) => { const d = parseISO(sel); sel = iso(new Date(d.getFullYear(), d.getMonth() + Number(b.dataset.month), 1)); render(); });
     on(el, 'click', '[data-new-ev]', () => taskModal(null, { due: sel }));
+    bindCountdown(el);
     on(el, 'click', '[data-toggle-com]', () => { S.ui.showCommercial = !showCommercial(); save(); render(); });
     bindTaskActions(el);
     return { render };
@@ -3634,7 +3740,7 @@
             <div class="cal-grid">
               ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="cal-h">${d}</div>`).join('')}
               ${cells.map((d) => { const ps = byDay(d); return `<div class="cal-cell ${parseISO(d).getMonth() !== m - 1 ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-day="${d}" role="button" tabindex="0" aria-label="${fmtLong(d)}, ${ps.length} conteúdo(s)">
-                <div class="cal-dn ${isHoliday(d) ? 'hol' : ''}">${parseISO(d).getDate()}</div>
+                <div class="cal-dn ${isHoliday(d) ? 'hol' : ''}">${parseISO(d).getDate()}${isImportant(d) ? '<span class="cal-imp" title="dia importante"> ★</span>' : ''}</div>
                 ${holidaysOn(d).slice(0, 1).map((h) => `<div class="hol-chip t-${h.type}" title="${esc(h.name)} · ${holLabel(h)}"><span>${h.emoji}</span><span class="t">${esc(h.name)}</span></div>`).join('')}
                 ${ps.slice(0, 3).map((p) => `<div class="cal-chip ${p.status === 'publicado' ? 'pub' : ''}" draggable="true" data-post="${p.id}" style="--c:${folderOf(p).color}" title="${esc(p.title)}"><span>${platOf(p).icon}</span><span class="t">${esc(p.title)}</span></div>`).join('')}
                 ${ps.length > 3 ? `<div class="cal-more">+${ps.length - 3}</div>` : ''}
