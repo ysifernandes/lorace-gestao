@@ -981,6 +981,8 @@
   .mm-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; background: var(--surface); border-radius: 10px; padding: 8px 12px; margin: -8px 0 12px; box-shadow: 0 6px 12px -10px rgba(59,35,38,.6); }
   .mm-link[hidden] { display: none; }
   .mm-node[data-mark]::after { content: attr(data-mark); position: absolute; top: -11px; right: -11px; width: 24px; height: 24px; border-radius: 50%; background: #fffdf8; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.25); font-family: system-ui; }
+  .app-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--surface); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; box-shadow: var(--shadow); }
+  .app-banner span { flex: 1; min-width: 200px; }
 </style>
 </head>
 <body>
@@ -1990,6 +1992,7 @@
       const goals = S.goals.filter((g) => goalProgress(g) < 100).slice(0, 4);
 
       el.innerHTML = `
+        ${inClaude ? `<div class="app-banner"><span>🎀 Esta é a versão de teste dentro do Claude. Seus dados de verdade ficam no <b>app Bloom</b>. Para levar o que está aqui: <b>Ajustes → Baixar backup</b> e, no app, <b>Restaurar backup</b>.</span><a class="btn sm" href="https://bloom-planner-nine.vercel.app" target="_blank" rel="noopener">abrir o app Bloom</a></div>` : ''}
         <div class="hero">
           <div>
             <div class="hero-date">${esc(fmtLong(t))}</div>
