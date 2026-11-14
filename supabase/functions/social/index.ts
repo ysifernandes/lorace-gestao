@@ -8,6 +8,7 @@
 //   POST /sync                header x-cron-secret                   (agendamento diário: todas as contas)
 //   POST /choices / /choose   { ext_id }                             (usuária logada: escolher a conta do Instagram)
 //   POST /analyze             { posts }                              (usuária logada: análise dos resultados pela Claude)
+//   POST /script              { titulo, formato, notas }             (usuária logada: gancho, roteiro e legenda de uma ideia)
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -38,7 +39,7 @@ const TT_KEY = Deno.env.get('TIKTOK_CLIENT_KEY') ?? '';
 const TT_SECRET = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? '';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
-const AI_PER_DAY = 10; // análises por usuária por dia
+const AI_PER_DAY = 30; // pedidos à Claude por usuária por dia (análises + roteiros)
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://bloom-planner-nine.vercel.app';
@@ -428,14 +429,22 @@ function cleanPosts(raw: unknown) {
     return o;
   });
 }
-async function analyzePosts(userId: string, raw: unknown) {
-  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
-  const posts = cleanPosts(raw);
-  if (posts.length < 2) return { status: 400, body: { error: 'few_posts' } };
+const SCRIPT_RULES = `- "gancho": a primeira frase falada ou escrita, que prende nos 3 primeiros segundos.
+- "roteiro": para reels e stories, um roteiro de 30 a 60 segundos dividido em cenas, cada linha no formato "CENA 1 (o que aparece): o que ela fala"; para carrossel, o texto de cada slide ("SLIDE 1: ..."); para post, o texto da arte. Termine com uma chamada para ação. Use a voz da empreendedora, em primeira pessoa, e frases curtas.
+- "legenda": legenda pronta para o Instagram, com 2 a 4 parágrafos curtos, chamada para ação e até 5 hashtags no final.`;
+const SCRIPT_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['gancho', 'roteiro', 'legenda'],
+  properties: { gancho: { type: 'string' }, roteiro: { type: 'string' }, legenda: { type: 'string' } },
+};
+async function aiAllowed(userId: string) {
   const since = new Date(Date.now() - 864e5).toISOString();
   const { count } = await admin.from('ai_usage').select('user_id', { count: 'exact', head: true }).eq('user_id', userId).gte('at', since);
-  if ((count ?? 0) >= AI_PER_DAY) return { status: 429, body: { error: 'rate_limited' } };
+  if ((count ?? 0) >= AI_PER_DAY) return false;
   await admin.from('ai_usage').insert({ user_id: userId });
+  return true;
+}
+// uma chamada à Claude com saída em JSON no formato pedido
+async function askClaude(system: string, user: string, schema: unknown) {
   const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
   try {
     const resp: any = await client.beta.messages.create({
@@ -443,9 +452,9 @@ async function analyzePosts(userId: string, raw: unknown) {
       max_tokens: 16000,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default', // se o pedido for recusado, a própria API tenta de novo em outro modelo
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: AI_SCHEMA } },
-      system: AI_SYSTEM,
-      messages: [{ role: 'user', content: `Resultados dos posts (JSON):\n${JSON.stringify(posts)}` }],
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
+      system,
+      messages: [{ role: 'user', content: user }],
     } as any);
     if (resp.stop_reason === 'refusal') return { status: 422, body: { error: 'refused' } };
     if (resp.stop_reason === 'max_tokens') return { status: 502, body: { error: 'truncated' } };
@@ -459,6 +468,23 @@ async function analyzePosts(userId: string, raw: unknown) {
     console.error('ai', e);
     return { status: 500, body: { error: 'failed' } };
   }
+}
+async function writeScript(userId: string, body: any) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const titulo = clip(body?.titulo, 200);
+  if (!titulo) return { status: 400, body: { error: 'no_title' } };
+  if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
+  const ideia = { titulo, formato: clip(body?.formato, 40) || 'reels', por_que: clip(body?.por_que, 300), gancho_atual: clip(body?.gancho, 200), notas: clip(body?.notas, 500), pasta: clip(body?.pasta, 80) };
+  const system = `Você é roteirista de conteúdo para pequenas empreendedoras brasileiras no Instagram e no TikTok. Escreva em português do Brasil, com tom acolhedor e direto. Use só o que a ideia diz; não invente dados, preços ou promessas sobre o negócio dela.\n${SCRIPT_RULES}`;
+  return askClaude(system, `Ideia de conteúdo (JSON):\n${JSON.stringify(ideia)}`, SCRIPT_SCHEMA);
+}
+async function analyzePosts(userId: string, raw: unknown) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const posts = cleanPosts(raw);
+  if (posts.length < 2) return { status: 400, body: { error: 'few_posts' } };
+  if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
+  return askClaude(AI_SYSTEM, `Resultados dos posts (JSON):\n${JSON.stringify(posts)}`, AI_SCHEMA);
 }
 
 /* ---------------- Rotas ---------------- */
@@ -565,6 +591,14 @@ Deno.serve(async (req) => {
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { posts } = await req.json().catch(() => ({}));
       const r = await analyzePosts(user.id, posts);
+      return json(r.body, r.status);
+    }
+
+    if (route[0] === 'script' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await req.json().catch(() => ({}));
+      const r = await writeScript(user.id, body);
       return json(r.body, r.status);
     }
 

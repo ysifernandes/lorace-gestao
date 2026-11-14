@@ -1,5 +1,5 @@
 // Bloom: funciona offline e recebe notificações (push)
-const CACHE = 'bloom-v3';
+const CACHE = 'bloom-v4';
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'index.html', 'manifest.webmanifest', 'icon-192.png'])).catch(() => {}));
@@ -19,7 +19,8 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text() }; }
-  const opts = { body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', data: d.url || './' };
+  // silent:false = toca o som do aparelho; requireInteraction = no computador, fica na tela até ela tocar
+  const opts = { body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', data: d.url || './', silent: false, requireInteraction: true, vibrate: [200, 100, 200] };
   if (d.tag) { opts.tag = d.tag; opts.renotify = true; } // o aviso novo substitui o anterior da mesma tarefa
   e.waitUntil(self.registration.showNotification(d.title || 'Bloom', opts));
 });

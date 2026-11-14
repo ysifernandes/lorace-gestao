@@ -1112,6 +1112,8 @@
   .ai-hook { font-size: 13px; margin-top: 6px; font-style: italic; }
   .ai-script summary { cursor: pointer; font-size: 13px; color: var(--brand); margin-top: 6px; }
   .ai-script-body { white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin-top: 6px; padding: 10px; border-radius: 10px; background: var(--surface); overflow-wrap: anywhere; }
+  .ai-write { background: linear-gradient(135deg, #b04a74, #9161b5); color: #fff; border: 0; }
+  .ai-write[disabled] { opacity: .75; }
 </style>
 </head>
 <body>
@@ -3620,6 +3622,22 @@
   }
   const folderOptions = () => [{ value: '', label: '🗂️ Sem pasta' }, ...B().folders.map((f) => ({ value: f.id, label: `${f.emoji} ${f.name}` }))];
 
+  const AI_ERRORS = {
+    not_configured: 'A Claude ainda não foi ativada no servidor do Bloom (falta a chave da API).',
+    bad_key: 'A chave da API da Claude no servidor não funcionou. Confira o segredo ANTHROPIC_API_KEY.',
+    rate_limited: 'Você já usou bastante a Claude hoje. Tente de novo amanhã.',
+    refused: 'A Claude não conseguiu escrever para esta ideia. Tente mudar o título.',
+    no_title: 'Escreva o título da ideia primeiro.',
+  };
+  async function aiScript(idea) {
+    if (!inSupa) throw Object.assign(new Error('x'), { code: 'local' });
+    return (await Social.call('script', idea)).data;
+  }
+  const aiErr = (e) => (e.code === 'local' ? 'Escrever roteiro com a Claude funciona no app Bloom.' : AI_ERRORS[e.code] || 'Não consegui escrever agora. Tente de novo em alguns minutos.');
+  function splitTags(legenda) {
+    const tags = String(legenda || '').match(/#[\p{L}\p{N}_]+/gu) || [];
+    return { caption: String(legenda || '').replace(/(\s*#[\p{L}\p{N}_]+)+\s*$/u, '').trim(), hashtags: tags.join(' ') };
+  }
   function postModal(p, defaults = {}) {
     const isNew = !p;
     p = p || Object.assign({ title: '', folderId: S.ui.contFolder && S.ui.contFolder !== 'all' ? S.ui.contFolder : (B().folders[0]?.id || ''), platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '' }, defaults);
@@ -3654,6 +3672,27 @@
           ${p.script ? '<button type="button" class="btn sm secondary" id="pm-tele">🎬 teleprompter</button>' : ''}
         </div>`,
       onOpen: (form) => {
+        const sf = form.elements.script && form.elements.script.closest('.field');
+        if (sf) {
+          sf.insertAdjacentHTML('afterend', '<div class="field full"><button type="button" class="btn sm ai-write" id="pm-ai">✨ escrever gancho, roteiro e legenda com a Claude</button></div>');
+          const btn = $('#pm-ai', form);
+          btn.addEventListener('click', async () => {
+            const el = form.elements;
+            const title = el.title.value.trim();
+            if (!title) { toast('Escreva o título da ideia primeiro.'); el.title.focus(); return; }
+            if ((el.script.value.trim() || el.caption.value.trim()) && !confirm('Substituir o gancho, o roteiro e a legenda que já estão escritos?')) return;
+            btn.disabled = true; btn.textContent = '✨ escrevendo… (uns 20 segundos)';
+            try {
+              const d = await aiScript({ titulo: title, formato: FORMATS[el.format.value] || el.format.value, notas: el.notes.value, gancho: el.hook.value, pasta: (B().folders.find((f) => f.id === el.folderId.value) || {}).name || '' });
+              const t = splitTags(d.legenda);
+              el.hook.value = d.gancho || el.hook.value; el.script.value = d.roteiro || ''; el.caption.value = t.caption; if (t.hashtags) el.hashtags.value = t.hashtags;
+              if (el.status.value === 'ideia') el.status.value = 'roteiro';
+              el.script.rows = Math.min(14, (d.roteiro || '').split('\n').length + 1);
+              toast('Pronto ✨ Confira, ajuste do seu jeito e toque em Salvar.');
+            } catch (e) { toast(aiErr(e)); }
+            btn.disabled = false; btn.textContent = '✨ escrever de novo com a Claude';
+          });
+        }
         if (isNew) return;
         const addT = () => {
           const inp = $('#pm-task-in', form);
@@ -4271,7 +4310,7 @@
                 ${Array.isArray(ai.ganchos) && ai.ganchos.length ? `<h4>ganchos para repetir</h4><ul>${ai.ganchos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
                 ${ai.melhor_horario ? `<h4>melhor horário</h4><p>${esc(ai.melhor_horario)}</p>` : ''}
                 ${Array.isArray(ai.evitar) && ai.evitar.length ? `<h4>evite</h4><ul>${ai.evitar.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-                ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div class="ai-idea-top"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(FORMATS[ideaFormat(x.formato)] || x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">${x.roteiro ? '+ guardar com roteiro' : '+ ideia'}</button></div>${x.gancho ? `<div class="ai-hook">🎣 “${esc(x.gancho)}”</div>` : ''}${x.roteiro ? `<details class="ai-script"><summary>ver roteiro${x.legenda ? ' e legenda' : ''}</summary><div class="ai-script-body">${esc(x.roteiro)}</div>${x.legenda ? `<div class="eyebrow" style="margin-top:8px">legenda</div><div class="ai-script-body">${esc(x.legenda)}</div>` : ''}</details>` : ''}</div>`).join('')}` : ''}
+                ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div class="ai-idea-top"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(FORMATS[ideaFormat(x.formato)] || x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">${x.roteiro ? '+ guardar com roteiro' : '+ ideia'}</button></div>${x.gancho ? `<div class="ai-hook">🎣 “${esc(x.gancho)}”</div>` : ''}${!x.roteiro ? `<button class="btn sm ai-write" data-ai-script="${i}" style="margin-top:6px">✨ gerar roteiro</button>` : ''}${x.roteiro ? `<details class="ai-script" ${x.justWritten ? 'open' : ''}><summary>ver roteiro${x.legenda ? ' e legenda' : ''}</summary><div class="ai-script-body">${esc(x.roteiro)}</div>${x.legenda ? `<div class="eyebrow" style="margin-top:8px">legenda</div><div class="ai-script-body">${esc(x.legenda)}</div>` : ''}</details>` : ''}</div>`).join('')}` : ''}
                 <p class="muted" style="font-size:11.5px;margin-top:8px">Análise de ${new Date(B().analysis.at).toLocaleDateString('pt-BR')}</p>
               </div>` : `<p class="muted" style="margin:0">A Claude lê os resultados dos seus posts e diz o que postar mais, que ganchos repetir e o melhor horário. </p>`}
             </div>
@@ -4363,12 +4402,23 @@
     on(el, 'click', '[data-new-bgoal]', () => goalModal());
     on(el, 'click', '[data-edit-bgoal]', (e, b) => goalModal(B().goals.find((x) => x.id === b.dataset.editBgoal)));
     on(el, 'click', '[data-ai]', () => { if (!busy) analyze(); });
+    on(el, 'click', '[data-ai-script]', async (e, b) => {
+      const x = B().analysis.data.proximas_ideias[Number(b.dataset.aiScript)];
+      if (!x) return;
+      b.disabled = true; b.textContent = '✨ escrevendo… (uns 20 segundos)';
+      try {
+        const d = await aiScript({ titulo: x.titulo, formato: x.formato, por_que: x.por_que });
+        Object.assign(x, { gancho: d.gancho, roteiro: d.roteiro, legenda: d.legenda, justWritten: true });
+        save(); render(); toast('Roteiro pronto ✨');
+        delete x.justWritten;
+      } catch (err) { toast(aiErr(err)); b.disabled = false; b.textContent = '✨ gerar roteiro'; }
+    });
     on(el, 'click', '[data-ai-idea]', (e, b) => {
       const x = B().analysis.data.proximas_ideias[Number(b.dataset.aiIdea)];
       if (!x) return;
       const fmt = ideaFormat(x.formato);
-      const tags = String(x.legenda || '').match(/#[\p{L}\p{N}_]+/gu) || [];
-      B().posts.push({ id: uid(), title: x.titulo || 'Nova ideia', folderId: B().folders[0]?.id || '', platform: 'instagram', format: fmt, status: x.roteiro ? 'roteiro' : 'ideia', date: '', time: '', hook: x.gancho || '', script: x.roteiro || '', caption: String(x.legenda || '').replace(/(\s*#[\p{L}\p{N}_]+)+\s*$/u, '').trim(), hashtags: tags.join(' '), scene: '', look: '', duration: '', link: '', notes: x.por_que ? 'Sugestão da Claude: ' + x.por_que : '', checklist: [], createdAt: today() });
+      const tg = splitTags(x.legenda);
+      B().posts.push({ id: uid(), title: x.titulo || 'Nova ideia', folderId: B().folders[0]?.id || '', platform: 'instagram', format: fmt, status: x.roteiro ? 'roteiro' : 'ideia', date: '', time: '', hook: x.gancho || '', script: x.roteiro || '', caption: tg.caption, hashtags: tg.hashtags, scene: '', look: '', duration: '', link: '', notes: x.por_que ? 'Sugestão da Claude: ' + x.por_que : '', checklist: [], createdAt: today() });
       save(); b.disabled = true; b.textContent = '✓ guardada';
       toast(x.roteiro ? (VIDEO_FORMATS.includes(fmt) ? 'Guardada com roteiro ✨ Já está na fila de Gravar.' : 'Guardada com o texto pronto ✨') : 'Ideia guardada no banco de ideias 💡');
     });
