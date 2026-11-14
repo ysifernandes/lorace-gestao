@@ -969,6 +969,8 @@
   const inClaude = !!(window.claude && typeof window.claude.use === 'function');
   const CFG = window.BLOOM_CONFIG || null;
   const inSupa = !inClaude && !!(CFG && CFG.supabaseUrl && CFG.anonKey);
+  // link de confirmação/recuperação do e-mail chega com #access_token=… ou #error=…
+  let AUTH_HASH = inSupa && /access_token=|error_description=|error_code=/.test(location.hash) ? location.hash : '';
 
   function on(root, type, selector, fn) {
     root.addEventListener(type, (e) => {
@@ -1291,16 +1293,37 @@
     async client() {
       if (!this.sb) {
         const m = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
-        this.sb = m.createClient(CFG.supabaseUrl, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+        this.sb = m.createClient(CFG.supabaseUrl, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       }
       return this.sb;
     },
     async start() {
       let sb;
       try { sb = await this.client(); } catch (e) { setSync('offline'); toast('Sem conexão agora. Abrindo com os dados deste aparelho.'); return; }
+      const hp = new URLSearchParams(AUTH_HASH.replace(/^#/, ''));
+      const isRecovery = hp.get('type') === 'recovery';
+      const linkError = hp.get('error_description');
       const { data } = await sb.auth.getSession();
-      if (data.session) return this.ready(data.session.user);
+      if (AUTH_HASH) { AUTH_HASH = ''; try { history.replaceState(null, '', location.pathname + '#hoje'); } catch (e) {} }
+      if (data.session) {
+        await this.ready(data.session.user);
+        if (isRecovery) this.newPasswordModal();
+        else if (hp.get('type') === 'signup') toast('E-mail confirmado! Bem-vinda ao Bloom ♥');
+        return;
+      }
       this.showLogin();
+      if (linkError) $('#au-msg').textContent = /expired|invalid/i.test(linkError) ? 'Esse link do e-mail expirou ou já foi usado. Entre com a sua senha ou toque em “Esqueci minha senha”.' : 'Não consegui usar o link do e-mail. Entre com a sua senha.';
+    },
+    newPasswordModal() {
+      modal({
+        title: 'nova senha',
+        message: 'Escolha a nova senha da sua conta.',
+        fields: [{ name: 'pass', label: 'Nova senha (mínimo 6 caracteres)', type: 'password', required: true }],
+        onSave: (v) => {
+          if (String(v.pass).length < 6) { toast('A senha precisa ter pelo menos 6 caracteres.'); return false; }
+          this.sb.auth.updateUser({ password: v.pass }).then(({ error }) => toast(error ? 'Não consegui trocar a senha. Tente de novo.' : 'Senha trocada ♥'));
+        },
+      });
     },
     async ready(user) {
       this.user = user;
@@ -1326,6 +1349,7 @@
           <button class="btn" type="submit" id="au-go" style="width:100%">Entrar</button>
           <p class="auth-msg" id="au-msg" role="alert"></p>
           <button type="button" class="btn ghost" id="au-toggle" style="width:100%">Ainda não tenho conta: criar conta</button>
+          <button type="button" class="btn ghost" id="au-forgot" style="width:100%;font-size:12.5px">Esqueci minha senha</button>
         </form>`;
       document.body.appendChild(box);
       const setMode = (m) => {
@@ -1337,6 +1361,14 @@
         $('#au-msg').textContent = '';
       };
       $('#au-toggle').addEventListener('click', () => setMode(this.mode === 'login' ? 'signup' : 'login'));
+      $('#au-forgot').addEventListener('click', async () => {
+        const email = $('#au-email').value.trim();
+        const msg = $('#au-msg');
+        if (!/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = 'Digite seu e-mail acima e toque de novo em “Esqueci minha senha”.'; $('#au-email').focus(); return; }
+        msg.textContent = 'Enviando…';
+        const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+        msg.textContent = error ? (/rate limit/i.test(error.message) ? 'Muitas tentativas. Espere alguns minutos e tente de novo.' : 'Não consegui enviar agora. Tente de novo.') : 'Pronto! Enviamos um link para o seu e-mail. Toque nele para criar uma nova senha.';
+      });
       $('#auth-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = $('#au-email').value.trim();
@@ -1350,10 +1382,10 @@
           const { data, error } = await fn;
           if (error) throw error;
           if (data.session) { this.ready(data.session.user); toast(this.mode === 'login' ? 'Bem-vinda de volta ♥' : 'Conta criada! Bem-vinda ao Bloom ♥'); }
-          else msg.textContent = 'Conta criada! Confira seu e-mail para confirmar e depois entre aqui.';
+          else { setMode('login'); $('#au-msg').textContent = 'Conta criada! Enviamos um link para o seu e-mail. Toque nele para confirmar. Depois é só entrar aqui com o seu e-mail e senha.'; }
         } catch (err) {
           const m = String(err && err.message || '');
-          msg.textContent = /Invalid login/i.test(m) ? 'E-mail ou senha incorretos.' : /already registered/i.test(m) ? 'Esse e-mail já tem conta. Entre com a sua senha.' : /Email not confirmed/i.test(m) ? 'Confirme seu e-mail pelo link que enviamos e tente de novo.' : /rate limit/i.test(m) ? 'Muitas tentativas. Espere um pouco e tente de novo.' : 'Não deu certo agora. Confira a internet e tente de novo.';
+          msg.textContent = /Invalid login/i.test(m) ? 'E-mail ou senha incorretos.' : /already registered/i.test(m) ? 'Esse e-mail já tem conta. Entre com a sua senha.' : /Email not confirmed/i.test(m) ? 'Confirme seu e-mail pelo link que enviamos e tente de novo.' : /rate limit/i.test(m) ? 'Muitas tentativas. Espere um pouco e tente de novo.' : /not authorized/i.test(m) ? 'Esse e-mail ainda não pode receber o link de confirmação do Bloom. Fale com o suporte.' : /weak|password/i.test(m) ? 'Escolha uma senha mais forte (pelo menos 6 caracteres).' : `Não deu certo: ${m || 'confira a internet e tente de novo'}.`;
         } finally { go.disabled = false; }
       });
       setTimeout(() => $('#au-email')?.focus(), 50);
@@ -1525,7 +1557,7 @@
     $$('main > .page').forEach((s) => { s.hidden = s.id !== 'pg-' + p; });
     PAGES[p].render();
     updateBell();
-    try { history.replaceState(null, '', '#' + p); } catch (e) {}
+    if (!AUTH_HASH) { try { history.replaceState(null, '', '#' + p); } catch (e) {} }
     window.scrollTo(0, 0);
   }
   on(document.querySelector('.side'), 'click', '.nav-btn[data-page]', (e, b) => go(b.dataset.page));
