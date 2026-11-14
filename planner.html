@@ -4610,7 +4610,8 @@
   if (qsSocial.get('social')) {
     const pl = (PLATFORMS[qsSocial.get('platform')] || { label: 'rede' }).label;
     const st = qsSocial.get('social');
-    setTimeout(() => toast(st === 'connected' ? `${pl} conectado! Seus números estão chegando ✨` : st === 'cancelled' ? 'Conexão cancelada.' : `Não consegui conectar o ${pl}. Tente de novo.`), 700);
+    if (st === 'error' && qsSocial.get('reason') === 'no_page') setTimeout(() => modal({ title: 'falta um passo no Instagram', message: 'Não achei uma conta profissional do Instagram ligada a uma página do Facebook. No app do Instagram: Editar perfil → Página → conecte (ou crie) uma página do Facebook. Depois tente conectar de novo e, na tela da Meta, marque essa página e a conta do Instagram.', saveLabel: 'Entendi' }), 700);
+    else setTimeout(() => toast(st === 'connected' ? `${pl} conectado! Seus números estão chegando ✨` : st === 'cancelled' ? 'Conexão cancelada.' : `Não consegui conectar o ${pl}. Tente de novo.`), 700);
     try { history.replaceState(null, '', location.pathname + '#insights'); } catch (e) {}
   }
   if (inSupa && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

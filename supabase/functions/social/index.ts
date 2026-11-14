@@ -13,7 +13,9 @@
 //   POST /data-deletion                                              (pedido de exclusão de dados da Meta)
 //
 // Segredos (Supabase → Edge Functions → Secrets):
-//   IG_APP_ID, IG_APP_SECRET, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, APP_URL, CRON_SECRET
+//   META_APP_ID, META_APP_SECRET, META_CONFIG_ID (Instagram pelo Login do Facebook para Empresas, apps novos)
+//   ou IG_APP_ID, IG_APP_SECRET (Instagram pelo login do Instagram, apps antigos)
+//   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, APP_URL, CRON_SECRET
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import webpush from 'npm:web-push@3.6.7';
@@ -23,6 +25,12 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const APP_URL = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '');
 const IG_APP_ID = Deno.env.get('IG_APP_ID') ?? '';
 const IG_APP_SECRET = Deno.env.get('IG_APP_SECRET') ?? '';
+const META_APP_ID = Deno.env.get('META_APP_ID') ?? '';
+const META_APP_SECRET = Deno.env.get('META_APP_SECRET') ?? '';
+const META_CONFIG_ID = Deno.env.get('META_CONFIG_ID') ?? '';
+const FB = 'https://graph.facebook.com/v21.0';
+const fbMode = () => !!(META_APP_ID && META_APP_SECRET);
+const igConfigured = () => fbMode() || !!(IG_APP_ID && IG_APP_SECRET);
 const TT_KEY = Deno.env.get('TIKTOK_CLIENT_KEY') ?? '';
 const TT_SECRET = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? '';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
@@ -84,7 +92,14 @@ async function igGet(path: string, token: string) {
   if (!r.ok || j.error) throw new Error(`instagram ${path.split('?')[0]}: ${j.error?.message ?? r.status}`);
   return j;
 }
-async function igInsights(mediaId: string, token: string) {
+async function fbGet(path: string, token: string) {
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(`${FB}/${path}${sep}access_token=${encodeURIComponent(token)}`);
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(`facebook ${path.split('?')[0]}: ${j.error?.message ?? r.status}`);
+  return j;
+}
+async function igInsights(mediaId: string, token: string, get = igGet) {
   const out: Record<string, number> = {};
   const sets = ['reach,saved,shares,views,total_interactions', 'reach,saved,shares,total_interactions', 'reach,saved,shares', 'reach,saved'];
   const read = (j: any) => {
@@ -94,14 +109,17 @@ async function igInsights(mediaId: string, token: string) {
     }
   };
   for (const s of sets) {
-    try { read(await igGet(`${mediaId}/insights?metric=${s}`, token)); break; } catch { /* tenta um conjunto menor */ }
+    try { read(await get(`${mediaId}/insights?metric=${s}`, token)); break; } catch { /* tenta um conjunto menor */ }
   }
-  try { read(await igGet(`${mediaId}/insights?metric=follows`, token)); } catch { /* nem todo post tem */ }
+  try { read(await get(`${mediaId}/insights?metric=follows`, token)); } catch { /* nem todo post tem */ }
   return out;
 }
 async function syncInstagram(userId: string, tok: any) {
   let access = tok.access_token as string;
-  if (tok.expires_at && new Date(tok.expires_at).getTime() - Date.now() < 20 * 864e5) {
+  // Login do Facebook para Empresas: token da página (não expira) + id da conta profissional do Instagram
+  const fbIg = typeof tok.refresh_token === 'string' && tok.refresh_token.startsWith('fb:') ? tok.refresh_token.slice(3) : '';
+  const get = fbIg ? fbGet : igGet;
+  if (!fbIg && tok.expires_at && new Date(tok.expires_at).getTime() - Date.now() < 20 * 864e5) {
     try {
       const rr = await igGet(`refresh_access_token?grant_type=ig_refresh_token`, access);
       if (rr.access_token) {
@@ -110,12 +128,12 @@ async function syncInstagram(userId: string, tok: any) {
       }
     } catch (e) { console.error('ig refresh', e); }
   }
-  const me = await igGet('me?fields=user_id,username,profile_picture_url,followers_count,media_count', access);
-  const media = await igGet('me/media?fields=id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count&limit=40', access);
+  const me = await get(fbIg ? `${fbIg}?fields=id,username,profile_picture_url,followers_count,media_count` : 'me?fields=user_id,username,profile_picture_url,followers_count,media_count', access);
+  const media = await get(`${fbIg || 'me'}/media?fields=id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count&limit=40`, access);
   const rows = [];
   for (const m of media.data ?? []) {
     const metrics: Record<string, number> = { likes: m.like_count ?? 0, comments: m.comments_count ?? 0 };
-    Object.assign(metrics, await igInsights(m.id, access));
+    Object.assign(metrics, await igInsights(m.id, access, get));
     rows.push({
       user_id: userId, platform: 'instagram', ext_id: String(m.id), caption: m.caption ?? '', permalink: m.permalink ?? '',
       media_type: m.media_product_type === 'REELS' ? 'reels' : m.media_type === 'CAROUSEL_ALBUM' ? 'carrossel' : m.media_type === 'VIDEO' ? 'reels' : 'post',
@@ -318,7 +336,7 @@ async function pushTick() {
       for (const sub of list) if (await sendTo(sub, { title: r.title, body: r.body, url: base + (r.url || ''), tag: r.tag || '' })) sent++;
     }
     // tarefas que continuam sem concluir: um aviso só, juntando todas
-    const nags = [];
+    const nags: any[] = [];
     for (const n of pendingNags(core, nowN)) {
       const { error } = await admin.from('push_sent').insert({ user_id: uid, key: n.key });
       if (!error) nags.push(n);
@@ -351,13 +369,15 @@ Deno.serve(async (req) => {
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { platform, return_to } = await req.json().catch(() => ({}));
       if (!isPlatform(platform)) return json({ error: 'bad_platform' }, 400);
-      if (platform === 'instagram' && (!IG_APP_ID || !IG_APP_SECRET)) return json({ error: 'not_configured' }, 400);
+      if (platform === 'instagram' && !igConfigured()) return json({ error: 'not_configured' }, 400);
       if (platform === 'tiktok' && (!TT_KEY || !TT_SECRET)) return json({ error: 'not_configured' }, 400);
       await admin.from('oauth_states').delete().lt('created_at', new Date(Date.now() - 3600e3).toISOString());
       const state = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
       const { error } = await admin.from('oauth_states').insert({ state, user_id: user.id, platform, return_to: safeReturn(return_to) });
       if (error) return json({ error: 'db', detail: error.message }, 500);
-      const authUrl = platform === 'instagram'
+      const authUrl = platform === 'instagram' && fbMode()
+        ? `https://www.facebook.com/v21.0/dialog/oauth?` + new URLSearchParams({ client_id: META_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', state, ...(META_CONFIG_ID ? { config_id: META_CONFIG_ID } : { scope: 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management' }) })
+        : platform === 'instagram'
         ? 'https://www.instagram.com/oauth/authorize?' + new URLSearchParams({ enable_fb_login: '0', force_authentication: '1', client_id: IG_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', scope: 'instagram_business_basic,instagram_business_manage_insights', state })
         : 'https://www.tiktok.com/v2/auth/authorize/?' + new URLSearchParams({ client_key: TT_KEY, scope: 'user.info.basic,user.info.stats,video.list', response_type: 'code', redirect_uri: REDIRECT.tiktok, state });
       return json({ url: authUrl });
@@ -372,7 +392,23 @@ Deno.serve(async (req) => {
       const code = (url.searchParams.get('code') ?? '').replace(/#_$/, '');
       if (url.searchParams.get('error') || !code) return backTo(st.return_to, { social: 'cancelled', platform });
       try {
-        if (platform === 'instagram') {
+        if (platform === 'instagram' && fbMode()) {
+          const q = (o: Record<string, string>) => new URLSearchParams({ client_id: META_APP_ID, client_secret: META_APP_SECRET, ...o }).toString();
+          const r1 = await fetch(`${FB}/oauth/access_token?` + q({ redirect_uri: REDIRECT.instagram, code }));
+          const j1 = await r1.json();
+          if (!j1.access_token) throw new Error('facebook token: ' + (j1.error?.message ?? r1.status));
+          let userTok = j1.access_token;
+          try {
+            const r2 = await fetch(`${FB}/oauth/access_token?` + q({ grant_type: 'fb_exchange_token', fb_exchange_token: userTok }));
+            const j2 = await r2.json();
+            if (j2.access_token) userTok = j2.access_token;
+          } catch (e) { console.error('fb long-lived', e); }
+          // a conta profissional do Instagram fica ligada a uma página do Facebook
+          const pages = await fbGet('me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100', userTok);
+          const pg = (pages.data ?? []).find((x: any) => x.instagram_business_account?.id);
+          if (!pg) return backTo(st.return_to, { social: 'error', platform, reason: 'no_page' });
+          await admin.from('social_tokens').upsert({ user_id: st.user_id, platform, access_token: pg.access_token || userTok, refresh_token: 'fb:' + pg.instagram_business_account.id, expires_at: null, updated_at: nowIso() });
+        } else if (platform === 'instagram') {
           const r = await fetch('https://api.instagram.com/oauth/access_token', {
             method: 'POST',
             body: new URLSearchParams({ client_id: IG_APP_ID, client_secret: IG_APP_SECRET, grant_type: 'authorization_code', redirect_uri: REDIRECT.instagram, code }),
