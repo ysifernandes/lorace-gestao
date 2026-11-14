@@ -932,7 +932,9 @@
     .hname .icon-btn svg { width: 13px; height: 13px; }
   }
   @media (max-width: 420px) {
-    .task-add, .idea-add { grid-template-columns: minmax(0, 1fr); }
+    .idea-add { grid-template-columns: minmax(0, 1fr); }
+    .task-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .task-add .input[name=text], .task-add select, .task-add .btn { grid-column: 1 / -1; }
     .task-add > *, .idea-add > * { min-width: 0; }
   }
   @media (max-width: 360px) {
@@ -983,6 +985,15 @@
   .mm-node[data-mark]::after { content: attr(data-mark); position: absolute; top: -11px; right: -11px; width: 24px; height: 24px; border-radius: 50%; background: #fffdf8; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.25); font-family: system-ui; }
   .app-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--surface); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; box-shadow: var(--shadow); }
   .app-banner span { flex: 1; min-width: 200px; }
+  /* ---------- Meu dia / tarefas com horário ---------- */
+  .t-time { display: inline-block; font-family: var(--f-mono); font-size: 11.5px; color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); padding: 1px 7px; border-radius: 99px; margin-right: 7px; vertical-align: 1px; }
+  .day-sep { border-top: 1.5px dashed var(--line); margin: 6px 0 2px; }
+  .quick-add .qa-time { flex: 0 0 112px; }
+  @media (max-width: 420px) {
+    #quick-task { flex-wrap: wrap; }
+    #quick-task input[name=text] { flex: 1 1 100%; }
+    #quick-task .qa-time { flex: 1 1 auto; }
+  }
 </style>
 </head>
 <body>
@@ -1296,6 +1307,22 @@
     s.notified = s.notified || {};
     s.snoozes = s.snoozes || [];
     s.notes = Array.isArray(s.notes) ? s.notes : [];
+    // compromissos antigos viram tarefas com horário
+    if (Array.isArray(s.events) && s.events.length) {
+      const catList = { pessoal: 'l-pessoal', trabalho: 'l-trabalho', estudos: 'l-estudos' };
+      s.events.forEach((ev) => {
+        if (ev.id && s.tasks.items.some((x) => x.id === ev.id)) return;
+        const lid = s.tasks.lists.find((l) => l.id === catList[ev.cat]) ? catList[ev.cat] : (s.tasks.lists[0] || {}).id;
+        const rep = ev.repeat || 'none';
+        s.tasks.items.push({ id: ev.id || uid(), listId: lid, text: ev.title || 'Compromisso', done: rep === 'none' && !!(ev.doneDates && ev.doneDates[ev.date]), doneDates: rep === 'none' ? {} : (ev.doneDates || {}), prio: 'normal', due: ev.date || '', time: ev.start || '', end: ev.end || '', repeat: rep, remindMin: ev.remind === undefined || ev.remind === null ? '' : String(ev.remind), notes: ev.notes || '' });
+      });
+      s.events = [];
+    }
+    s.tasks.items.forEach((it) => {
+      if (it.remind) { if (!it.time) { it.time = it.remind.slice(11); it.due = it.due || it.remind.slice(0, 10); } if (it.remindMin === undefined || it.remindMin === '') it.remindMin = '0'; delete it.remind; }
+      if (!it.repeat) it.repeat = 'none';
+      if (it.remindMin === undefined) it.remindMin = '';
+    });
     if (!s.biz || typeof s.biz !== 'object') s.biz = bizSeed();
     s.biz.folders = s.biz.folders || []; s.biz.posts = s.biz.posts || []; s.biz.goals = s.biz.goals || [];
     if (!s.tasks.lists.find((l) => l.id === 'l-negocio')) s.tasks.lists.splice(1, 0, { id: 'l-negocio', name: 'Negócio', color: '#c2185b' });
@@ -1731,127 +1758,113 @@
   /* =========================================================
      Compromissos e tarefas (compartilhado)
      ========================================================= */
-  function occurs(ev, date) {
-    if (date < ev.date) return false;
-    switch (ev.repeat || 'none') {
+  /* Um tipo só de item: tarefa com horário opcional.
+     Com horário, aparece na hora certa da agenda (o antigo "compromisso"). */
+  const isRep = (it) => !!it.repeat && it.repeat !== 'none';
+  function occursOn(it, date) {
+    if (!it.due) return false;
+    if (!isRep(it)) return it.due === date;
+    if (date < it.due) return false;
+    switch (it.repeat) {
       case 'daily': return true;
       case 'weekdays': { const d = dow(date); return d >= 1 && d <= 5; }
-      case 'weekly': return dow(date) === dow(ev.date);
-      case 'monthly': return parseISO(date).getDate() === parseISO(ev.date).getDate();
-      default: return date === ev.date;
+      case 'weekly': return dow(date) === dow(it.due);
+      case 'monthly': return parseISO(date).getDate() === parseISO(it.due).getDate();
+      default: return false;
     }
   }
-  const eventsOn = (date) => S.events.filter((e) => occurs(e, date)).sort((a, b) => (a.start || '99').localeCompare(b.start || '99'));
-  const isEvDone = (ev, date) => !!(ev.doneDates && ev.doneDates[date]);
-  const catOf = (ev) => CATS[ev.cat] || CATS.pessoal;
-  const hasRemind = (ev) => ev.remind !== undefined && ev.remind !== null && ev.remind !== '' && !!ev.start;
-
-  function eventRow(ev, date, compact) {
-    const c = catOf(ev).color;
-    const done = isEvDone(ev, date);
-    const bits = [catOf(ev).label];
-    if (ev.repeat && ev.repeat !== 'none') bits.push('↻ ' + REPEATS[ev.repeat].toLowerCase());
-    if (hasRemind(ev)) bits.push('🔔 ' + REMINDS[ev.remind].toLowerCase());
-    return `<div class="ev ${done ? 'done' : ''}" style="--c:${c}">
-      <div class="ev-time">${ev.start ? esc(ev.start) : 'dia todo'}${ev.end ? `<small>até ${esc(ev.end)}</small>` : ''}</div>
-      <div class="ev-block">
-        <span class="bowi">${BOW}</span>
-        <div class="ev-title">${esc(ev.title)}</div>
-        <div class="ev-sub">[ ${esc(bits.join(' · '))} ]</div>
-        ${!compact && ev.notes ? `<div class="ev-notes">${esc(ev.notes)}</div>` : ''}
-      </div>
-      <div class="ev-actions">
-        <input type="checkbox" class="check" style="--c:${c}" data-ev-done="${ev.id}" data-date="${date}" ${done ? 'checked' : ''} aria-label="Concluído">
-        <button class="icon-btn" data-ev-edit="${ev.id}" aria-label="Editar compromisso">${ICON.edit}</button>
-      </div>
-    </div>`;
-  }
-  function eventModal(ev, date) {
-    const isNew = !ev;
-    ev = ev || { date: date || today(), start: '', end: '', title: '', cat: 'pessoal', notes: '', repeat: 'none', remind: '10' };
-    modal({
-      title: isNew ? 'novo compromisso' : 'editar compromisso',
-      fields: [
-        { name: 'title', label: 'O que é?', value: ev.title, required: true, full: true, placeholder: 'Ex: Aula de pilates' },
-        { name: 'date', label: 'Data', type: 'date', value: ev.date, required: true },
-        { name: 'cat', label: 'Categoria', type: 'select', value: ev.cat, options: Object.entries(CATS).map(([k, v]) => ({ value: k, label: v.label })) },
-        { name: 'start', label: 'Começa', type: 'time', value: ev.start },
-        { name: 'end', label: 'Termina', type: 'time', value: ev.end },
-        { name: 'repeat', label: 'Repetir', type: 'select', value: ev.repeat || 'none', options: Object.entries(REPEATS).map(([k, v]) => ({ value: k, label: v })) },
-        { name: 'remind', label: 'Lembrete', type: 'select', value: ev.remind ?? '', options: Object.entries(REMINDS).map(([k, v]) => ({ value: k, label: v })) },
-        { name: 'notes', label: 'Anotações', type: 'textarea', value: ev.notes, full: true, rows: 2, placeholder: 'Endereço, o que levar…' },
-      ],
-      onSave: (v) => {
-        if (v.remind !== '' && !v.start) toast('Para receber o lembrete, coloque o horário de início.');
-        if (isNew) S.events.push({ id: uid(), doneDates: {}, ...v });
-        else { Object.assign(ev, v); Object.keys(S.notified).forEach((k) => { if (k.startsWith('e:' + ev.id + ':')) delete S.notified[k]; }); }
-        save(); rerender();
-        toast(isNew ? 'Compromisso adicionado ♥' : 'Compromisso atualizado.');
-      },
-      onDelete: isNew ? null : () => confirmBox('excluir compromisso?', ev.repeat && ev.repeat !== 'none' ? 'Ele se repete: todas as repetições serão removidas.' : `“${ev.title}” será removido.`, () => {
-        S.events = S.events.filter((x) => x.id !== ev.id); save(); rerender();
-      }),
-    });
-  }
-  function bindEventActions(root) {
-    on(root, 'change', '[data-ev-done]', (e, el) => {
-      const ev = S.events.find((x) => x.id === el.dataset.evDone);
-      if (!ev) return;
-      ev.doneDates = ev.doneDates || {};
-      if (el.checked) ev.doneDates[el.dataset.date] = true; else delete ev.doneDates[el.dataset.date];
-      save(); rerender();
-    });
-    on(root, 'click', '[data-ev-edit]', (e, el) => eventModal(S.events.find((x) => x.id === el.dataset.evEdit)));
-  }
-
+  const isDoneOn = (it, date) => (isRep(it) ? !!(it.doneDates && it.doneDates[date]) : !!it.done);
+  const byTime = (a, b) => (a.time || '99').localeCompare(b.time || '99');
+  const itemsOn = (date) => S.tasks.items.filter((it) => occursOn(it, date)).sort(byTime);
+  const hasRemind = (it) => it.remindMin !== undefined && it.remindMin !== null && it.remindMin !== '' && !!it.due;
+  const remindAt = (it, date) => stampToMs(`${date}T${it.time || '09:00'}`) - Number(it.remindMin) * 60000;
+  const timeLabel = (it) => (it.time ? (it.end ? `${it.time}–${it.end}` : it.time) : '');
   const listById = (id) => S.tasks.lists.find((l) => l.id === id) || S.tasks.lists[0] || { name: 'Lista', color: '#d4669a' };
-  function taskRow(it, showList) {
+  const postTag = (it) => { const pp = it.postId && S.biz.posts.find((x) => x.id === it.postId); return pp ? `<span title="Conteúdo ligado">🎬 ${esc(pp.title.slice(0, 22))}</span>` : ''; };
+
+  function taskRow(it, showList, date) {
+    const d = date || today();
     const l = listById(it.listId);
     const t = today();
-    const late = !it.done && it.due && it.due < t;
-    const dueLabel = it.due ? (it.due === t ? 'hoje' : it.due === addDays(t, 1) ? 'amanhã' : fmtShort(it.due)) : '';
-    const rem = it.remind && !it.done ? `🔔 ${it.remind.slice(0, 10) === t ? '' : fmtShort(it.remind.slice(0, 10)) + ' '}${it.remind.slice(11)}` : '';
-    return `<div class="task ${it.done ? 'done' : ''}">
-      <input type="checkbox" class="check" style="--c:${l.color}" data-task-done="${it.id}" ${it.done ? 'checked' : ''} aria-label="Concluir tarefa">
-      <div class="task-text">${esc(it.text)}${it.notes ? `<div class="muted" style="font-size:12.5px">${esc(it.notes)}</div>` : ''}</div>
+    const done = isDoneOn(it, d);
+    const late = !isRep(it) && !it.done && it.due && it.due < t;
+    const dueLabel = isRep(it) ? '' : it.due ? (it.due === t ? 'hoje' : it.due === addDays(t, 1) ? 'amanhã' : fmtShort(it.due)) : '';
+    return `<div class="task ${done ? 'done' : ''}">
+      <input type="checkbox" class="check" style="--c:${l.color}" data-task-done="${it.id}" data-date="${d}" ${done ? 'checked' : ''} aria-label="Concluir">
+      <div class="task-text">${it.time ? `<span class="t-time">${esc(timeLabel(it))}</span>` : ''}${esc(it.text)}${it.notes ? `<div class="muted" style="font-size:12.5px">${esc(it.notes)}</div>` : ''}</div>
       <div class="task-meta">
-        ${it.prio === 'alta' && !it.done ? '<span class="prio">ALTA</span>' : ''}
-        ${rem ? `<span>${esc(rem)}</span>` : ''}
+        ${it.prio === 'alta' && !done ? '<span class="prio">ALTA</span>' : ''}
+        ${isRep(it) ? `<span title="Repete">↻ ${esc(REPEATS[it.repeat].toLowerCase())}</span>` : ''}
+        ${hasRemind(it) && !done ? '<span title="Com lembrete">🔔</span>' : ''}
         ${dueLabel ? `<span class="${late ? 'late' : ''}">${late ? 'atrasada · ' : ''}${dueLabel}</span>` : ''}
         ${showList ? `<span class="tagpill" style="--c:${l.color}">${esc(l.name)}</span>` : ''}
-        ${it.postId && S.biz.posts.find((p) => p.id === it.postId) ? `<span title="Conteúdo ligado">🎬 ${esc(S.biz.posts.find((p) => p.id === it.postId).title.slice(0, 22))}</span>` : ''}
+        ${postTag(it)}
       </div>
-      <button class="icon-btn" data-task-edit="${it.id}" aria-label="Editar tarefa">${ICON.edit}</button>
+      <button class="icon-btn" data-task-edit="${it.id}" aria-label="Editar">${ICON.edit}</button>
     </div>`;
   }
-  const combineRemind = (due, time) => (time ? `${due || today()}T${time}` : '');
-  function taskModal(it) {
+  function timedRow(it, date) {
+    const l = listById(it.listId);
+    const done = isDoneOn(it, date);
+    const bits = [l.name];
+    if (isRep(it)) bits.push('↻ ' + REPEATS[it.repeat].toLowerCase());
+    if (hasRemind(it)) bits.push('🔔 ' + REMINDS[it.remindMin].toLowerCase());
+    return `<div class="ev ${done ? 'done' : ''}" style="--c:${l.color}">
+      <div class="ev-time">${esc(it.time)}${it.end ? `<small>até ${esc(it.end)}</small>` : ''}</div>
+      <div class="ev-block">
+        <span class="bowi">${BOW}</span>
+        <div class="ev-title">${esc(it.text)}</div>
+        <div class="ev-sub">[ ${esc(bits.join(' · '))} ]</div>
+        ${it.notes ? `<div class="ev-notes">${esc(it.notes)}</div>` : ''}
+      </div>
+      <div class="ev-actions">
+        <input type="checkbox" class="check" style="--c:${l.color}" data-task-done="${it.id}" data-date="${date}" ${done ? 'checked' : ''} aria-label="Concluído">
+        <button class="icon-btn" data-task-edit="${it.id}" aria-label="Editar">${ICON.edit}</button>
+      </div>
+    </div>`;
+  }
+  const dayRow = (it, date) => (it.time ? timedRow(it, date) : taskRow(it, true, date));
+
+  function taskModal(it, defaults = {}) {
+    const isNew = !it;
+    it = it || Object.assign({ text: '', listId: (S.ui.taskList && S.ui.taskList !== 'all' ? S.ui.taskList : S.tasks.lists[0]?.id), prio: 'normal', due: '', time: '', end: '', repeat: 'none', remindMin: '', notes: '' }, defaults);
     modal({
-      title: 'editar tarefa',
+      title: isNew ? 'nova tarefa' : 'editar tarefa',
+      message: isNew ? 'Com horário, aparece na hora certa da agenda. Sem horário, é uma tarefa comum.' : '',
       fields: [
-        { name: 'text', label: 'Tarefa', value: it.text, required: true, full: true },
+        { name: 'text', label: 'O que é?', value: it.text, required: true, full: true, placeholder: 'Ex: Aula de pilates · Responder clientes' },
+        { name: 'due', label: 'Data', type: 'date', value: it.due || '' },
         { name: 'listId', label: 'Lista', type: 'select', value: it.listId, options: S.tasks.lists.map((l) => ({ value: l.id, label: l.name })) },
+        { name: 'time', label: 'Horário (opcional)', type: 'time', value: it.time || '' },
+        { name: 'end', label: 'Até (opcional)', type: 'time', value: it.end || '' },
+        { name: 'repeat', label: 'Repetir', type: 'select', value: it.repeat || 'none', options: Object.entries(REPEATS).map(([k, v]) => ({ value: k, label: v })) },
+        { name: 'remindMin', label: 'Lembrete', type: 'select', value: it.remindMin ?? '', options: Object.entries(REMINDS).map(([k, v]) => ({ value: k, label: v })) },
         { name: 'prio', label: 'Prioridade', type: 'select', value: it.prio || 'normal', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta' }] },
-        { name: 'due', label: 'Para quando', type: 'date', value: it.due || '' },
-        { name: 'rtime', label: 'Lembrete (hora)', type: 'time', value: it.remind ? it.remind.slice(11) : '' },
-        { name: 'notes', label: 'Observação', value: it.notes || '', full: true },
+        { name: 'notes', label: 'Anotações', value: it.notes || '', full: true, placeholder: 'Endereço, o que levar, detalhes…' },
       ],
       onSave: (v) => {
-        const remind = combineRemind(v.due, v.rtime);
-        if (remind !== it.remind) Object.keys(S.notified).forEach((k) => { if (k.startsWith('t:' + it.id + ':')) delete S.notified[k]; });
-        Object.assign(it, { text: v.text, listId: v.listId, prio: v.prio, due: v.due || (remind ? remind.slice(0, 10) : ''), notes: v.notes, remind });
+        if ((v.repeat !== 'none' || v.remindMin !== '' || v.time) && !v.due) v.due = today();
+        const data = { text: v.text.trim(), listId: v.listId, prio: v.prio, due: v.due, time: v.time, end: v.time ? v.end : '', repeat: v.repeat, remindMin: v.remindMin, notes: v.notes };
+        if (!isNew && (v.due !== it.due || v.time !== it.time || v.remindMin !== it.remindMin || v.repeat !== it.repeat)) Object.keys(S.notified).forEach((k) => { if (k.startsWith('i:' + it.id + ':')) delete S.notified[k]; });
+        if (isNew) S.tasks.items.push({ id: uid(), done: false, doneDates: {}, ...data });
+        else { Object.assign(it, data); delete it.remind; }
         save(); rerender();
-        if (remind && remind !== it._lastToast) toast(`Lembrete: ${remind.slice(0, 10) === today() ? 'hoje' : fmtShort(remind.slice(0, 10))} às ${remind.slice(11)} 🔔`);
+        if (v.remindMin !== '' && !v.time) toast('Sem horário, o lembrete chega às 9h do dia 🔔');
+        else toast(isNew ? 'Adicionado ♥' : 'Atualizado.');
       },
-      onDelete: () => { S.tasks.items = S.tasks.items.filter((x) => x.id !== it.id); save(); rerender(); toast('Tarefa excluída.'); },
+      onDelete: isNew ? null : () => {
+        const del = () => { S.tasks.items = S.tasks.items.filter((x) => x.id !== it.id); save(); rerender(); toast('Excluída.'); };
+        if (isRep(it)) confirmBox('excluir?', 'Ela se repete: todas as repetições serão removidas.', del); else del();
+      },
     });
   }
   function bindTaskActions(root) {
     on(root, 'change', '[data-task-done]', (e, el) => {
       const it = S.tasks.items.find((x) => x.id === el.dataset.taskDone);
       if (!it) return;
-      it.done = el.checked;
-      it.doneAt = el.checked ? today() : null;
+      const d = el.dataset.date || today();
+      if (isRep(it)) { it.doneDates = it.doneDates || {}; if (el.checked) it.doneDates[d] = true; else delete it.doneDates[d]; }
+      else { it.done = el.checked; it.doneAt = el.checked ? today() : null; }
       save(); rerender();
     });
     on(root, 'click', '[data-task-edit]', (e, el) => taskModal(S.tasks.items.find((x) => x.id === el.dataset.taskEdit)));
@@ -1983,10 +1996,11 @@
       const daysLeft = diffDays(t, `${nextYear}-01-01`);
       const doy = diffDays(`${new Date().getFullYear()}-01-01`, t);
       const [a1, a2] = AFFIRMATIONS[doy % AFFIRMATIONS.length];
-      const evs = eventsOn(t);
-      const tasks = S.tasks.items
-        .filter((i) => (!i.done && i.due && i.due <= t) || (i.done && i.doneAt === t) || (!i.done && i.prio === 'alta' && !i.due))
-        .sort((a, b) => (a.done - b.done) || ((b.prio === 'alta') - (a.prio === 'alta')));
+      const todayItems = itemsOn(t);
+      const timed = todayItems.filter((i) => i.time);
+      const extra = S.tasks.items.filter((i) => !isRep(i) && !i.time && !i.done && ((i.due && i.due < t) || (!i.due && i.prio === 'alta')));
+      const untimed = [...extra, ...todayItems.filter((i) => !i.time)].sort((a, b) => (isDoneOn(a, t) - isDoneOn(b, t)) || ((b.prio === 'alta') - (a.prio === 'alta')));
+      const dayAll = [...timed, ...untimed];
       const ws = weekStart(t);
       const week = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
       const goals = S.goals.filter((g) => goalProgress(g) < 100).slice(0, 4);
@@ -2012,16 +2026,16 @@
             </div>
             ${quickNotesCard()}
             ${bizTodayCard()}
-            <div class="card">
-              ${CLIP}
-              <div class="card-head"><h3>compromissos de hoje</h3><button class="btn sm secondary" data-new-ev>+ compromisso</button></div>
-              ${evs.length ? evs.map((ev) => eventRow(ev, t, true)).join('') : '<div class="empty"><span class="hand">agenda livre hoje!</span>que tal reservar um tempinho para você?</div>'}
-            </div>
             <div class="card taped t-right">
-              <div class="card-head"><h3>tarefas para hoje</h3><span class="muted">${tasks.filter((x) => x.done).length}/${tasks.length} feitas</span></div>
-              ${tasks.length ? tasks.map((it) => taskRow(it, true)).join('') : '<div class="empty"><span class="hand">tudo em dia ♡</span>adicione uma tarefa abaixo</div>'}
+              ${CLIP}
+              <div class="card-head"><h3>meu dia</h3><span class="muted">${dayAll.filter((x) => isDoneOn(x, t)).length}/${dayAll.length} feitas</span></div>
+              ${timed.map((it) => timedRow(it, t)).join('')}
+              ${timed.length && untimed.length ? '<div class="day-sep"></div>' : ''}
+              ${untimed.map((it) => taskRow(it, true, t)).join('')}
+              ${dayAll.length ? '' : '<div class="empty"><span class="hand">dia livre ♡</span>adicione o que vai fazer hoje, com ou sem horário</div>'}
               <form class="quick-add" id="quick-task">
-                <input class="input" name="text" placeholder="adicionar tarefa para hoje…" aria-label="Nova tarefa para hoje" autocomplete="off">
+                <input class="input" name="text" placeholder="adicionar ao meu dia…" aria-label="Novo item para hoje" autocomplete="off">
+                <input class="input qa-time" type="time" name="time" aria-label="Horário (opcional)" title="Horário (opcional)">
                 <button class="btn" type="submit">Adicionar</button>
               </form>
             </div>
@@ -2049,17 +2063,17 @@
     }
     el.addEventListener('input', (e) => { if (e.target.id === 'focus-in') { S.focus[today()] = e.target.value; save(); } });
     on(el, 'click', '[data-mood]', (e, b) => { const t = today(); S.mood[t] = S.mood[t] === b.dataset.mood ? null : b.dataset.mood; save(); render(); });
-    on(el, 'click', '[data-new-ev]', () => eventModal(null, today()));
     on(el, 'click', '[data-go]', (e, b) => go(b.dataset.go));
     on(el, 'submit', '#quick-task', (e, f) => {
       e.preventDefault();
       const text = f.elements.text.value.trim();
       if (!text) return;
-      S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text, done: false, prio: 'normal', due: today(), notes: '', remind: '' });
+      const time = f.elements.time ? f.elements.time.value : '';
+      S.tasks.items.push({ id: uid(), listId: S.tasks.lists[0]?.id, text, done: false, doneDates: {}, prio: 'normal', due: today(), time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
       save(); render();
+      if (time) toast(`Marcado para ${time}, com lembrete na hora 🔔`);
       setTimeout(() => $('#quick-task input', el)?.focus(), 0);
     });
-    bindEventActions(el);
     bindTaskActions(el);
     bindHabitActions(el);
     bindPostActions(el);
@@ -2078,19 +2092,19 @@
       const ws = weekStart(sel);
       const week = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
       const sd = parseISO(sel);
-      const evs = eventsOn(sel);
+      const evs = itemsOn(sel);
       const first = new Date(sd.getFullYear(), sd.getMonth(), 1);
       const gridStart = weekStart(iso(first));
       const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
       const upcoming = [];
       for (let i = 1; i <= 14 && upcoming.length < 6; i++) {
         const d = addDays(t, i);
-        eventsOn(d).forEach((ev) => { if (upcoming.length < 6) upcoming.push([d, ev]); });
+        itemsOn(d).forEach((ev) => { if (upcoming.length < 6 && !isDoneOn(ev, d)) upcoming.push([d, ev]); });
       }
       el.innerHTML = `
         <div class="page-head">
-          <div><h1>agenda</h1><div class="sub">compromissos · rotina · <b>lembretes</b></div></div>
-          <button class="btn" data-new-ev>+ novo compromisso</button>
+          <div><h1>agenda</h1><div class="sub">horários · rotina · <b>lembretes</b></div></div>
+          <button class="btn" data-new-ev>+ adicionar</button>
         </div>
         <div class="grid-2">
           <div>
@@ -2101,11 +2115,11 @@
               <button class="round-btn" data-week="7" aria-label="Próxima semana">${ICON.right}</button>
             </div>
             <div class="week">
-              ${week.map((d) => { const es = eventsOn(d).slice(0, 4); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}"><div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${catOf(ev).color}"></i>`).join('')}</div></button>`; }).join('')}
+              ${week.map((d) => { const es = itemsOn(d).filter((x) => !isDoneOn(x, d)).slice(0, 4); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}"><div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${listById(ev.listId).color}"></i>`).join('')}</div></button>`; }).join('')}
             </div>
             <div class="card notebook">
               <div class="card-head"><h3 class="day-title"><em>${sel === t ? 'hoje' : DOW_LONG[dow(sel)]}</em>${parseISO(sel).getDate()} de ${MONTHS[sd.getMonth()]}</h3><button class="btn sm secondary" data-new-ev>+ adicionar</button></div>
-              ${evs.length ? evs.map((ev) => eventRow(ev, sel)).join('') : '<div class="empty"><span class="hand">nada marcado ♡</span>dia livre para o que você quiser</div>'}
+              ${evs.length ? evs.map((ev) => dayRow(ev, sel)).join('') : '<div class="empty"><span class="hand">nada marcado ♡</span>dia livre para o que você quiser</div>'}
             </div>
           </div>
           <div class="stack">
@@ -2115,13 +2129,13 @@
               </div>
               <div class="month">
                 ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="mh">${d}</div>`).join('')}
-                ${cells.map((d) => `<button class="mday ${parseISO(d).getMonth() !== sd.getMonth() ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''} ${eventsOn(d).length ? 'has' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}">${parseISO(d).getDate()}</button>`).join('')}
+                ${cells.map((d) => `<button class="mday ${parseISO(d).getMonth() !== sd.getMonth() ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''} ${itemsOn(d).length ? 'has' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}">${parseISO(d).getDate()}</button>`).join('')}
               </div>
-              <div class="legend">${Object.values(CATS).map((c) => `<span><i class="dot" style="--c:${c.color}"></i>${c.label}</span>`).join('')}</div>
+              <div class="legend">${S.tasks.lists.map((c) => `<span><i class="dot" style="--c:${c.color}"></i>${esc(c.name)}</span>`).join('')}</div>
             </div>
             <div class="card">
               <div class="card-head"><h3>próximos dias</h3></div>
-              ${upcoming.length ? upcoming.map(([d, ev]) => `<div class="task"><i class="dot" style="--c:${catOf(ev).color}"></i><div class="task-text">${esc(ev.title)}</div><div class="task-meta">${DOW[dow(d)]} ${fmtShort(d)}${ev.start ? ' · ' + esc(ev.start) : ''}</div></div>`).join('') : '<div class="empty">nada nas próximas duas semanas.</div>'}
+              ${upcoming.length ? upcoming.map(([d, ev]) => `<div class="task"><i class="dot" style="--c:${listById(ev.listId).color}"></i><div class="task-text">${esc(ev.text)}</div><div class="task-meta">${DOW[dow(d)]} ${fmtShort(d)}${ev.time ? ' · ' + esc(ev.time) : ''}</div></div>`).join('') : '<div class="empty">nada nas próximas duas semanas.</div>'}
             </div>
           </div>
         </div>`;
@@ -2129,8 +2143,8 @@
     on(el, 'click', '[data-goto]', (e, b) => { sel = b.dataset.goto; render(); });
     on(el, 'click', '[data-week]', (e, b) => { sel = addDays(sel, Number(b.dataset.week)); render(); });
     on(el, 'click', '[data-month]', (e, b) => { const d = parseISO(sel); sel = iso(new Date(d.getFullYear(), d.getMonth() + Number(b.dataset.month), 1)); render(); });
-    on(el, 'click', '[data-new-ev]', () => eventModal(null, sel));
-    bindEventActions(el);
+    on(el, 'click', '[data-new-ev]', () => taskModal(null, { due: sel }));
+    bindTaskActions(el);
     return { render };
   })();
 
@@ -2143,13 +2157,15 @@
       const ui = S.ui;
       if (ui.taskList !== 'all' && !S.tasks.lists.find((l) => l.id === ui.taskList)) ui.taskList = 'all';
       const inList = S.tasks.items.filter((i) => ui.taskList === 'all' || i.listId === ui.taskList);
-      const items = inList.filter((i) => ui.taskFilter === 'all' || (ui.taskFilter === 'pend' ? !i.done : i.done));
-      items.sort((a, b) => (a.done - b.done) || ((b.prio === 'alta') - (a.prio === 'alta')) || ((a.due || '9999').localeCompare(b.due || '9999')));
-      const pendCount = (id) => S.tasks.items.filter((i) => !i.done && (id === 'all' || i.listId === id)).length;
+      const t0 = today();
+      const doneNow = (i) => isDoneOn(i, t0);
+      const items = inList.filter((i) => ui.taskFilter === 'all' || (ui.taskFilter === 'pend' ? !doneNow(i) : doneNow(i)));
+      items.sort((a, b) => (doneNow(a) - doneNow(b)) || ((b.prio === 'alta') - (a.prio === 'alta')) || ((a.due || '9999').localeCompare(b.due || '9999')) || byTime(a, b));
+      const pendCount = (id) => S.tasks.items.filter((i) => !doneNow(i) && (id === 'all' || i.listId === id)).length;
       const curList = S.tasks.lists.find((l) => l.id === ui.taskList);
       el.innerHTML = `
         <div class="page-head">
-          <div><h1>tarefas</h1><div class="sub">listas · prioridades · <b>lembretes com hora</b></div></div>
+          <div><h1>tarefas</h1><div class="sub">listas · horários · <b>lembretes</b></div></div>
           ${curList ? '<button class="btn sm paper" data-edit-list>editar lista</button>' : ''}
         </div>
         <div class="chips scroll" style="margin-bottom:18px">
@@ -2162,10 +2178,10 @@
             <input class="input" name="text" placeholder="o que você precisa fazer?" aria-label="Nova tarefa" autocomplete="off">
             <select class="input" name="prio" aria-label="Prioridade"><option value="normal">Prioridade normal</option><option value="alta">Prioridade alta</option></select>
             <input class="input" type="date" name="due" aria-label="Para quando">
-            <input class="input" type="time" name="rtime" aria-label="Hora do lembrete" title="Hora do lembrete">
+            <input class="input" type="time" name="time" aria-label="Horário (opcional)" title="Horário (opcional)">
             <button class="btn" type="submit">Adicionar</button>
           </form>
-          <p class="muted" style="margin:10px 0 0;font-size:12.5px">🔔 Coloque uma hora no último campo para receber um lembrete da tarefa.</p>
+          <p class="muted" style="margin:10px 0 0;font-size:12.5px">🕘 Com horário, ela aparece na agenda e te avisa na hora. Para repetir ou mudar o lembrete, toque no ✎ da tarefa.</p>
         </div>
         <div class="card">
           ${CLIP}
@@ -2185,14 +2201,15 @@
       const text = f.elements.text.value.trim();
       if (!text) { toast('Escreva a tarefa primeiro.'); return; }
       const listId = S.ui.taskList === 'all' ? S.tasks.lists[0]?.id : S.ui.taskList;
-      const remind = combineRemind(f.elements.due.value, f.elements.rtime.value);
-      S.tasks.items.push({ id: uid(), listId, text, done: false, prio: f.elements.prio.value, due: f.elements.due.value || (remind ? remind.slice(0, 10) : ''), notes: '', remind });
+      const time = f.elements.time.value;
+      const due = f.elements.due.value || (time ? today() : '');
+      S.tasks.items.push({ id: uid(), listId, text, done: false, doneDates: {}, prio: f.elements.prio.value, due, time, end: '', repeat: 'none', remindMin: time ? '0' : '', notes: '' });
       save(); render();
-      if (remind) toast(`Lembrete marcado: ${remind.slice(0, 10) === today() ? 'hoje' : fmtShort(remind.slice(0, 10))} às ${remind.slice(11)} 🔔`);
+      if (time) toast(`Marcado: ${due === today() ? 'hoje' : fmtShort(due)} às ${time}, com lembrete 🔔`);
       setTimeout(() => $('#task-add input[name=text]', el)?.focus(), 0);
     });
     on(el, 'click', '[data-clear-done]', () => {
-      const ids = new Set(S.tasks.items.filter((i) => i.done && (S.ui.taskList === 'all' || i.listId === S.ui.taskList)).map((i) => i.id));
+      const ids = new Set(S.tasks.items.filter((i) => !isRep(i) && i.done && (S.ui.taskList === 'all' || i.listId === S.ui.taskList)).map((i) => i.id));
       confirmBox('limpar concluídas?', `${ids.size} tarefa(s) concluída(s) serão removidas.`, () => { S.tasks.items = S.tasks.items.filter((i) => !ids.has(i.id)); save(); render(); }, 'Limpar');
     });
     const listFields = (l) => [
@@ -3799,12 +3816,11 @@
     today() {
       const t = today();
       const out = [];
-      S.tasks.items.forEach((it) => { if (it.remind && !it.done && it.remind.slice(0, 10) === t) out.push({ at: it.remind.slice(11), title: it.text, kind: 'tarefa', key: 't:' + it.id + ':' + it.remind }); });
-      [t, addDays(t, 1)].forEach((d) => eventsOn(d).forEach((ev) => {
-        if (!hasRemind(ev) || isEvDone(ev, d)) return;
-        const st = msToStamp(stampToMs(`${d}T${ev.start}`) - Number(ev.remind) * 60000);
+      [t, addDays(t, 1)].forEach((d) => itemsOn(d).forEach((it) => {
+        if (!hasRemind(it) || isDoneOn(it, d)) return;
+        const st = msToStamp(remindAt(it, d));
         if (st.slice(0, 10) !== t) return;
-        out.push({ at: st.slice(11), title: ev.title, kind: 'compromisso', key: 'e:' + ev.id + ':' + d, when: `${d === t ? 'hoje' : 'amanhã'} às ${ev.start}` });
+        out.push({ at: st.slice(11), title: it.text, kind: it.time ? 'horário' : 'tarefa', key: 'i:' + it.id + ':' + d, when: it.time ? `${d === t ? 'hoje' : 'amanhã'} às ${it.time}` : '' });
       }));
       S.biz.posts.forEach((p) => { if (p.date === t && p.time && p.status !== 'publicado') out.push({ at: p.time, title: 'postar: ' + p.title, kind: 'conteúdo', key: 'p:' + p.id + ':' + p.date + 'T' + p.time }); });
       S.snoozes.forEach((z) => { const st = msToStamp(z.at); if (st.slice(0, 10) === t) out.push({ at: st.slice(11), title: z.title, kind: 'adiado', key: z.id }); });
@@ -3814,21 +3830,14 @@
       const now = Date.now();
       const stamp = nowStamp();
       const due = [];
-      S.tasks.items.forEach((it) => {
-        if (!it.remind || it.done) return;
-        const key = 't:' + it.id + ':' + it.remind;
-        if (S.notified[key] || it.remind > stamp) return;
-        S.notified[key] = now;
-        if (now - stampToMs(it.remind) < 12 * 3600000) due.push({ title: it.text, kind: 'tarefa', taskId: it.id, when: it.remind.slice(11) });
-      });
-      [addDays(today(), -1), today(), addDays(today(), 1)].forEach((d) => eventsOn(d).forEach((ev) => {
-        if (!hasRemind(ev) || isEvDone(ev, d)) return;
-        const key = 'e:' + ev.id + ':' + d;
+      [addDays(today(), -1), today(), addDays(today(), 1)].forEach((d) => itemsOn(d).forEach((it) => {
+        if (!hasRemind(it) || isDoneOn(it, d)) return;
+        const key = 'i:' + it.id + ':' + d;
         if (S.notified[key]) return;
-        const fire = stampToMs(`${d}T${ev.start}`) - Number(ev.remind) * 60000;
+        const fire = remindAt(it, d);
         if (fire > now) return;
         S.notified[key] = now;
-        if (now - fire < 3 * 3600000) due.push({ title: ev.title, kind: 'compromisso', when: `${d === today() ? 'hoje' : d === addDays(today(), 1) ? 'amanhã' : fmtShort(d)} às ${ev.start}` });
+        if (now - fire < 3 * 3600000) due.push({ title: it.text, kind: it.time ? 'horário' : 'tarefa', taskId: it.id, date: d, when: it.time ? `${d === today() ? 'hoje' : d === addDays(today(), 1) ? 'amanhã' : fmtShort(d)} às ${it.time}` : '' });
       }));
       S.biz.posts.forEach((p) => {
         if (!p.date || !p.time || p.status === 'publicado') return;
@@ -3838,7 +3847,7 @@
         S.notified[key] = now;
         if (now - stampToMs(st) < 3 * 3600000) due.push({ title: 'hora de postar: ' + p.title, kind: 'conteúdo', when: platOf(p).label + ' · ' + p.time });
       });
-      S.snoozes = S.snoozes.filter((z) => { if (z.at <= now) { due.push({ title: z.title, kind: z.kind, taskId: z.taskId, when: 'adiado' }); return false; } return true; });
+      S.snoozes = S.snoozes.filter((z) => { if (z.at <= now) { due.push({ title: z.title, kind: z.kind, taskId: z.taskId, date: z.date, when: 'adiado' }); return false; } return true; });
       if (due.length) { save(); due.forEach(showAlert); chime(); }
       updateBell();
     },
@@ -3858,8 +3867,8 @@
     div.addEventListener('click', (e) => {
       const b = e.target.closest('[data-al]');
       if (!b) return;
-      if (b.dataset.al === 'done') { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { it.done = true; it.doneAt = today(); toast('Tarefa concluída ♥'); } }
-      if (b.dataset.al === 'snooze') { S.snoozes.push({ id: uid(), at: Date.now() + 10 * 60000, title: a.title, kind: a.kind, taskId: a.taskId }); toast('Vou te lembrar de novo em 10 minutos.'); }
+      if (b.dataset.al === 'done') { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { if (isRep(it)) { it.doneDates = it.doneDates || {}; it.doneDates[a.date || today()] = true; } else { it.done = true; it.doneAt = today(); } toast('Concluída ♥'); } }
+      if (b.dataset.al === 'snooze') { S.snoozes.push({ id: uid(), at: Date.now() + 10 * 60000, title: a.title, kind: a.kind, taskId: a.taskId, date: a.date }); toast('Vou te lembrar de novo em 10 minutos.'); }
       save(); div.remove(); rerender();
     });
     box.appendChild(div);
@@ -3883,26 +3892,24 @@
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
     const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Bloom//Planner//PT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Bloom'];
     const RR = { daily: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', weekly: 'FREQ=WEEKLY', monthly: 'FREQ=MONTHLY' };
-    S.events.forEach((e) => {
-      L.push('BEGIN:VEVENT', `UID:${e.id}@bloom`, `DTSTAMP:${stamp}`);
-      if (e.start) {
-        L.push('DTSTART:' + DT(e.date, e.start));
-        const endSt = e.end && e.end > e.start ? `${e.date}T${e.end}` : plus(e.date, e.start, 60);
+    S.tasks.items.forEach((it) => {
+      if (!it.due || (!it.time && !hasRemind(it)) || (!isRep(it) && it.done)) return;
+      L.push('BEGIN:VEVENT', `UID:${it.id}@bloom`, `DTSTAMP:${stamp}`);
+      if (it.time) {
+        L.push('DTSTART:' + DT(it.due, it.time));
+        const endSt = it.end && it.end > it.time ? `${it.due}T${it.end}` : plus(it.due, it.time, it.end ? 60 : 30);
         L.push('DTEND:' + DT(endSt.slice(0, 10), endSt.slice(11)));
       } else {
-        L.push('DTSTART;VALUE=DATE:' + e.date.replace(/-/g, ''), 'DTEND;VALUE=DATE:' + addDays(e.date, 1).replace(/-/g, ''));
+        L.push('DTSTART;VALUE=DATE:' + it.due.replace(/-/g, ''), 'DTEND;VALUE=DATE:' + addDays(it.due, 1).replace(/-/g, ''));
       }
-      if (RR[e.repeat]) L.push('RRULE:' + RR[e.repeat]);
-      L.push('SUMMARY:' + E(e.title));
-      if (e.notes) L.push('DESCRIPTION:' + E(e.notes));
-      if (hasRemind(e)) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + E(e.title), `TRIGGER:-PT${Number(e.remind)}M`, 'END:VALARM');
+      if (RR[it.repeat]) L.push('RRULE:' + RR[it.repeat]);
+      L.push('SUMMARY:' + E(it.text));
+      if (it.notes) L.push('DESCRIPTION:' + E(it.notes));
+      if (hasRemind(it)) {
+        const off = it.time ? -Number(it.remindMin) : 540 - Number(it.remindMin);
+        L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + E(it.text), `TRIGGER:${off < 0 ? '-' : ''}PT${Math.abs(off)}M`, 'END:VALARM');
+      }
       L.push('END:VEVENT');
-    });
-    S.tasks.items.forEach((it) => {
-      if (!it.remind || it.done) return;
-      const [d, t] = it.remind.split('T');
-      const end = plus(d, t, 15);
-      L.push('BEGIN:VEVENT', `UID:${it.id}-task@bloom`, `DTSTAMP:${stamp}`, 'DTSTART:' + DT(d, t), 'DTEND:' + DT(end.slice(0, 10), end.slice(11)), 'SUMMARY:' + E('✓ ' + it.text), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + E(it.text), 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT');
     });
     S.biz.posts.forEach((p) => {
       if (!p.date || !p.time || p.status === 'publicado') return;
@@ -3940,7 +3947,7 @@
       title: 'lembretes',
       extraHTML: `
         <div class="eyebrow" style="margin-bottom:6px">hoje</div>
-        ${list.length ? `<ul class="rem-list">${list.map((r) => `<li class="${r.at < hm || S.notified[r.key] ? 'past' : ''}"><span class="tm">${r.at}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(r.title)}${r.when ? ` <span class="muted">(${esc(r.when)})</span>` : ''}</span><span class="tagpill" style="--c:#b04a74">${r.kind}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0 0 12px">Nenhum lembrete para hoje. Coloque uma hora numa tarefa ou escolha um lembrete num compromisso.</p>'}
+        ${list.length ? `<ul class="rem-list">${list.map((r) => `<li class="${r.at < hm || S.notified[r.key] ? 'past' : ''}"><span class="tm">${r.at}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(r.title)}${r.when ? ` <span class="muted">(${esc(r.when)})</span>` : ''}</span><span class="tagpill" style="--c:#b04a74">${r.kind}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0 0 12px">Nenhum lembrete para hoje. Coloque um horário ou um lembrete numa tarefa.</p>'}
         <div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">notificações</div>
           <p>${permText}</p>
