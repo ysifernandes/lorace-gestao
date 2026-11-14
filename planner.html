@@ -873,6 +873,15 @@
     :root[data-style="clean"] .nav-btn.active { background: var(--brand); color: var(--on-brand); }
     :root[data-style="clean"] .topbar .mbrand .brand-name { color: var(--ink); }
   }
+  /* ---------- Login ---------- */
+  .auth { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top, 0px)) 16px 20px; overflow-y: auto; background-color: var(--bg); background-image: radial-gradient(color-mix(in srgb, var(--dot) 42%, transparent) 1.7px, transparent 2.3px); background-size: 30px 30px; }
+  :root[data-style="clean"] .auth { background-image: none; }
+  .auth-card { width: min(400px, 100%); padding: 30px 26px 22px; }
+  .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .auth-brand .brand-name { color: var(--title); }
+  .auth-card h2 { font-size: 40px; color: var(--brand); margin-bottom: 4px; }
+  .auth-card > p.muted { margin: 0 0 18px; }
+  .auth-msg { min-height: 20px; font-size: 13px; color: var(--ink-soft); margin: 10px 0 4px; text-align: center; }
 </style>
 </head>
 <body>
@@ -958,6 +967,8 @@
   const fmtDate = (s) => { const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
   const fmtLong = (s) => { const d = parseISO(s); return `${DOW_LONG[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`; };
   const inClaude = !!(window.claude && typeof window.claude.use === 'function');
+  const CFG = window.BLOOM_CONFIG || null;
+  const inSupa = !inClaude && !!(CFG && CFG.supabaseUrl && CFG.anonKey);
 
   function on(root, type, selector, fn) {
     root.addEventListener(type, (e) => {
@@ -1209,7 +1220,7 @@
       const { maps, mapSel, vision, biz, ...core } = st;
       return { core: { body: core }, maps: { body: { maps, mapSel } }, vision: { body: { vision } }, biz: { body: { biz } } };
     },
-    ref(name) { return this.db.doc(`data/users/${this.uid}/${name}`); },
+    be: null,
     schedule() { if (!this.on) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 900); },
     flush() {
       if (!this.on) return;
@@ -1218,12 +1229,12 @@
       for (const [name, doc] of Object.entries(parts)) {
         const json = JSON.stringify(doc.body);
         if (this.last[name] === json) continue;
-        if (json.length > 250000) {
+        if (json.length > (inSupa ? 4000000 : 250000)) {
           if (!this.warned) { this.warned = true; toast(name === 'vision' ? 'O mural ficou grande demais para a nuvem. Remova algumas fotos.' : 'Dados grandes demais para salvar na nuvem.'); }
           continue;
         }
         this.last[name] = json;
-        this.chain = this.chain.then(() => this.ref(name).set({ t, json })).catch((e) => {
+        this.chain = this.chain.then(() => this.be.set(name, { t, json })).catch((e) => {
           this.last[name] = null;
           if (e && e.code === 'quota_exceeded') toast('O espaço na nuvem acabou. Remova algumas fotos do mural.');
           else setSync('offline');
@@ -1231,40 +1242,126 @@
       }
     },
     async start() {
+      if (inSupa) return Auth.start();
       if (!inClaude) return;
       try {
         const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
         if (!db || !user) return;
         const id = await user.id();
         if (!id) return;
-        this.db = db; this.uid = id;
-        setSync('loading');
-        const snaps = await Promise.all(['core', 'maps', 'vision', 'biz'].map((n) => this.ref(n).get()));
-        const docs = snaps.map((sn) => (sn.exists ? sn.data() : null));
-        if (docs.every((d) => !d)) {
-          this.on = true;
-          if (!S._t) S._t = Date.now();
-          this.flush();
-        } else {
-          const cloudT = Math.max(...docs.map((d) => (d && d.t) || 0));
-          const merged = {};
-          docs.forEach((d) => { if (d && d.json) Object.assign(merged, JSON.parse(d.json)); });
-          if ((S._t || 0) > cloudT + 1000 && loadState()) {
-            this.on = true; this.flush();
-          } else {
-            S = migrate(Object.assign(seed(), merged));
-            S._t = cloudT;
-            if (!S.maps.find((m) => m.id === S.mapSel)) S.mapSel = S.maps[0].id;
-            const parts = this.split(S);
-            for (const n of Object.keys(parts)) this.last[n] = JSON.stringify(parts[n].body);
-            this.on = true;
-            try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {}
-            applyTheme(); rerender(); Reminders.tick();
-          }
-        }
-        setSync('ok');
+        this.be = {
+          get: async (n) => { const sn = await db.doc(`data/users/${id}/${n}`).get(); return sn.exists ? sn.data() : null; },
+          set: (n, d) => db.doc(`data/users/${id}/${n}`).set(d),
+        };
+        await this.load();
         window.claude.use('assets').then((a) => { this.assets = a; }).catch(() => {});
       } catch (e) { setSync('offline'); }
+    },
+    async load() {
+      setSync('loading');
+      const docs = await Promise.all(['core', 'maps', 'vision', 'biz'].map((n) => this.be.get(n)));
+      if (docs.every((d) => !d)) {
+        this.on = true;
+        if (!S._t) S._t = Date.now();
+        this.flush();
+      } else {
+        const cloudT = Math.max(...docs.map((d) => (d && d.t) || 0));
+        const merged = {};
+        docs.forEach((d) => { if (d && d.json) Object.assign(merged, JSON.parse(d.json)); });
+        if ((S._t || 0) > cloudT + 1000 && loadState()) {
+          this.on = true; this.flush();
+        } else {
+          S = migrate(Object.assign(seed(), merged));
+          S._t = cloudT;
+          if (!S.maps.find((m) => m.id === S.mapSel)) S.mapSel = S.maps[0].id;
+          const parts = this.split(S);
+          for (const n of Object.keys(parts)) this.last[n] = JSON.stringify(parts[n].body);
+          this.on = true;
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {}
+          applyTheme(); rerender(); Reminders.tick();
+        }
+      }
+      setSync('ok');
+    },
+  };
+
+  /* Login e nuvem próprios (Supabase), quando o Bloom roda no endereço próprio */
+  const Auth = {
+    sb: null, user: null, mode: 'login',
+    async client() {
+      if (!this.sb) {
+        const m = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+        this.sb = m.createClient(CFG.supabaseUrl, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+      }
+      return this.sb;
+    },
+    async start() {
+      let sb;
+      try { sb = await this.client(); } catch (e) { setSync('offline'); toast('Sem conexão agora. Abrindo com os dados deste aparelho.'); return; }
+      const { data } = await sb.auth.getSession();
+      if (data.session) return this.ready(data.session.user);
+      this.showLogin();
+    },
+    async ready(user) {
+      this.user = user;
+      const box = $('#auth'); if (box) box.remove();
+      const sb = this.sb;
+      Cloud.be = {
+        get: async (n) => { const { data, error } = await sb.from('planner_docs').select('json,t').eq('name', n).maybeSingle(); if (error) throw error; return data; },
+        set: async (n, d) => { const { error } = await sb.from('planner_docs').upsert({ user_id: user.id, name: n, json: d.json, t: d.t, updated_at: new Date().toISOString() }); if (error) throw error; },
+      };
+      try { await Cloud.load(); } catch (e) { setSync('offline'); }
+      Social.refresh(true);
+    },
+    showLogin() {
+      if ($('#auth')) return;
+      const box = document.createElement('div');
+      box.className = 'auth'; box.id = 'auth';
+      box.innerHTML = `<form class="card auth-card taped" id="auth-form" novalidate>
+          <div class="auth-brand"><div class="logo" aria-hidden="true">${BOW}</div><div class="brand-name">Bloom</div></div>
+          <h2 id="au-title">entrar</h2>
+          <p class="muted" id="au-sub">Seu planner de conteúdo, rotina e metas.</p>
+          <div class="field"><label for="au-email">E-mail</label><input id="au-email" type="email" autocomplete="email" inputmode="email" required></div>
+          <div class="field"><label for="au-pass">Senha</label><input id="au-pass" type="password" autocomplete="current-password" minlength="6" required></div>
+          <button class="btn" type="submit" id="au-go" style="width:100%">Entrar</button>
+          <p class="auth-msg" id="au-msg" role="alert"></p>
+          <button type="button" class="btn ghost" id="au-toggle" style="width:100%">Ainda não tenho conta: criar conta</button>
+        </form>`;
+      document.body.appendChild(box);
+      const setMode = (m) => {
+        this.mode = m;
+        $('#au-title').textContent = m === 'login' ? 'entrar' : 'criar conta';
+        $('#au-go').textContent = m === 'login' ? 'Entrar' : 'Criar conta';
+        $('#au-toggle').textContent = m === 'login' ? 'Ainda não tenho conta: criar conta' : 'Já tenho conta: entrar';
+        $('#au-pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+        $('#au-msg').textContent = '';
+      };
+      $('#au-toggle').addEventListener('click', () => setMode(this.mode === 'login' ? 'signup' : 'login'));
+      $('#auth-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('#au-email').value.trim();
+        const password = $('#au-pass').value;
+        const msg = $('#au-msg');
+        if (!/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = 'Digite um e-mail válido.'; return; }
+        if (password.length < 6) { msg.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+        const go = $('#au-go'); go.disabled = true; msg.textContent = this.mode === 'login' ? 'Entrando…' : 'Criando sua conta…';
+        try {
+          const fn = this.mode === 'login' ? this.sb.auth.signInWithPassword({ email, password }) : this.sb.auth.signUp({ email, password });
+          const { data, error } = await fn;
+          if (error) throw error;
+          if (data.session) { this.ready(data.session.user); toast(this.mode === 'login' ? 'Bem-vinda de volta ♥' : 'Conta criada! Bem-vinda ao Bloom ♥'); }
+          else msg.textContent = 'Conta criada! Confira seu e-mail para confirmar e depois entre aqui.';
+        } catch (err) {
+          const m = String(err && err.message || '');
+          msg.textContent = /Invalid login/i.test(m) ? 'E-mail ou senha incorretos.' : /already registered/i.test(m) ? 'Esse e-mail já tem conta. Entre com a sua senha.' : /Email not confirmed/i.test(m) ? 'Confirme seu e-mail pelo link que enviamos e tente de novo.' : /rate limit/i.test(m) ? 'Muitas tentativas. Espere um pouco e tente de novo.' : 'Não deu certo agora. Confira a internet e tente de novo.';
+        } finally { go.disabled = false; }
+      });
+      setTimeout(() => $('#au-email')?.focus(), 50);
+    },
+    async signOut() {
+      try { await this.sb.auth.signOut(); } catch (e) {}
+      try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+      location.href = location.pathname;
     },
   };
   function setSync(state) {
@@ -2787,6 +2884,7 @@
         toast(isNew ? 'Conteúdo criado ♥' : 'Conteúdo atualizado.');
       },
       onDelete: isNew ? null : () => confirmBox('excluir conteúdo?', `“${p.title}” será removido.`, () => {
+        if (p.ext) B().ignoredExt = [...(B().ignoredExt || []), p.ext.key];
         B().posts = B().posts.filter((x) => x.id !== p.id);
         S.tasks.items.forEach((t) => { if (t.postId === p.id) delete t.postId; });
         save(); rerender();
@@ -2799,7 +2897,7 @@
     const nf = (name, label) => ({ name, label, type: 'number', value: m[name] ?? '', placeholder: '0' });
     modal({
       title: 'resultados do post',
-      message: `${platOf(p).icon} ${p.title}. Até a conexão automática com Instagram e TikTok ficar pronta, os números entram por aqui.`,
+      message: p.metrics && p.metrics.auto ? `${platOf(p).icon} ${p.title}. Estes números chegam sozinhos do ${platOf(p).label}. Cliques e vendas você completa aqui.` : `${platOf(p).icon} ${p.title}. Conecte o Instagram e o TikTok em Insights para os números entrarem sozinhos.`,
       fields: [
         nf('views', 'Visualizações'), nf('reach', 'Alcance'), nf('likes', 'Curtidas'), nf('comments', 'Comentários'),
         nf('saves', 'Salvamentos'), nf('shares', 'Compartilhamentos'), nf('follows', 'Seguidores ganhos'), nf('clicks', 'Cliques'),
@@ -3082,6 +3180,107 @@
     return { render };
   })();
 
+  /* REDES SOCIAIS (conexão automática no endereço próprio) */
+  const Social = {
+    accounts: {}, busy: false,
+    async call(path, body) {
+      const sb = await Auth.client();
+      const { data } = await sb.auth.getSession();
+      const r = await fetch(`${CFG.supabaseUrl}/functions/v1/social/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session ? data.session.access_token : ''}`, apikey: CFG.anonKey },
+        body: JSON.stringify(body || {}),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw Object.assign(new Error(j.error || 'erro'), { code: j.error });
+      return j;
+    },
+    async refresh(apply) {
+      if (!inSupa || !Auth.user) return;
+      const { data } = await Auth.sb.from('social_accounts').select('*');
+      this.accounts = {};
+      (data || []).forEach((a) => { this.accounts[a.platform] = a; });
+      if (apply) await this.apply();
+      if (current === 'insights') rerender();
+    },
+    async connect(platform) {
+      try {
+        const j = await this.call('start', { platform, return_to: location.origin + location.pathname });
+        location.href = j.url;
+      } catch (e) {
+        toast(e.code === 'not_configured' ? `A conexão com o ${PLATFORMS[platform].label} ainda não foi configurada: faltam as chaves do app (próximo passo).` : 'Não consegui iniciar a conexão. Tente de novo.');
+      }
+    },
+    async syncNow() {
+      if (this.busy) return;
+      this.busy = true; rerender();
+      try {
+        const j = await this.call('sync');
+        const bad = (j.results || []).filter((r) => !r.ok);
+        this.busy = false;
+        await this.refresh(true);
+        toast(bad.length ? 'Uma conta não atualizou. Veja o aviso no cartão.' : 'Números atualizados ✨');
+      } catch (e) { toast('Não consegui atualizar agora. Tente de novo.'); }
+      finally { this.busy = false; rerender(); }
+    },
+    disconnect(platform) {
+      confirmBox(`desconectar o ${PLATFORMS[platform].label}?`, 'Os números param de atualizar. Os posts e os números que já estão no Bloom continuam.', async () => {
+        try { await this.call('disconnect', { platform }); toast('Desconectado.'); } catch (e) { toast('Não consegui desconectar agora.'); }
+        this.refresh(false);
+      }, 'Desconectar');
+    },
+    async apply() {
+      const { data, error } = await Auth.sb.from('social_posts').select('*').order('posted_at', { ascending: false }).limit(300);
+      if (error || !data) return;
+      const ignored = new Set(B().ignoredExt || []);
+      const words = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+      const overlap = (p, sp) => { const c = words(sp.caption); return words(p.title).filter((w) => c.includes(w)).length; };
+      const titleFrom = (cap, pl) => { const t = String(cap || '').split('\n')[0].replace(/#\S+/g, '').trim(); return t ? (t.length > 60 ? t.slice(0, 57) + '…' : t) : `Post do ${PLATFORMS[pl].label}`; };
+      let changed = false;
+      for (const sp of data) {
+        const key = sp.platform + ':' + sp.ext_id;
+        if (ignored.has(key)) continue;
+        const d = sp.posted_at ? new Date(sp.posted_at) : null;
+        const date = d ? iso(d) : '';
+        const time = d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+        let p = B().posts.find((x) => x.ext && x.ext.key === key);
+        if (!p && date) {
+          const cands = B().posts.filter((x) => !x.ext && x.platform === sp.platform && x.date && Math.abs(diffDays(x.date, date)) <= 1 && x.status !== 'ideia');
+          p = cands.sort((a, b) => (overlap(b, sp) - overlap(a, sp)) || (Math.abs(diffDays(a.date, date)) - Math.abs(diffDays(b.date, date))))[0];
+        }
+        if (!p) {
+          p = { id: uid(), title: titleFrom(sp.caption, sp.platform), folderId: '', platform: sp.platform, format: sp.media_type || 'post', status: 'publicado', date, time, hook: '', script: '', caption: sp.caption || '', hashtags: '', scene: '', look: '', duration: '', link: sp.permalink || '', notes: '', checklist: [], createdAt: today(), imported: true };
+          B().posts.push(p);
+          changed = true;
+        }
+        const m = sp.metrics || {};
+        const api = { views: m.views ?? m.reach, reach: m.reach, likes: m.likes, comments: m.comments, saves: m.saves, shares: m.shares, follows: m.follows };
+        const keep = p.metrics ? { clicks: p.metrics.clicks, sales: p.metrics.sales } : {};
+        const next = Object.assign({}, keep, api, { at: String(sp.synced_at || '').slice(0, 10) || today(), auto: true });
+        Object.keys(next).forEach((k) => { if (next[k] == null) delete next[k]; });
+        const before = JSON.stringify([p.metrics, p.status, p.ext, p.link]);
+        p.metrics = next;
+        p.ext = { key, platform: sp.platform, id: sp.ext_id };
+        p.status = 'publicado';
+        if (!p.link) p.link = sp.permalink || '';
+        if (!p.date) { p.date = date; p.time = time; }
+        if (p.example) delete p.example;
+        if (JSON.stringify([p.metrics, p.status, p.ext, p.link]) !== before) changed = true;
+      }
+      if (changed) { save(); rerender(); }
+    },
+  };
+  const fmtWhen = (x) => new Date(x).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  function connCard(k) {
+    const L = PLATFORMS[k];
+    const ic = `<span class="ic" aria-hidden="true">${L.icon}</span>`;
+    if (!inSupa) return `<div class="card">${ic}<div class="txt"><b>${L.label}</b>Os números automáticos funcionam no app Bloom, no endereço próprio.</div></div>`;
+    const a = Social.accounts[k];
+    if (!a) return `<div class="card">${ic}<div class="txt"><b>${L.label}</b>Conecte uma vez e os números entram sozinhos todo dia.</div><button class="btn sm" data-sconnect="${k}">Conectar</button></div>`;
+    return `<div class="card">${ic}<div class="txt"><b>${L.label}${a.username ? ' · @' + esc(a.username) : ''}</b>${a.last_error ? `<span style="color:var(--danger)">Não atualizou: ${esc(a.last_error.slice(0, 90))}</span>` : `${a.followers != null ? fmtNum(a.followers) + ' seguidores · ' : ''}atualizado ${a.last_sync ? fmtWhen(a.last_sync) : 'agora'}`}</div>
+      <div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm secondary" data-ssync ${Social.busy ? 'disabled' : ''}>${Social.busy ? 'atualizando…' : 'atualizar'}</button><button class="btn sm ghost" data-sdisc="${k}">desconectar</button></div></div>`;
+  }
+
   /* INSIGHTS */
   PAGES.insights = (() => {
     const el = $('#pg-insights');
@@ -3115,7 +3314,7 @@
         </div>
         ${exampleNote()}
         <div class="conn">
-          ${['instagram', 'tiktok'].map((k) => `<div class="card"><span class="ic" aria-hidden="true">${PLATFORMS[k].icon}</span><div class="txt"><b>${PLATFORMS[k].label}</b>Números automáticos todo dia: chega na próxima etapa.</div><button class="btn sm secondary" disabled style="opacity:.6;cursor:default">em breve</button></div>`).join('')}
+          ${['instagram', 'tiktok'].map(connCard).join('')}
         </div>
         <div class="stats">
           <div class="card stat"><div class="eyebrow">publicados no mês</div><div class="v">${pubMonth.length}</div></div>
@@ -3201,6 +3400,9 @@
       } finally { busy = false; render(); }
     }
     on(el, 'click', '[data-metrics]', (e, b) => metricsModal(B().posts.find((x) => x.id === b.dataset.metrics)));
+    on(el, 'click', '[data-sconnect]', (e, b) => Social.connect(b.dataset.sconnect));
+    on(el, 'click', '[data-ssync]', () => Social.syncNow());
+    on(el, 'click', '[data-sdisc]', (e, b) => Social.disconnect(b.dataset.sdisc));
     on(el, 'click', '[data-new-bgoal]', () => goalModal());
     on(el, 'click', '[data-edit-bgoal]', (e, b) => goalModal(B().goals.find((x) => x.id === b.dataset.editBgoal)));
     on(el, 'click', '[data-ai]', () => { if (!busy) analyze(); });
@@ -3473,10 +3675,13 @@
       extraHTML: `<div class="settings-block">
         <p>${Cloud.on ? 'Seus dados estão salvos na nuvem, com a sua conta. O backup é uma cópia extra para guardar.' : 'Seus dados ficam salvos só neste navegador. Faça um backup de vez em quando, e use-o para levar tudo para outro aparelho.'}</p>
         <div class="row"><button type="button" class="btn sm secondary" id="bk-export">Baixar backup</button><button type="button" class="btn sm ghost" id="bk-import">Restaurar backup</button></div>
-      </div>`,
+      </div>
+      ${inSupa && Auth.user ? `<div class="settings-block"><p>Conta: <b>${esc(Auth.user.email || '')}</b></p><div class="row"><button type="button" class="btn sm ghost" id="au-out">Sair da conta</button><button type="button" class="btn sm danger-ghost" id="au-del">Excluir minha conta</button></div></div>` : ''}`,
       onOpen: (form) => {
         $('#bk-export', form).addEventListener('click', () => saveFile(`bloom-backup-${today()}.json`, new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), 'Backup salvo.'));
         $('#bk-import', form).addEventListener('click', () => $('#file-backup').click());
+        const out = $('#au-out', form); if (out) out.addEventListener('click', () => Auth.signOut());
+        const del = $('#au-del', form); if (del) del.addEventListener('click', () => { dlg.close(); confirmBox('excluir sua conta?', 'Sua conta, seus dados do planner e as conexões com Instagram e TikTok serão apagados para sempre.', async () => { try { await Social.call('delete-account'); toast('Conta excluída.'); setTimeout(() => Auth.signOut(), 800); } catch (e) { toast('Não consegui excluir agora. Tente de novo.'); } }, 'Excluir para sempre'); });
       },
       onSave: (v) => { S.profile.nome = v.nome.trim(); save(); rerender(); },
     });
@@ -3504,6 +3709,14 @@
   /* =========================================================
      Início
      ========================================================= */
+  const qsSocial = new URLSearchParams(location.search);
+  if (qsSocial.get('social')) {
+    const pl = (PLATFORMS[qsSocial.get('platform')] || { label: 'rede' }).label;
+    const st = qsSocial.get('social');
+    setTimeout(() => toast(st === 'connected' ? `${pl} conectado! Seus números estão chegando ✨` : st === 'cancelled' ? 'Conexão cancelada.' : `Não consegui conectar o ${pl}. Tente de novo.`), 700);
+    try { history.replaceState(null, '', location.pathname + '#insights'); } catch (e) {}
+  }
+  if (inSupa && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   go((location.hash || '#hoje').slice(1));
   window.addEventListener('hashchange', () => { const p = location.hash.slice(1); if (p && p !== current && PAGES[p]) go(p); });
   Reminders.prune();
