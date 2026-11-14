@@ -6,7 +6,7 @@
 <title>Loracê Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #fdf9f6;
@@ -28,7 +28,8 @@
     --side-a: #5a1f29;
     --side-b: #7a2e3a;
     --shadow: 0 12px 32px -16px rgba(90, 31, 41, .38);
-    --r: 16px;
+    --r: 22px;
+    --brand-2: #c95c7e;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -81,7 +82,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg);
     color: var(--ink);
     font-size: 14px;
@@ -528,6 +529,124 @@
     .year-word { font-size: 32px; }
     .vb-toolbar .btn { padding: 7px 11px; font-size: 12px; }
   }
+  /* =========================================================
+     Camada "feminina & moderna"
+     ========================================================= */
+  body {
+    background:
+      radial-gradient(900px 520px at 105% -8%, color-mix(in srgb, var(--brand-2) 18%, transparent), transparent 62%),
+      radial-gradient(760px 480px at -12% 108%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 62%),
+      var(--bg);
+    background-attachment: fixed;
+  }
+  h1 { letter-spacing: -0.02em; }
+  .grad-text, .hero h1 em, .countdown strong {
+    background: linear-gradient(120deg, var(--brand), var(--brand-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero h1 em { font-style: italic; font-weight: 500; padding-right: .06em; }
+  .spark { font-size: .55em; vertical-align: .55em; color: var(--brand-2); display: inline-block; animation: twinkle 2.8s ease-in-out infinite; }
+  @keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); opacity: 1; } 50% { transform: scale(.75) rotate(20deg); opacity: .6; } }
+
+  /* sidebar flutuante */
+  .side {
+    margin: 14px 0 14px 14px; top: 14px;
+    height: calc(100vh - 28px); height: calc(100dvh - 28px);
+    border-radius: 28px;
+    background: linear-gradient(165deg, var(--side-b), var(--side-a) 70%);
+    box-shadow: 0 24px 50px -24px color-mix(in srgb, var(--side-a) 80%, transparent);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .nav-btn { border-radius: 16px; }
+  .nav-btn.active { background: linear-gradient(135deg, rgba(255,255,255,.24), rgba(255,255,255,.08)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  .tag { background: linear-gradient(135deg, #ffe1e8, var(--brand-2)); border-radius: 11px 11px 11px 3px; box-shadow: 0 6px 14px -6px var(--brand-2); }
+  main { padding-top: 38px; }
+
+  /* cartões */
+  .card {
+    border-radius: var(--r);
+    border-color: color-mix(in srgb, var(--line) 85%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, var(--brand-2) 10%), var(--surface) 140px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 20px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+  .card + .card { margin-top: 18px; }
+
+  /* botões */
+  .btn {
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--brand) 80%, transparent);
+    padding: 10px 18px;
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn:hover { background: linear-gradient(135deg, var(--brand), var(--brand-2)); filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 14px 26px -12px color-mix(in srgb, var(--brand) 85%, transparent); }
+  .btn.secondary { background: var(--accent-soft); color: var(--brand-strong); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent); }
+  .btn.secondary:hover { background: color-mix(in srgb, var(--accent-soft) 80%, var(--brand) 20%); filter: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent); }
+  .btn.ghost, .btn.danger-ghost { box-shadow: none; }
+  .btn.ghost:hover, .btn.danger-ghost:hover { transform: none; filter: none; box-shadow: none; }
+  .btn.sm { padding: 7px 14px; }
+
+  /* chips, abas e campos */
+  .chip { border: 0; box-shadow: inset 0 0 0 1px var(--line); padding: 7px 14px; }
+  .chip:hover { box-shadow: inset 0 0 0 1px var(--brand-2); }
+  .chip.on { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--on-brand); box-shadow: 0 8px 18px -10px var(--brand); }
+  .tabs, .seg { padding: 4px; }
+  .tab.on { box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--brand) 35%, transparent); }
+  .input, .field input, .field select, .field textarea { border-radius: 14px; border-color: color-mix(in srgb, var(--line) 90%, transparent); }
+  .input:focus, .field input:focus, .field select:focus, .field textarea:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-2) 22%, transparent); }
+
+  /* Hoje */
+  .countdown { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 12px 18px; box-shadow: 0 14px 30px -24px var(--brand); }
+  .affirm {
+    position: relative; overflow: hidden; border: 0;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    box-shadow: 0 22px 44px -24px var(--brand);
+  }
+  .affirm .eyebrow { color: color-mix(in srgb, var(--on-brand) 80%, transparent); }
+  .affirm p { color: var(--on-brand); font-size: 21px; position: relative; }
+  .affirm::after { content: '✦'; position: absolute; right: 14px; bottom: -18px; font-size: 96px; line-height: 1; color: rgba(255,255,255,.16); pointer-events: none; }
+  .mood { border: 0; box-shadow: inset 0 0 0 1px var(--line); padding: 7px 12px; }
+  .mood.on { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 20%, transparent), color-mix(in srgb, var(--brand-2) 22%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-2) 55%, transparent); }
+  .hcell { border-color: color-mix(in srgb, var(--line) 100%, var(--brand-2) 20%); }
+  .hcell.on { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: transparent; box-shadow: 0 4px 10px -4px var(--brand); }
+  .progress { height: 9px; }
+  .progress > span { background: linear-gradient(90deg, var(--c, var(--brand)), color-mix(in srgb, var(--c, var(--brand-2)) 50%, var(--brand-2))); }
+
+  /* Agenda */
+  .day { border: 0; box-shadow: inset 0 0 0 1px var(--line); border-radius: 18px; background: var(--surface); }
+  .day.sel { background: linear-gradient(160deg, var(--brand), var(--brand-2)); box-shadow: 0 12px 24px -12px var(--brand); }
+  .mday { border-radius: 12px; }
+  .mday.sel { background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+
+  /* Metas */
+  .goal { position: relative; overflow: hidden; border-top: 1px solid color-mix(in srgb, var(--line) 85%, transparent); }
+  .goal::before { content: ''; position: absolute; top: -60px; right: -60px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c) 28%, transparent), transparent 70%); pointer-events: none; }
+  .goal > * { position: relative; }
+
+  /* Mural, mapa, ano */
+  .vb-wrap, .mm-canvas { border-radius: 26px; }
+  .area-box, .month-box { border-radius: 18px; }
+  .year-word { background: linear-gradient(120deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; caret-color: var(--brand); }
+  .year-word::placeholder { color: var(--ink-soft); opacity: .5; }
+
+  /* modal & aviso */
+  dialog.modal { border-radius: 28px; border: 1px solid var(--line); }
+  dialog.modal::backdrop { backdrop-filter: blur(6px); }
+  .toast { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-radius: 999px; padding: 12px 22px; }
+
+  @media (max-width: 860px) {
+    .side {
+      position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom));
+      width: auto; height: auto; margin: 0; padding: 6px; border-radius: 26px;
+      background: color-mix(in srgb, var(--side-a) 84%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+      box-shadow: 0 18px 40px -14px rgba(0,0,0,.5);
+    }
+    .nav-btn { border-radius: 20px; font-size: 10.5px; min-width: 64px; }
+    .nav-btn.active { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--on-brand); box-shadow: 0 8px 18px -8px var(--brand); }
+    main { padding-top: 20px; padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+    .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .spark { animation: none; } }
 </style>
 </head>
 <body>
@@ -809,6 +928,10 @@
       ['#f6f9fc', '#ffffff', '#ecf2f9', '#1c2738', '#5a6a82', '#dae4f0', '#3d64a8', '#284780', '#c3d6f2', '#e4edf9', '#ffffff', '#233e6e', '#3d64a8'],
       ['#11161f', '#19202c', '#202938', '#e7eef9', '#a2b2ca', '#2c384b', '#84a8e8', '#a5c1f2', '#2f4a78', '#1e2a3e', '#11161f', '#141b27', '#22324d']) },
   };
+  const BRAND2 = {
+    lorace: ['#c95c7e', '#f3a0b5'], chiclete: ['#ef6fa6', '#ffb0d2'], lavanda: ['#a77ad6', '#e0c4ff'],
+    pessego: ['#e8875f', '#ffc0a3'], menta: ['#6db38a', '#b5ecc9'], oceano: ['#6f95dc', '#b9d0ff'],
+  };
   const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function getPref(key, def) { try { return localStorage.getItem(key) || def; } catch (e) { return def; } }
   function applyTheme(palette, mode) {
@@ -819,6 +942,7 @@
     if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
     const vars = PALETTES[palette][dark ? 'dark' : 'light'];
     for (const k of VARS) root.style.setProperty('--' + k, vars[k]);
+    root.style.setProperty('--brand-2', BRAND2[palette][dark ? 1 : 0]);
     root.style.colorScheme = dark ? 'dark' : 'light';
     root.dataset.palette = palette;
   }
@@ -1056,7 +1180,7 @@
         <div class="hero">
           <div>
             <div class="eyebrow">${esc(fmtLong(t))}</div>
-            <h1>${saud}${esc(nome)} ✿</h1>
+            <h1>${saud.split(' ')[0]} <em>${saud.split(' ')[1]}</em>${esc(nome)} <span class="spark" aria-hidden="true">✦</span></h1>
           </div>
           <div class="countdown"><strong>${daysLeft}</strong><span class="muted">dias para ${nextYear}</span></div>
         </div>
@@ -1185,7 +1309,7 @@
               ${week.map((d) => { const es = eventsOn(d).slice(0, 4); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}"><div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${(CATS[ev.cat] || CATS.pessoal).color}"></i>`).join('')}</div></button>`; }).join('')}
             </div>
             <div class="card">
-              <div class="card-head"><h3 style="text-transform:capitalize">${sel === t ? 'Hoje · ' : ''}${esc(fmtLong(sel))}</h3><button class="btn sm secondary" data-new-ev>+ Adicionar</button></div>
+              <div class="card-head"><h3>${sel === t ? 'Hoje · ' : ''}${esc(fmtLong(sel).charAt(0).toUpperCase() + fmtLong(sel).slice(1))}</h3><button class="btn sm secondary" data-new-ev>+ Adicionar</button></div>
               ${evs.length ? evs.map((ev) => eventRow(ev, sel)).join('') : '<div class="empty"><div class="tag"></div>Nada marcado para este dia.</div>'}
             </div>
           </div>
@@ -2102,7 +2226,7 @@
     let saved = false;
     const card = ([k, p]) => {
       const l = p.light;
-      return `<label class="pal"><input type="radio" name="palette" value="${k}" ${k === prevPal ? 'checked' : ''}><span class="pal-card"><span class="pal-prev" style="--p-bg:${l.bg};--p-sa:${l['side-a']};--p-sb:${l['side-b']};--p-br:${l.brand};--p-ac:${l.accent}"><span class="ps"></span><span class="pm"><i></i><i></i><i></i></span></span><span class="pal-name">${esc(p.name)}</span></span></label>`;
+      return `<label class="pal"><input type="radio" name="palette" value="${k}" ${k === prevPal ? 'checked' : ''}><span class="pal-card"><span class="pal-prev" style="--p-bg:${l.bg};--p-sa:${l['side-a']};--p-sb:${l['side-b']};--p-br:linear-gradient(90deg, ${l.brand}, ${BRAND2[k][0]});--p-ac:${l.accent}"><span class="ps"></span><span class="pm"><i></i><i></i><i></i></span></span><span class="pal-name">${esc(p.name)}</span></span></label>`;
     };
     const modes = [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']];
     modal({
