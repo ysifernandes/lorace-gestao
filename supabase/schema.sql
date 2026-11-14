@@ -76,3 +76,27 @@ create policy "social_posts_read_own" on public.social_posts
   for select to authenticated using (auth.uid() = user_id);
 
 create index if not exists social_posts_user_posted on public.social_posts (user_id, posted_at desc);
+
+-- Notificações no celular (Web Push)
+create table if not exists public.push_subscriptions (
+  endpoint text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  p256dh text not null,
+  auth text not null,
+  tz text,
+  ua text,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "push_subscriptions_own" on public.push_subscriptions;
+create policy "push_subscriptions_own" on public.push_subscriptions
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Avisos já enviados (evita mandar o mesmo lembrete duas vezes). Só o servidor acessa.
+create table if not exists public.push_sent (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  key text not null,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+alter table public.push_sent enable row level security;

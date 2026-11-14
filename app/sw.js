@@ -1,5 +1,5 @@
 // Bloom: funciona offline e recebe notificações (push)
-const CACHE = 'bloom-v1';
+const CACHE = 'bloom-v2';
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'index.html', 'manifest.webmanifest', 'icon-192.png'])).catch(() => {}));

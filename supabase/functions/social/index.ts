@@ -7,6 +7,8 @@
 //   POST /sync                {}                                     (usuária logada: atualiza agora)
 //   POST /sync                header x-cron-secret                   (agendamento diário: todas as contas)
 //   POST /disconnect          { platform }                           (usuária logada)
+//   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
+//   POST /push-test                                                  (usuária logada: notificação de teste)
 //   POST /delete-account                                             (usuária logada: apaga conta e todos os dados)
 //   POST /data-deletion                                              (pedido de exclusão de dados da Meta)
 //
@@ -14,6 +16,7 @@
 //   IG_APP_ID, IG_APP_SECRET, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, APP_URL, CRON_SECRET
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
+import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -23,6 +26,10 @@ const IG_APP_SECRET = Deno.env.get('IG_APP_SECRET') ?? '';
 const TT_KEY = Deno.env.get('TIKTOK_CLIENT_KEY') ?? '';
 const TT_SECRET = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? '';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
+const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
+const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
+const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://bloom-planner-nine.vercel.app';
+if (VAPID_PUBLIC && VAPID_PRIVATE) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
 const FN_BASE = `${SUPABASE_URL}/functions/v1/social`;
 const REDIRECT: Record<string, string> = {
@@ -200,6 +207,86 @@ async function syncAccount(userId: string, platform: Platform) {
   }
 }
 
+/* ---------------- Notificações (Web Push) ---------------- */
+// Horários do planner são "hora local" sem fuso. Trabalhamos com minutos "ingênuos" (como se fossem UTC).
+const naive = (date: string, time: string) => { const [y, m, d] = date.split('-').map(Number); const [h, mi] = (time || '00:00').split(':').map(Number); return Date.UTC(y, m - 1, d, h, mi) / 60000; };
+const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+function localNowNaive(tz: string) {
+  let parts: Record<string, string> = {};
+  try {
+    parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((p) => [p.type, p.value]));
+  } catch { return localNowNaive('America/Sao_Paulo'); }
+  return naive(`${parts.year}-${parts.month}-${parts.day}`, `${parts.hour}:${parts.minute}`);
+}
+const dowOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay();
+function occursOn(it: any, date: string) {
+  if (!it.due) return false;
+  const rep = it.repeat && it.repeat !== 'none' ? it.repeat : null;
+  if (!rep) return it.due === date;
+  if (date < it.due) return false;
+  if (rep === 'daily') return true;
+  if (rep === 'weekdays') { const d = dowOf(date); return d >= 1 && d <= 5; }
+  if (rep === 'weekly') return dowOf(date) === dowOf(it.due);
+  if (rep === 'monthly') return date.slice(8) === it.due.slice(8);
+  return false;
+}
+const isDoneOn = (it: any, date: string) => (it.repeat && it.repeat !== 'none' ? !!(it.doneDates && it.doneDates[date]) : !!it.done);
+
+function dueReminders(core: any, biz: any, nowN: number) {
+  const out: { key: string; title: string; body: string }[] = [];
+  const WINDOW = 15; // minutos de tolerância para atrasos do agendador
+  const today = isoDay(nowN * 60000);
+  const days = [isoDay((nowN - 1440) * 60000), today, isoDay((nowN + 1440) * 60000)];
+  for (const it of core?.tasks?.items ?? []) {
+    if (it.remindMin === undefined || it.remindMin === null || it.remindMin === '' || !it.due) continue;
+    for (const d of days) {
+      if (!occursOn(it, d) || isDoneOn(it, d)) continue;
+      const fire = naive(d, it.time || '09:00') - Number(it.remindMin);
+      if (fire <= nowN && fire > nowN - WINDOW) {
+        const when = it.time ? (d === today ? `hoje às ${it.time}` : `amanhã às ${it.time}`) : 'para hoje';
+        out.push({ key: `i:${it.id}:${d}`, title: `⏰ ${it.text}`, body: `Lembrete: ${when}` });
+      }
+    }
+  }
+  for (const p of biz?.posts ?? []) {
+    if (!p.date || !p.time || p.status === 'publicado') continue;
+    const fire = naive(p.date, p.time);
+    if (fire <= nowN && fire > nowN - WINDOW) out.push({ key: `p:${p.id}:${p.date}T${p.time}`, title: '📸 Hora de postar', body: p.title || 'Seu conteúdo está agendado para agora' });
+  }
+  return out;
+}
+async function sendTo(sub: any, payload: Record<string, string>) {
+  try {
+    await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 3600 });
+    return true;
+  } catch (e) {
+    const code = (e as any)?.statusCode;
+    if (code === 404 || code === 410) await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    else console.error('push', code, String((e as any)?.body ?? e).slice(0, 200));
+    return false;
+  }
+}
+async function pushTick() {
+  const { data: subs } = await admin.from('push_subscriptions').select('*');
+  const byUser = new Map<string, any[]>();
+  for (const s of subs ?? []) { if (!byUser.has(s.user_id)) byUser.set(s.user_id, []); byUser.get(s.user_id)!.push(s); }
+  let sent = 0;
+  for (const [uid, list] of byUser) {
+    const { data: docs } = await admin.from('planner_docs').select('name,json').eq('user_id', uid).in('name', ['core', 'biz']);
+    let core: any = {}, biz: any = {};
+    try { core = JSON.parse(docs?.find((d) => d.name === 'core')?.json ?? '{}'); } catch { /* vazio */ }
+    try { biz = JSON.parse(docs?.find((d) => d.name === 'biz')?.json ?? '{}').biz ?? {}; } catch { /* vazio */ }
+    const nowN = localNowNaive(list[0].tz || 'America/Sao_Paulo');
+    for (const r of dueReminders(core, biz, nowN)) {
+      const { error } = await admin.from('push_sent').insert({ user_id: uid, key: r.key });
+      if (error) continue; // já enviado
+      for (const sub of list) if (await sendTo(sub, { title: r.title, body: r.body, url: APP_URL || '/' })) sent++;
+    }
+  }
+  await admin.from('push_sent').delete().lt('sent_at', new Date(Date.now() - 4 * 864e5).toISOString());
+  return { users: byUser.size, sent };
+}
+
 /* ---------------- Rotas ---------------- */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -286,6 +373,22 @@ Deno.serve(async (req) => {
       await admin.from('social_accounts').delete().eq('user_id', user.id).eq('platform', platform);
       await admin.from('social_posts').delete().eq('user_id', user.id).eq('platform', platform);
       return json({ ok: true });
+    }
+
+    if (route[0] === 'push-tick' && req.method === 'POST') {
+      if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (!VAPID_PRIVATE) return json({ error: 'not_configured' }, 400);
+      return json({ ok: true, ...(await pushTick()) });
+    }
+
+    if (route[0] === 'push-test' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { data: list } = await admin.from('push_subscriptions').select('*').eq('user_id', user.id);
+      if (!list?.length) return json({ error: 'no_subscription' }, 400);
+      let ok = 0;
+      for (const sub of list) if (await sendTo(sub, { title: 'Bloom 🎀', body: 'Notificações funcionando! Seus lembretes vão chegar aqui.', url: APP_URL || '/' })) ok++;
+      return json({ ok: ok > 0, sent: ok });
     }
 
     if (route[0] === 'delete-account' && req.method === 'POST') {

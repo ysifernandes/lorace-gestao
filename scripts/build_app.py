@@ -10,6 +10,7 @@ ANON_KEY_FILE = ROOT / 'app' / '.anon_key'
 
 src = (ROOT / 'planner.html').read_text()
 anon = ANON_KEY_FILE.read_text().strip()
+vapid = (ROOT / 'app' / '.vapid_public').read_text().strip()
 head_extra = f'''<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -18,7 +19,7 @@ head_extra = f'''<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Bloom">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#fbd3e9">
-<script>window.BLOOM_CONFIG = {{ supabaseUrl: '{SUPABASE_URL}', anonKey: '{anon}' }};</script>
+<script>window.BLOOM_CONFIG = {{ supabaseUrl: '{SUPABASE_URL}', anonKey: '{anon}', vapidKey: '{vapid}' }};</script>
 '''
 out = src.replace('<title>Bloom Planner</title>', '<title>Bloom Planner</title>\n' + head_extra, 1)
 assert out != src

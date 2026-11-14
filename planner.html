@@ -1456,6 +1456,7 @@
       };
       try { await Cloud.load(); } catch (e) { setSync('offline'); }
       Social.refresh(true);
+      Push.sync();
     },
     showLogin() {
       if ($('#auth')) return;
@@ -3925,7 +3926,57 @@
     toast(okMsg);
   }
 
-  $('#btn-bell').addEventListener('click', () => {
+  /* Notificações no celular (Web Push), no app instalado */
+  const Push = {
+    isIOS: () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    standalone: () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true,
+    supported: () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
+    key() {
+      const b64 = String(CFG && CFG.vapidKey || '');
+      const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+      const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+    },
+    async current() { const reg = await navigator.serviceWorker.getRegistration(); return reg ? reg.pushManager.getSubscription() : null; },
+    async status() {
+      if (!inSupa || !Auth.user) return 'nologin';
+      if (this.isIOS() && !this.standalone()) return 'ios-browser';
+      if (!this.supported() || !CFG.vapidKey) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      const sub = await this.current().catch(() => null);
+      return sub && Notification.permission === 'granted' ? 'on' : 'off';
+    },
+    async save(sub) {
+      const j = sub.toJSON();
+      const { error } = await Auth.sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: Auth.user.id, p256dh: j.keys.p256dh, auth: j.keys.auth, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo', ua: navigator.userAgent.slice(0, 200) });
+      if (error) throw error;
+    },
+    async subscribe() {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.key() });
+      await this.save(sub);
+    },
+    async disable() {
+      const sub = await this.current();
+      if (sub) { await Auth.sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe().catch(() => {}); }
+    },
+    async sync() { try { if ((await this.status()) === 'on') await this.save(await this.current()); } catch (e) { /* tenta de novo na próxima abertura */ } },
+    test() { return Social.call('push-test'); },
+    html(st) {
+      const T = {
+        'ios-browser': '<p>Para receber notificações no iPhone, abra o Bloom pelo <b>ícone da tela de início</b> (no Safari: Compartilhar → Adicionar à Tela de Início) e ative aqui.</p>',
+        unsupported: '<p>Este aparelho ou navegador não recebe notificações do Bloom. Use “Adicionar ao calendário” abaixo.</p>',
+        denied: '<p>As notificações do Bloom estão bloqueadas neste aparelho. No iPhone: <b>Ajustes → Notificações → Bloom → Permitir notificações</b>.</p>',
+        on: '<p>Ativadas neste aparelho ✓ Os lembretes das tarefas e a hora de postar chegam mesmo com o Bloom fechado.</p><div class="row"><button type="button" class="btn sm secondary" id="push-test">Enviar teste</button><button type="button" class="btn sm ghost" id="push-off">Desativar</button></div>',
+        off: '<p>Receba os lembretes das tarefas e a hora de postar <b>mesmo com o Bloom fechado</b>.</p><button type="button" class="btn sm" id="push-on">🔔 Ativar notificações no celular</button>',
+      };
+      return T[st] || '';
+    },
+  };
+
+  $('#btn-bell').addEventListener('click', async () => {
+    const pushSt = inSupa ? await Push.status() : 'nologin';
     const list = Reminders.today();
     const hm = nowHM();
     const perm = 'Notification' in window ? Notification.permission : 'unsupported';
@@ -3940,17 +3991,32 @@
         ${list.length ? `<ul class="rem-list">${list.map((r) => `<li class="${r.at < hm || S.notified[r.key] ? 'past' : ''}"><span class="tm">${r.at}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(r.title)}${r.when ? ` <span class="muted">(${esc(r.when)})</span>` : ''}</span><span class="tagpill" style="--c:#b04a74">${r.kind}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0 0 12px">Nenhum lembrete para hoje. Coloque um horário ou um lembrete numa tarefa.</p>'}
         <div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">notificações</div>
-          <p>${permText}</p>
-          ${perm === 'default' ? '<button type="button" class="btn sm secondary" id="rem-perm">Ativar notificações</button>' : ''}
+          ${inSupa && pushSt !== 'nologin' ? Push.html(pushSt) : `<p>${permText}</p>
+          ${perm === 'default' ? '<button type="button" class="btn sm secondary" id="rem-perm">Ativar notificações</button>' : ''}`}
         </div>
         <div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">no celular, mesmo com o app fechado</div>
-          <p>Baixe seus compromissos e lembretes para o calendário do celular (iPhone ou Android). O calendário avisa na hora certa, mesmo com o Bloom fechado. Baixe de novo sempre que criar lembretes novos.</p>
+          <p>Baixe suas tarefas com horário e lembretes para o calendário do celular (iPhone ou Android). O calendário avisa na hora certa, mesmo com o Bloom fechado. Baixe de novo sempre que criar lembretes novos.</p>
           <button type="button" class="btn sm" id="rem-ics">Adicionar ao calendário (.ics)</button>
         </div>`,
       cancelLabel: 'Fechar',
       onOpen: (form) => {
         $('#rem-ics', form).addEventListener('click', () => saveFile(`bloom-lembretes-${today()}.ics`, new Blob([icsText()], { type: 'text/calendar' }), 'Arquivo do calendário salvo. Abra-o para importar.'));
+        const on1 = $('#push-on', form);
+        if (on1) on1.addEventListener('click', () => {
+          let pr;
+          try { pr = Notification.requestPermission(); } catch (e) { toast('Este aparelho não liberou as notificações.'); return; }
+          on1.disabled = true; on1.textContent = 'Ativando…';
+          Promise.resolve(pr).then(async (perm) => {
+            if (perm !== 'granted') { toast('Você não permitiu as notificações. Dá para mudar em Ajustes → Notificações → Bloom.'); dlg.close(); return; }
+            try { await Push.subscribe(); toast('Notificações ativadas ♥ Vou te mandar um teste.'); dlg.close(); setTimeout(() => Push.test().catch(() => {}), 800); }
+            catch (e) { toast('Não consegui ativar agora. Tente de novo.'); on1.disabled = false; on1.textContent = '🔔 Ativar notificações no celular'; }
+          });
+        });
+        const tb = $('#push-test', form);
+        if (tb) tb.addEventListener('click', async () => { tb.disabled = true; try { await Push.test(); toast('Teste enviado! Deve chegar em alguns segundos.'); } catch (e) { toast('Não consegui enviar o teste. Tente desativar e ativar de novo.'); } tb.disabled = false; });
+        const ob = $('#push-off', form);
+        if (ob) ob.addEventListener('click', async () => { await Push.disable().catch(() => {}); toast('Notificações desativadas neste aparelho.'); dlg.close(); });
         const pb = $('#rem-perm', form);
         if (pb) pb.addEventListener('click', () => {
           try {
