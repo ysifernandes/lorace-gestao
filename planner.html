@@ -453,9 +453,9 @@
   .vb-item.t-img { background: #fffdf8; padding: 12px 12px 40px; box-shadow: 0 12px 24px -10px rgba(40,10,20,.5); }
   .vb-item.t-img img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; background: #eee; }
   .vb-item.t-img::after, .vb-item.t-quote::after { content: ''; position: absolute; top: -8px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: radial-gradient(circle at 35% 32%, rgba(255,255,255,.85) 0 3px, var(--pin, #e0609a) 4px); box-shadow: 0 4px 5px rgba(0,0,0,.3); }
-  .vb-item.t-quote { background-color: #fff; background-image: linear-gradient(90deg, rgba(244, 150, 180, .45) 50%, transparent 50%), linear-gradient(rgba(244, 150, 180, .45) 50%, transparent 50%); background-size: 30px 30px; padding: 26px; display: grid; box-shadow: 0 12px 24px -12px rgba(40,10,20,.45); }
-  .vb-item.t-quote p { margin: 0; align-self: center; background: rgba(255,255,255,.92); padding: 16px 18px; font-family: var(--f-mono); font-size: calc(19px * var(--ts, 1)); line-height: 1.6; color: #3b2326; text-align: center; overflow-wrap: anywhere; }
-  .vb-item.t-note { background-color: var(--nc, #fff8ee); background-image: linear-gradient(rgba(214, 120, 150, .18) 1px, transparent 1px), linear-gradient(90deg, rgba(214, 120, 150, .18) 1px, transparent 1px); background-size: 18px 18px; padding: 26px 22px; box-shadow: 0 12px 20px -12px rgba(40,10,20,.45); display: flex; align-items: center; }
+  .vb-item.t-quote { background-color: #fff; background-image: linear-gradient(90deg, rgba(244, 150, 180, .45) 50%, transparent 50%), linear-gradient(rgba(244, 150, 180, .45) 50%, transparent 50%); background-size: calc(30px * var(--ts, 1)) calc(30px * var(--ts, 1)); padding: calc(26px * var(--ts, 1)); display: grid; box-shadow: 0 12px 24px -12px rgba(40,10,20,.45); }
+  .vb-item.t-quote p { margin: 0; align-self: center; background: rgba(255,255,255,.92); padding: calc(16px * var(--ts, 1)) calc(18px * var(--ts, 1)); font-family: var(--f-mono); font-size: calc(19px * var(--ts, 1)); line-height: 1.6; color: #3b2326; text-align: center; overflow-wrap: anywhere; }
+  .vb-item.t-note { background-color: var(--nc, #fff8ee); background-image: linear-gradient(rgba(214, 120, 150, .18) 1px, transparent 1px), linear-gradient(90deg, rgba(214, 120, 150, .18) 1px, transparent 1px); background-size: calc(18px * var(--ts, 1)) calc(18px * var(--ts, 1)); padding: calc(26px * var(--ts, 1)) calc(22px * var(--ts, 1)); box-shadow: 0 12px 20px -12px rgba(40,10,20,.45); display: flex; align-items: center; }
   .vb-item.t-note p { margin: 0; font-family: var(--f-hand); font-size: calc(38px * var(--ts, 1)); line-height: 1.05; color: #9e2a2b; white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 700; }
   .vb-item.t-note::before { content: ''; position: absolute; top: -12px; left: 50%; width: 90px; height: 24px; margin-left: -45px; background: repeating-linear-gradient(90deg, #b9d39f 0 6px, #d8e8c6 6px 12px); opacity: .9; transform: rotate(-3deg); }
   .vb-item.t-word { display: grid; place-items: center; text-align: center; }
@@ -1016,7 +1016,7 @@
   .hol-chip .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .hol-today { display: inline-block; margin-top: 8px; font-size: 13px; padding: 5px 12px; border-radius: 99px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
   @media (max-width: 700px) { .hol-chip .t { display: none; } .hol-chip { justify-content: center; } }
-  .vb-fs { position: absolute; left: 0; bottom: 0; display: none; align-items: center; gap: 2px; padding: 3px; z-index: 5; border-radius: 99px; background: #3b2326; box-shadow: 0 4px 10px rgba(0,0,0,.3); transform: translate(-12%, 80%) scale(var(--inv, 1)); transform-origin: 0 0; font-family: var(--f-sans); }
+  .vb-fs { position: absolute; left: 0; top: 100%; display: none; align-items: center; gap: 2px; padding: 3px; z-index: 4; border-radius: 99px; background: #3b2326; box-shadow: 0 4px 10px rgba(0,0,0,.3); transform: scale(var(--inv, 1)) translate(-4px, 26px); transform-origin: 0 0; font-family: var(--f-sans); white-space: nowrap; }
   .vb-item.sel .vb-fs { display: flex; }
   .vb-fs span { color: #fff; opacity: .7; font-size: 11px; letter-spacing: .04em; padding: 0 2px; }
   .vb-fs button { all: unset; cursor: pointer; width: 36px; height: 34px; border-radius: 99px; color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 700; }
@@ -2826,13 +2826,17 @@
           const s = Math.round(clamp(Math.max(drag.ow + dx, drag.oh + dy), 50, 500));
           it.w = s; it.h = s;
           drag.itemEl.style.width = s + 'px'; drag.itemEl.style.height = s + 'px'; drag.itemEl.style.fontSize = Math.round(s * 0.82) + 'px';
+        } else if (it.type === 'quote' || it.type === 'note' || it.type === 'word') {
+          // como no Canva: o canto aumenta/diminui tudo junto, mantendo a proporção
+          const want = ((drag.ow + dx) / drag.ow + (drag.oh + dy) / drag.oh) / 2;
+          const k = clamp(want, Math.max(0.15 / drag.ofs, 36 / drag.ow, 24 / drag.oh), Math.min(4 / drag.ofs, BW / drag.ow, BH / drag.oh));
+          it.w = Math.round(drag.ow * k); it.h = Math.round(drag.oh * k);
+          it.fs = Math.round(drag.ofs * k * 100) / 100;
+          drag.itemEl.style.width = it.w + 'px'; drag.itemEl.style.height = it.h + 'px';
+          drag.itemEl.style.setProperty('--ts', it.fs);
         } else {
           it.w = Math.round(clamp(drag.ow + dx, 90, BW)); it.h = Math.round(clamp(drag.oh + dy, 60, BH));
           drag.itemEl.style.width = it.w + 'px'; drag.itemEl.style.height = it.h + 'px';
-          if (it.type === 'quote' || it.type === 'note' || it.type === 'word') {
-            it.fs = Math.round(clamp(drag.ofs * Math.sqrt((it.w / drag.ow) * (it.h / drag.oh)), 0.4, 3) * 100) / 100;
-            drag.itemEl.style.setProperty('--ts', it.fs);
-          }
         }
       });
       const end = () => { if (!drag) return; const moved = drag.moved; drag.itemEl.classList.remove('dragging'); drag = null; if (moved) save(); };
@@ -2845,7 +2849,7 @@
         const it = S.vision.items.find((x) => x.id === id);
         if (!it) return;
         if (b.dataset.a === 'fs-' || b.dataset.a === 'fs+') {
-          it.fs = Math.round(clamp((it.fs || 1) * (b.dataset.a === 'fs+' ? 1.15 : 0.87), 0.4, 3) * 100) / 100;
+          it.fs = Math.round(clamp((it.fs || 1) * (b.dataset.a === 'fs+' ? 1.15 : 0.87), 0.15, 4) * 100) / 100;
           b.closest('.vb-item').style.setProperty('--ts', it.fs);
           save(); return;
         }
