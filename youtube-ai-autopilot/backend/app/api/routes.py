@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from ..models import utcnow
-
 import hmac
 import re
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -15,13 +13,13 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import desc, func, select
 
 from .. import pipeline
+from ..adapters import youtube as yt
 from ..adapters.base import AdapterError
 from ..adapters.registry import get_adapters
-from ..adapters import youtube as yt
 from ..config import get_settings
 from ..db import session_scope
 from ..logbus import log
-from ..models import Alert, ChannelConfig, CostEntry, Idea, Job, LogEntry, Trend, Video
+from ..models import Alert, ChannelConfig, CostEntry, Idea, Job, LogEntry, Trend, Video, utcnow
 from ..services import analytics, budget, planner, readiness
 from ..worker import enqueue, worker
 
@@ -235,7 +233,7 @@ def oauth_start():
     try:
         return {"auth_url": yt.oauth_start()}
     except AdapterError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
 
 
 @public.get("/oauth/youtube/callback", response_class=HTMLResponse)
@@ -345,7 +343,7 @@ def _wrap(fn):
     try:
         fn()
     except AdapterError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     return {"ok": True}
 
 

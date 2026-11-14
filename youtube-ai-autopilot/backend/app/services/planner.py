@@ -1,16 +1,14 @@
 """Módulo 2 — Planejador editorial: pontua, evita repetição e mantém calendário."""
 from __future__ import annotations
 
-from ..models import utcnow
-
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import select
 
 from ..adapters.registry import Adapters
 from ..db import session_scope
 from ..logbus import log
-from ..models import AnalyticsSnapshot, ChannelConfig, Idea, Trend, Video
+from ..models import AnalyticsSnapshot, ChannelConfig, Idea, Trend, Video, utcnow
 from . import budget, prompts
 from .safety import detect_sensitive, fingerprint, jaccard, unconfirmed_news
 

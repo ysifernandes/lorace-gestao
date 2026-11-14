@@ -1,11 +1,11 @@
 """Regras de segurança editorial, qualidade e anti-repetição."""
 from __future__ import annotations
 
-from ..models import utcnow
-
 import re
 import unicodedata
 from datetime import datetime, timedelta
+
+from ..models import utcnow
 
 SENSITIVE_TERMS = {
     "saúde/medicina": ["doença", "câncer", "cancer", "vacina", "remédio", "medicamento", "tratamento", "cura",
@@ -36,7 +36,7 @@ def normalize(text: str) -> str:
 
 
 def fingerprint(text: str) -> str:
-    stop = {"o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "e", "em", "um", "uma", "que", "por",
+    stop = {"o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "em", "um", "uma", "que", "por",
             "para", "com", "no", "na", "se", "como", "qual", "porque", "the", "of", "and"}
     words = sorted({w for w in normalize(text).split() if w not in stop and len(w) > 2})
     return " ".join(words)[:300]

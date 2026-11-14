@@ -120,7 +120,7 @@ def chars_to_words(alignment: dict) -> list[dict]:
     starts = alignment.get("character_start_times_seconds", [])
     ends = alignment.get("character_end_times_seconds", [])
     words, cur, cs, ce = [], "", None, None
-    for ch, st, en in zip(chars, starts, ends):
+    for ch, st, en in zip(chars, starts, ends, strict=False):
         if ch.isspace():
             if cur:
                 words.append({"word": cur, "start": cs, "end": ce})

@@ -84,3 +84,18 @@ def test_publish_slot_respects_post_time():
     now = datetime(2026, 3, 10, 12, 0, tzinfo=timezone.utc)  # 09:00 em São Paulo
     slot = pipeline.next_publish_slot(cfg, now)
     assert slot == datetime(2026, 3, 10, 21, 0)  # 18:00 BRT = 21:00 UTC
+
+
+def test_long_format_renders_horizontal():
+    vid = pipeline.run_demo_inline("long", render_scale=0.2)
+    with session_scope() as s:
+        v = s.get(Video, vid)
+        info = editor.probe(__import__("pathlib").Path(v.video_path))
+    assert (info["width"], info["height"]) == (384, 216)
+
+
+def test_relative_paths_resolve_from_project_root(monkeypatch):
+    from app.config import PROJECT_ROOT, Settings
+
+    monkeypatch.setenv("YOUTUBE_TOKEN_FILE", "./secrets/tok.json")
+    assert Settings().youtube_token_file == (PROJECT_ROOT / "secrets" / "tok.json").resolve()

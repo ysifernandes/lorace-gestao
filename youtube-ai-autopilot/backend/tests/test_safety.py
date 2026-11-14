@@ -1,5 +1,12 @@
-from app.services.safety import (clickbait_issues, detect_sensitive, fingerprint, jaccard, script_quality,
-                                 text_similarity, unconfirmed_news)
+from app.services.safety import (
+    clickbait_issues,
+    detect_sensitive,
+    fingerprint,
+    jaccard,
+    script_quality,
+    text_similarity,
+    unconfirmed_news,
+)
 
 
 def test_sensitive_topics_detected():

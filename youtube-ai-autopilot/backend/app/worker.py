@@ -5,8 +5,6 @@ Ou embutido na API (EMBEDDED_WORKER=true).
 """
 from __future__ import annotations
 
-from .models import utcnow
-
 import threading
 import time
 import traceback
@@ -23,7 +21,7 @@ from .adapters.base import AdapterError
 from .config import get_settings
 from .db import session_scope
 from .logbus import alert, log
-from .models import Job, Video
+from .models import Job, Video, utcnow
 from .services import analytics
 from .services.budget import BudgetExceeded
 

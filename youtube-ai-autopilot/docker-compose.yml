@@ -1,0 +1,14 @@
+services:
+  autopilot:
+    build: .
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+      YOUTUBE_CLIENT_SECRETS_FILE: /app/secrets/client_secret.json
+      YOUTUBE_TOKEN_FILE: /app/secrets/youtube_token.json
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./secrets:/app/secrets
+    restart: unless-stopped

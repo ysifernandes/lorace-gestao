@@ -6,8 +6,6 @@ preciso passar pela auditoria de conformidade da YouTube API Services.
 """
 from __future__ import annotations
 
-from ..models import utcnow
-
 import json
 import os
 import shutil
@@ -17,6 +15,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from ..config import get_settings
+from ..models import utcnow
 from .base import AdapterError, AdapterStatus, NotConfiguredError, PublishResult
 
 SCOPES = [

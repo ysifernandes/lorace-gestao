@@ -1,15 +1,11 @@
 """Controle de gastos: limite por vídeo e limite mensal global."""
 from __future__ import annotations
 
-from ..models import utcnow
-
-from datetime import datetime
-
 from sqlalchemy import func, select
 
 from ..config import get_settings
 from ..db import session_scope
-from ..models import ChannelConfig, CostEntry
+from ..models import ChannelConfig, CostEntry, utcnow
 
 
 class BudgetExceeded(RuntimeError):

@@ -1,17 +1,15 @@
 """Portão de prontidão: nada é publicado de verdade até OAuth, APIs, auditorias e testes passarem."""
 from __future__ import annotations
 
-from ..models import utcnow
-
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy import select
 
 from ..config import PROJECT_ROOT, get_settings
 from ..db import session_scope
-from ..models import ChannelConfig, ReadinessCheck, Video
+from ..models import ChannelConfig, ReadinessCheck, Video, utcnow
 
 CHECK_TTL = {"integration": timedelta(hours=24), "tests": timedelta(days=7), "audit": timedelta(days=90)}
 

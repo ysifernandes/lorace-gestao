@@ -56,7 +56,7 @@ Com os valores padrão tudo roda em **modo demo** (sem custos, sem chamadas exte
 
 ### 4. Execução
 ```bash
-make test               # 22 testes automatizados
+make test               # testes automatizados (pytest)
 make build              # gera o painel (frontend/dist)
 make api                # API + worker + painel em http://localhost:8000
 ```
@@ -65,6 +65,16 @@ Desenvolvimento do painel com hot-reload: `make api` em um terminal e `make fron
 
 Entre com o `ADMIN_TOKEN`, clique em **Gerar vídeo demo**, aprove o roteiro em **Vídeos** e assista ao resultado.
 Sem servidor: `make demo` gera o vídeo direto pela CLI.
+
+### Alternativa: Docker
+```bash
+cp .env.example .env && mkdir -p data secrets
+docker compose up --build        # http://localhost:8000
+```
+`data/` (banco e mídia) e `secrets/` (OAuth) ficam montados como volumes fora da imagem.
+
+### CI
+`.github/workflows/youtube-ai-autopilot.yml` roda lint (ruff), testes com FFmpeg e build do painel a cada push/PR.
 
 ---
 
