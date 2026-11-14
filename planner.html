@@ -119,11 +119,11 @@
   }
   .tag::after { content: ''; position: absolute; top: 6px; left: 6px; width: 6px; height: 6px; border-radius: 50%; background: #5a1f29; }
   .brand-name { font-family: 'Fraunces', Georgia, serif; font-size: 19px; color: #fff; line-height: 1.1; }
-  .brand-sub { font-size: 10.5px; color: #f0c9d1; letter-spacing: .06em; text-transform: uppercase; }
+  .brand-sub { font-size: 10.5px; color: rgba(255,255,255,.72); letter-spacing: .06em; text-transform: uppercase; }
   .nav-btn {
     all: unset; cursor: pointer; box-sizing: border-box;
     padding: 10px 12px; border-radius: 11px;
-    font-size: 13.5px; color: #f7dee2;
+    font-size: 13.5px; color: rgba(255,255,255,.84);
     display: flex; align-items: center; gap: 11px;
     transition: background .15s ease;
   }
@@ -132,7 +132,7 @@
   .nav-btn.active { background: rgba(255,255,255,.17); color: #fff; font-weight: 600; }
   .nav-btn:focus-visible { outline: 2px solid #f7c5ce; outline-offset: 0; }
   .side .spacer { flex: 1; }
-  .side-note { font-size: 11px; color: #e3adb8; padding: 10px 10px 0; border-top: 1px solid rgba(255,255,255,.14); margin-top: 6px; }
+  .side-note { font-size: 11px; color: rgba(255,255,255,.66); padding: 10px 10px 0; border-top: 1px solid rgba(255,255,255,.14); margin-top: 6px; }
 
   main { flex: 1; min-width: 0; padding: 34px 40px 70px; }
   .page { max-width: 1120px; margin: 0 auto; }
@@ -444,6 +444,28 @@
   .sw span { display: block; width: 28px; height: 28px; border-radius: 50%; background: var(--c); border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line); cursor: pointer; }
   .sw input:checked + span { box-shadow: 0 0 0 2.5px var(--brand); }
   .sw input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .pal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .pal { position: relative; cursor: pointer; display: block; }
+  .pal input { position: absolute; opacity: 0; pointer-events: none; }
+  .pal-card { display: block; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); transition: border-color .15s ease, transform .1s ease; }
+  .pal:hover .pal-card { border-color: var(--accent); }
+  .pal input:checked + .pal-card { border-color: var(--brand); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .pal input:focus-visible + .pal-card { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .pal-prev { display: flex; height: 58px; background: var(--p-bg); }
+  .pal-prev .ps { width: 26%; background: linear-gradient(180deg, var(--p-sa), var(--p-sb)); }
+  .pal-prev .pm { flex: 1; padding: 9px 8px; display: flex; flex-direction: column; gap: 5px; }
+  .pal-prev .pm i { display: block; height: 7px; border-radius: 4px; background: var(--p-ac); }
+  .pal-prev .pm i:first-child { width: 70%; background: var(--p-br); }
+  .pal-prev .pm i:last-child { width: 45%; }
+  .pal-name { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .pal input:checked + .pal-card .pal-name::after { content: '✓'; color: var(--brand); }
+  .seg { display: flex; gap: 2px; background: var(--surface-2); padding: 3px; border-radius: 999px; border: 1px solid var(--line); }
+  .seg label { flex: 1; position: relative; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span { display: block; text-align: center; padding: 7px 10px; border-radius: 999px; font-size: 12.5px; color: var(--ink-soft); }
+  .seg input:checked + span { background: var(--surface); color: var(--brand-strong); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .seg input:focus-visible + span { outline: 2px solid var(--brand); }
+  @media (max-width: 420px) { .pal-grid { grid-template-columns: repeat(2, 1fr); } }
   .settings-block { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
   .settings-block p { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-soft); }
 
@@ -526,6 +548,7 @@
     <button class="nav-btn" data-page="ano"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>Meu ano</button>
     <button class="nav-btn" data-page="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="5" r="2"/><circle cx="20" cy="5" r="2"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="19" r="2"/><path d="M6 6.2l3.6 3.6M18 6.2l-3.6 3.6M6 17.8l3.6-3.6M18 17.8l-3.6-3.6"/></svg>Mapa mental</button>
     <div class="spacer"></div>
+    <button class="nav-btn" id="btn-theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>Tema</button>
     <button class="nav-btn" id="btn-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Ajustes</button>
     <div class="side-note">Tudo fica salvo neste aparelho. Use “Ajustes” para fazer backup.</div>
   </nav>
@@ -764,14 +787,46 @@
   /* =========================================================
      Theme
      ========================================================= */
-  function applyTheme() {
-    let t = 'auto';
-    try { t = localStorage.getItem('lorace_planner_theme') || 'auto'; } catch (e) {}
-    if (t === 'auto') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', t);
-    return t;
+  const VARS = ['bg', 'surface', 'surface-2', 'ink', 'ink-soft', 'line', 'brand', 'brand-strong', 'accent', 'accent-soft', 'on-brand', 'side-a', 'side-b'];
+  const pal = (light, dark) => ({ light: Object.fromEntries(VARS.map((k, i) => [k, light[i]])), dark: Object.fromEntries(VARS.map((k, i) => [k, dark[i]])) });
+  const PALETTES = {
+    lorace: { name: 'Loracê', ...pal(
+      ['#fdf9f6', '#ffffff', '#fbf3f0', '#33191e', '#7a5b60', '#ecdcdf', '#7a2e3a', '#5a1f29', '#f7c5ce', '#fbe4e8', '#ffffff', '#5a1f29', '#7a2e3a'],
+      ['#1b1214', '#261a1d', '#2e2023', '#f6e9ec', '#c4a5ab', '#3d2a2f', '#d2687d', '#e8889a', '#6e3443', '#3a2328', '#1b1214', '#241619', '#3a1f26']) },
+    chiclete: { name: 'Chiclete', ...pal(
+      ['#fff7fa', '#ffffff', '#fdeef4', '#3a1828', '#85586c', '#f5dbe6', '#c93a78', '#a12a5e', '#f9bcd6', '#fde3ee', '#ffffff', '#a12a5e', '#d0407f'],
+      ['#1d1117', '#291820', '#331e29', '#fbe8f0', '#d0a5b8', '#45293a', '#f07bb0', '#f79fc7', '#73284b', '#3d1f2e', '#1d1117', '#251219', '#4a1f33']) },
+    lavanda: { name: 'Lavanda', ...pal(
+      ['#faf8fd', '#ffffff', '#f4f0fa', '#2b2140', '#6c6283', '#e6dff2', '#6b4fa0', '#4b3477', '#d9cbf2', '#efe8fa', '#ffffff', '#3f2a66', '#6b4fa0'],
+      ['#17131f', '#211b2c', '#2a2237', '#efe9fa', '#b3a7c9', '#372e47', '#b49ae6', '#cdb8f5', '#4d3a73', '#2e2540', '#17131f', '#1d1729', '#33264d']) },
+    pessego: { name: 'Pêssego', ...pal(
+      ['#fff8f3', '#ffffff', '#fdf0e7', '#3a2219', '#85625a', '#f1dfd3', '#b8512f', '#8f3d26', '#f9c9b3', '#fde8dd', '#ffffff', '#8f3d26', '#c0583a'],
+      ['#1c1411', '#271c18', '#30231e', '#f8ebe4', '#c9aa9c', '#40302a', '#ec8f70', '#f6ab92', '#6b3726', '#3a2620', '#1c1411', '#241915', '#43271d']) },
+    menta: { name: 'Menta', ...pal(
+      ['#f6faf7', '#ffffff', '#edf5ef', '#1f2e25', '#5d7465', '#dbe9df', '#3f7a5a', '#2b5a40', '#bfe0cb', '#e2f1e7', '#ffffff', '#24503a', '#3f7a5a'],
+      ['#121a15', '#1a251f', '#213028', '#e6f2ea', '#9fbcaa', '#2c3f34', '#7cc49c', '#9fd8b7', '#2f5a42', '#1f3329', '#121a15', '#15201a', '#23382c']) },
+    oceano: { name: 'Oceano', ...pal(
+      ['#f6f9fc', '#ffffff', '#ecf2f9', '#1c2738', '#5a6a82', '#dae4f0', '#3d64a8', '#284780', '#c3d6f2', '#e4edf9', '#ffffff', '#233e6e', '#3d64a8'],
+      ['#11161f', '#19202c', '#202938', '#e7eef9', '#a2b2ca', '#2c384b', '#84a8e8', '#a5c1f2', '#2f4a78', '#1e2a3e', '#11161f', '#141b27', '#22324d']) },
+  };
+  const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function getPref(key, def) { try { return localStorage.getItem(key) || def; } catch (e) { return def; } }
+  function applyTheme(palette, mode) {
+    palette = PALETTES[palette] ? palette : (PALETTES[getPref('lorace_planner_palette', 'lorace')] ? getPref('lorace_planner_palette', 'lorace') : 'lorace');
+    mode = mode || getPref('lorace_planner_theme', 'auto');
+    const root = document.documentElement;
+    const dark = mode === 'dark' || (mode === 'auto' && darkMQ && darkMQ.matches);
+    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    const vars = PALETTES[palette][dark ? 'dark' : 'light'];
+    for (const k of VARS) root.style.setProperty('--' + k, vars[k]);
+    root.style.colorScheme = dark ? 'dark' : 'light';
+    root.dataset.palette = palette;
   }
   applyTheme();
+  if (darkMQ) {
+    const onSchemeChange = () => applyTheme();
+    if (darkMQ.addEventListener) darkMQ.addEventListener('change', onSchemeChange); else if (darkMQ.addListener) darkMQ.addListener(onSchemeChange);
+  }
 
   /* =========================================================
      Modal
@@ -2041,14 +2096,42 @@
   /* =========================================================
      Ajustes (nome, tema, backup)
      ========================================================= */
+  $('#btn-theme').addEventListener('click', () => {
+    const prevPal = getPref('lorace_planner_palette', 'lorace');
+    const prevMode = getPref('lorace_planner_theme', 'auto');
+    let saved = false;
+    const card = ([k, p]) => {
+      const l = p.light;
+      return `<label class="pal"><input type="radio" name="palette" value="${k}" ${k === prevPal ? 'checked' : ''}><span class="pal-card"><span class="pal-prev" style="--p-bg:${l.bg};--p-sa:${l['side-a']};--p-sb:${l['side-b']};--p-br:${l.brand};--p-ac:${l.accent}"><span class="ps"></span><span class="pm"><i></i><i></i><i></i></span></span><span class="pal-name">${esc(p.name)}</span></span></label>`;
+    };
+    const modes = [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']];
+    modal({
+      title: 'Escolha seu tema',
+      message: 'Toque para ver como fica. O tema vale para o planner inteiro.',
+      extraHTML: `<div class="field"><label>Cores</label><div class="pal-grid" role="radiogroup" aria-label="Cores">${Object.entries(PALETTES).map(card).join('')}</div></div>
+        <div class="field"><label>Modo</label><div class="seg" role="radiogroup" aria-label="Modo">${modes.map(([v, l]) => `<label><input type="radio" name="mode" value="${v}" ${v === prevMode ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`,
+      onOpen: (form) => {
+        form.addEventListener('change', () => {
+          const v = Object.fromEntries(new FormData(form).entries());
+          applyTheme(v.palette, v.mode);
+        });
+        dlg.addEventListener('close', () => { if (!saved) applyTheme(prevPal, prevMode); }, { once: true });
+        setTimeout(() => form.querySelector('input[name=palette]:checked')?.focus(), 40);
+      },
+      onSave: (v) => {
+        saved = true;
+        try { localStorage.setItem('lorace_planner_palette', v.palette); localStorage.setItem('lorace_planner_theme', v.mode); } catch (e) {}
+        applyTheme(v.palette, v.mode);
+        toast(`Tema ${PALETTES[v.palette].name} aplicado ✨`);
+      },
+    });
+  });
+
   $('#btn-settings').addEventListener('click', () => {
-    let theme = 'auto';
-    try { theme = localStorage.getItem('lorace_planner_theme') || 'auto'; } catch (e) {}
     modal({
       title: 'Ajustes',
       fields: [
         { name: 'nome', label: 'Como posso te chamar?', value: S.profile.nome, placeholder: 'Seu nome' },
-        { name: 'theme', label: 'Aparência', type: 'select', value: theme, options: [{ value: 'auto', label: 'Automática (igual ao aparelho)' }, { value: 'light', label: 'Clara' }, { value: 'dark', label: 'Escura' }] },
       ],
       extraHTML: `<div class="settings-block">
         <p>Seus dados ficam salvos só neste navegador. Faça um backup de vez em quando — e use-o para levar tudo para outro aparelho.</p>
@@ -2068,8 +2151,7 @@
       },
       onSave: (v) => {
         S.profile.nome = v.nome.trim();
-        try { localStorage.setItem('lorace_planner_theme', v.theme); } catch (e) {}
-        applyTheme(); save(); rerender();
+        save(); rerender();
       },
     });
   });
