@@ -100,3 +100,18 @@ create table if not exists public.push_sent (
   primary key (user_id, key)
 );
 alter table public.push_sent enable row level security;
+
+-- Contas do Instagram que a usuária liberou no Login do Facebook (para escolher qual usar).
+-- Só a função do servidor lê (guarda tokens de página); sem políticas = sem acesso pelo app.
+create table if not exists public.social_choices (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  platform text not null,
+  ext_id text not null,
+  username text,
+  page_name text,
+  avatar_url text,
+  access_token text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, platform, ext_id)
+);
+alter table public.social_choices enable row level security;

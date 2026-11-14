@@ -6,6 +6,7 @@
 //   GET  /callback/tiktok     ?code&state                            (redirecionamento do TikTok)
 //   POST /sync                {}                                     (usuária logada: atualiza agora)
 //   POST /sync                header x-cron-secret                   (agendamento diário: todas as contas)
+//   POST /choices / /choose   { ext_id }                             (usuária logada: escolher a conta do Instagram)
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -149,6 +150,16 @@ async function syncInstagram(userId: string, tok: any) {
     followers: me.followers_count ?? null, last_sync: nowIso(), last_error: null,
   }).eq('user_id', userId).eq('platform', 'instagram');
   return rows.length;
+}
+
+async function useIgChoice(userId: string, extId: string) {
+  const { data: ch } = await admin.from('social_choices').select('*').eq('user_id', userId).eq('platform', 'instagram').eq('ext_id', extId).maybeSingle();
+  if (!ch) return false;
+  const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', userId).eq('platform', 'instagram').maybeSingle();
+  if (cur?.refresh_token !== 'fb:' + extId) await admin.from('social_posts').delete().eq('user_id', userId).eq('platform', 'instagram'); // números da conta anterior saem
+  await admin.from('social_tokens').upsert({ user_id: userId, platform: 'instagram', access_token: ch.access_token, refresh_token: 'fb:' + extId, expires_at: null, updated_at: nowIso() });
+  await admin.from('social_accounts').upsert({ user_id: userId, platform: 'instagram', connected_at: nowIso(), last_error: null, username: ch.username, avatar_url: ch.avatar_url });
+  return true;
 }
 
 /* ---------------- TikTok ---------------- */
@@ -404,10 +415,14 @@ Deno.serve(async (req) => {
             if (j2.access_token) userTok = j2.access_token;
           } catch (e) { console.error('fb long-lived', e); }
           // a conta profissional do Instagram fica ligada a uma página do Facebook
-          const pages = await fbGet('me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100', userTok);
-          const pg = (pages.data ?? []).find((x: any) => x.instagram_business_account?.id);
-          if (!pg) return backTo(st.return_to, { social: 'error', platform, reason: 'no_page' });
-          await admin.from('social_tokens').upsert({ user_id: st.user_id, platform, access_token: pg.access_token || userTok, refresh_token: 'fb:' + pg.instagram_business_account.id, expires_at: null, updated_at: nowIso() });
+          const pages = await fbGet('me/accounts?fields=id,name,access_token,instagram_business_account{id,username,profile_picture_url}&limit=100', userTok);
+          const found = (pages.data ?? []).filter((x: any) => x.instagram_business_account?.id);
+          if (!found.length) return backTo(st.return_to, { social: 'error', platform, reason: 'no_page' });
+          // guarda todas as contas liberadas, para a usuária escolher (e poder trocar depois)
+          await admin.from('social_choices').delete().eq('user_id', st.user_id).eq('platform', platform);
+          await admin.from('social_choices').insert(found.map((x: any) => ({ user_id: st.user_id, platform, ext_id: x.instagram_business_account.id, username: x.instagram_business_account.username ?? null, page_name: x.name ?? null, avatar_url: x.instagram_business_account.profile_picture_url ?? null, access_token: x.access_token || userTok })));
+          if (found.length > 1) return backTo(st.return_to, { social: 'choose', platform });
+          await useIgChoice(st.user_id, found[0].instagram_business_account.id);
         } else if (platform === 'instagram') {
           const r = await fetch('https://api.instagram.com/oauth/access_token', {
             method: 'POST',
@@ -451,12 +466,30 @@ Deno.serve(async (req) => {
       return json({ ok: true, results });
     }
 
+    if (route[0] === 'choices' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { data: list } = await admin.from('social_choices').select('ext_id,username,page_name,avatar_url').eq('user_id', user.id).eq('platform', 'instagram');
+      const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', user.id).eq('platform', 'instagram').maybeSingle();
+      return json({ choices: (list ?? []).map((c) => ({ ...c, current: cur?.refresh_token === 'fb:' + c.ext_id })) });
+    }
+
+    if (route[0] === 'choose' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { ext_id } = await req.json().catch(() => ({}));
+      if (!ext_id || !(await useIgChoice(user.id, String(ext_id)))) return json({ error: 'not_found' }, 404);
+      const r = await syncAccount(user.id, 'instagram');
+      return json({ ok: true, sync: r });
+    }
+
     if (route[0] === 'disconnect' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { platform } = await req.json().catch(() => ({}));
       if (!isPlatform(platform)) return json({ error: 'bad_platform' }, 400);
       await admin.from('social_tokens').delete().eq('user_id', user.id).eq('platform', platform);
+      await admin.from('social_choices').delete().eq('user_id', user.id).eq('platform', platform);
       await admin.from('social_accounts').delete().eq('user_id', user.id).eq('platform', platform);
       await admin.from('social_posts').delete().eq('user_id', user.id).eq('platform', platform);
       return json({ ok: true });

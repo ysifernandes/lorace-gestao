@@ -1052,6 +1052,14 @@
   .pend-txt .muted { font-size: 12.5px; }
   .pend-act { display: flex; flex-wrap: wrap; gap: 6px; }
   .pend-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px; border-radius: 12px; background: color-mix(in srgb, var(--butter) 70%, var(--surface)); }
+  .ig-pick { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .ig-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); }
+  .ig-opt:hover { box-shadow: inset 0 0 0 2px var(--brand-2); }
+  .ig-opt.on { cursor: default; box-shadow: inset 0 0 0 2px #5f8a52; }
+  .ig-opt[disabled] { opacity: .6; }
+  .ig-opt img, .ig-av { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center; background: var(--surface); }
+  .ig-t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .ig-t .muted { font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -3925,6 +3933,45 @@
       } catch (e) { toast('Não consegui atualizar agora. Tente de novo.'); }
       finally { this.busy = false; rerender(); }
     },
+    // tira do Bloom os posts que vieram de uma conta que não é mais a conectada
+    forgetImported(keys) {
+      if (!keys.size) return 0;
+      let n = 0;
+      B().posts = B().posts.filter((p) => {
+        if (!p.ext || !keys.has(p.ext.key)) return true;
+        const own = p.hook || p.script || p.scene || p.look || p.folderId || (p.notes && String(p.notes).trim());
+        if (!own) { n++; return false; } // veio só da importação: sai
+        delete p.ext; delete p.metrics; return true; // post planejado por ela: fica, sem os números da outra conta
+      });
+      save(); return n;
+    },
+    async choose() {
+      let list = [];
+      try { list = (await this.call('choices')).choices || []; } catch (e) { toast('Não consegui buscar as contas agora.'); return; }
+      if (!list.length) { toast('Abrindo o Facebook para você escolher a conta…'); setTimeout(() => this.connect('instagram'), 900); return; }
+      modal({
+        title: 'qual Instagram usar?',
+        message: list.length > 1 ? 'Você liberou mais de uma conta na tela do Facebook. Escolha a que o Bloom deve acompanhar (dá para trocar depois).' : 'Só uma conta foi liberada. Para usar outra, desconecte, conecte de novo e marque a conta certa na tela do Facebook.',
+        extraHTML: `<div class="ig-pick">${list.map((c) => `<button type="button" class="ig-opt ${c.current ? 'on' : ''}" data-ig="${esc(c.ext_id)}">${c.avatar_url ? `<img src="${esc(c.avatar_url)}" alt="" referrerpolicy="no-referrer">` : '<span class="ig-av" aria-hidden="true">📷</span>'}<span class="ig-t"><b>@${esc(c.username || 'conta')}</b><span class="muted">página ${esc(c.page_name || '')}</span></span>${c.current ? '<span class="tagpill" style="--c:#5f8a52">conectada</span>' : ''}</button>`).join('')}</div>`,
+        cancelLabel: 'Fechar',
+        onOpen: (form) => form.addEventListener('click', async (e) => {
+          const b = e.target.closest('[data-ig]');
+          if (!b || b.classList.contains('on')) return;
+          $$('.ig-opt', form).forEach((x) => { x.disabled = true; });
+          b.querySelector('.ig-t .muted').textContent = 'conectando e buscando os números…';
+          try {
+            const { data: old } = await Auth.sb.from('social_posts').select('ext_id').eq('platform', 'instagram');
+            const oldKeys = new Set((old || []).map((x) => 'instagram:' + x.ext_id));
+            const j = await this.call('choose', { ext_id: b.dataset.ig });
+            const removed = this.forgetImported(oldKeys);
+            dlg.close();
+            await this.refresh(true);
+            const name = (list.find((c) => c.ext_id === b.dataset.ig) || {}).username || '';
+            toast(j.sync && j.sync.ok ? `Pronto! Agora é @${name} ✨${removed ? ` (${removed} posts da outra conta saíram do Bloom)` : ''}` : 'Conta trocada, mas os números ainda não vieram. Toque em atualizar.');
+          } catch (err) { toast('Não consegui trocar agora. Tente de novo.'); $$('.ig-opt', form).forEach((x) => { x.disabled = false; }); }
+        }),
+      });
+    },
     disconnect(platform) {
       confirmBox(`desconectar o ${PLATFORMS[platform].label}?`, 'Os números param de atualizar. Os posts e os números que já estão no Bloom continuam.', async () => {
         try { await this.call('disconnect', { platform }); toast('Desconectado.'); } catch (e) { toast('Não consegui desconectar agora.'); }
@@ -3934,6 +3981,18 @@
     async apply() {
       const { data, error } = await Auth.sb.from('social_posts').select('*').order('posted_at', { ascending: false }).limit(300);
       if (error || !data) return;
+      // a conta conectada mudou: tira os posts importados da conta anterior
+      B().extAcct = B().extAcct || {};
+      for (const pl of Object.keys(PLATFORMS)) {
+        const acc = this.accounts[pl];
+        if (!acc || !acc.ext_user_id || B().extAcct[pl] === acc.ext_user_id) continue;
+        const { data: ids, error: e2 } = await Auth.sb.from('social_posts').select('ext_id').eq('platform', pl).limit(5000);
+        if (e2 || !ids) continue;
+        const keep = new Set(ids.map((x) => pl + ':' + x.ext_id));
+        const stale = new Set(B().posts.filter((x) => x.ext && x.ext.platform === pl && !keep.has(x.ext.key)).map((x) => x.ext.key));
+        if (stale.size) this.forgetImported(stale);
+        B().extAcct[pl] = acc.ext_user_id; save();
+      }
       const ignored = new Set(B().ignoredExt || []);
       const words = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 3);
       const overlap = (p, sp) => { const c = words(sp.caption); return words(p.title).filter((w) => c.includes(w)).length; };
@@ -3980,7 +4039,7 @@
     const a = Social.accounts[k];
     if (!a) return `<div class="card">${ic}<div class="txt"><b>${L.label}</b>Conecte uma vez e os números entram sozinhos todo dia.</div><button class="btn sm" data-sconnect="${k}">Conectar</button></div>`;
     return `<div class="card">${ic}<div class="txt"><b>${L.label}${a.username ? ' · @' + esc(a.username) : ''}</b>${a.last_error ? `<span style="color:var(--danger)">Não atualizou: ${esc(a.last_error.slice(0, 90))}</span>` : `${a.followers != null ? fmtNum(a.followers) + ' seguidores · ' : ''}atualizado ${a.last_sync ? fmtWhen(a.last_sync) : 'agora'}`}</div>
-      <div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm secondary" data-ssync ${Social.busy ? 'disabled' : ''}>${Social.busy ? 'atualizando…' : 'atualizar'}</button><button class="btn sm ghost" data-sdisc="${k}">desconectar</button></div></div>`;
+      <div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm secondary" data-ssync ${Social.busy ? 'disabled' : ''}>${Social.busy ? 'atualizando…' : 'atualizar'}</button>${k === 'instagram' ? '<button class="btn sm ghost" data-schoose>trocar conta</button>' : ''}<button class="btn sm ghost" data-sdisc="${k}">desconectar</button></div></div>`;
   }
 
   /* INSIGHTS */
@@ -4105,6 +4164,7 @@
     on(el, 'click', '[data-sconnect]', (e, b) => Social.connect(b.dataset.sconnect));
     on(el, 'click', '[data-ssync]', () => Social.syncNow());
     on(el, 'click', '[data-sdisc]', (e, b) => Social.disconnect(b.dataset.sdisc));
+    on(el, 'click', '[data-schoose]', () => Social.choose());
     on(el, 'click', '[data-new-bgoal]', () => goalModal());
     on(el, 'click', '[data-edit-bgoal]', (e, b) => goalModal(B().goals.find((x) => x.id === b.dataset.editBgoal)));
     on(el, 'click', '[data-ai]', () => { if (!busy) analyze(); });
@@ -4610,7 +4670,8 @@
   if (qsSocial.get('social')) {
     const pl = (PLATFORMS[qsSocial.get('platform')] || { label: 'rede' }).label;
     const st = qsSocial.get('social');
-    if (st === 'error' && qsSocial.get('reason') === 'no_page') setTimeout(() => modal({ title: 'falta um passo no Instagram', message: 'Não achei uma conta profissional do Instagram ligada a uma página do Facebook. No app do Instagram: Editar perfil → Página → conecte (ou crie) uma página do Facebook. Depois tente conectar de novo e, na tela da Meta, marque essa página e a conta do Instagram.', saveLabel: 'Entendi' }), 700);
+    if (st === 'choose') setTimeout(() => Social.choose(), 900);
+    else if (st === 'error' && qsSocial.get('reason') === 'no_page') setTimeout(() => modal({ title: 'falta um passo no Instagram', message: 'Não achei uma conta profissional do Instagram ligada a uma página do Facebook. No app do Instagram: Editar perfil → Página → conecte (ou crie) uma página do Facebook. Depois tente conectar de novo e, na tela da Meta, marque essa página e a conta do Instagram.', saveLabel: 'Entendi' }), 700);
     else setTimeout(() => toast(st === 'connected' ? `${pl} conectado! Seus números estão chegando ✨` : st === 'cancelled' ? 'Conexão cancelada.' : `Não consegui conectar o ${pl}. Tente de novo.`), 700);
     try { history.replaceState(null, '', location.pathname + '#insights'); } catch (e) {}
   }
