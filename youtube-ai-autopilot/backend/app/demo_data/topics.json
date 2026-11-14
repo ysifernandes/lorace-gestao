@@ -1,0 +1,67 @@
+[
+  {
+    "topic": "Por que o céu é azul",
+    "keywords": ["ciência", "curiosidades", "física", "céu"],
+    "popularity": 72,
+    "references": [
+      {
+        "title": "Dispersão de Rayleigh — Wikipédia",
+        "url": "https://pt.wikipedia.org/wiki/Dispers%C3%A3o_de_Rayleigh",
+        "publisher": "Wikipédia",
+        "excerpt": "A luz do Sol é composta por várias cores, cada uma com um comprimento de onda diferente. Ao atravessar a atmosfera, a luz é espalhada pelas moléculas de gás, um fenômeno chamado espalhamento de Rayleigh. Esse espalhamento é muito mais intenso para comprimentos de onda curtos, como o azul, do que para os longos, como o vermelho. Por isso, a luz azul espalhada chega aos nossos olhos vinda de todas as direções do céu. No nascer e no pôr do sol, a luz percorre um caminho mais longo pela atmosfera, e os tons avermelhados predominam."
+      }
+    ]
+  },
+  {
+    "topic": "Os três corações do polvo",
+    "keywords": ["ciência", "curiosidades", "animais", "oceano"],
+    "popularity": 64,
+    "references": [
+      {
+        "title": "Polvo — Wikipédia",
+        "url": "https://pt.wikipedia.org/wiki/Polvo",
+        "publisher": "Wikipédia",
+        "excerpt": "O polvo tem três corações. Dois deles bombeiam o sangue pelas brânquias. O terceiro, chamado coração sistêmico, envia o sangue para o resto do corpo. O sangue do polvo é azulado porque usa a hemocianina, uma proteína à base de cobre, para transportar oxigênio."
+      }
+    ]
+  },
+  {
+    "topic": "Em Vênus um dia dura mais que um ano",
+    "keywords": ["ciência", "curiosidades", "espaço", "planetas"],
+    "popularity": 81,
+    "references": [
+      {
+        "title": "Vênus (planeta) — Wikipédia",
+        "url": "https://pt.wikipedia.org/wiki/V%C3%AAnus_(planeta)",
+        "publisher": "Wikipédia",
+        "excerpt": "Vênus leva cerca de 243 dias terrestres para completar uma rotação em torno do próprio eixo. Já sua volta completa ao redor do Sol dura cerca de 225 dias terrestres. Ou seja, um dia sideral em Vênus é mais longo que o seu ano. Além disso, Vênus gira no sentido contrário ao da maioria dos planetas do Sistema Solar, o chamado movimento retrógrado."
+      }
+    ]
+  },
+  {
+    "topic": "Por que o mel quase não estraga",
+    "keywords": ["ciência", "curiosidades", "química", "alimentos"],
+    "popularity": 58,
+    "references": [
+      {
+        "title": "Mel — Wikipédia",
+        "url": "https://pt.wikipedia.org/wiki/Mel",
+        "publisher": "Wikipédia",
+        "excerpt": "O mel tem baixo teor de água e alta concentração de açúcares. Esse ambiente dificulta a sobrevivência de bactérias e fungos, que perdem água por osmose. O mel também é ácido, o que torna o ambiente ainda menos favorável aos micro-organismos. Além disso, uma enzima adicionada pelas abelhas, a glicose oxidase, produz pequenas quantidades de peróxido de hidrogênio."
+      }
+    ]
+  },
+  {
+    "topic": "O que acontece quando cai um raio",
+    "keywords": ["ciência", "curiosidades", "clima", "física"],
+    "popularity": 67,
+    "references": [
+      {
+        "title": "Raio (meteorologia) — Wikipédia",
+        "url": "https://pt.wikipedia.org/wiki/Raio_(meteorologia)",
+        "publisher": "Wikipédia",
+        "excerpt": "O raio é uma descarga elétrica entre nuvens ou entre uma nuvem e o solo. O ar no canal do raio pode atingir temperaturas de cerca de 30 mil graus Celsius. Esse aquecimento repentino faz o ar se expandir de forma explosiva, produzindo o som do trovão. Como a luz viaja muito mais rápido que o som, vemos o clarão antes de ouvir o trovão."
+      }
+    ]
+  }
+]
