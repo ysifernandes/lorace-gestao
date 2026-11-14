@@ -998,6 +998,8 @@
   @media (prefers-reduced-motion: reduce) { .mic-btn.on { animation: none; } }
   @media (max-width: 1080px) { .task-add .mic-wrap, .idea-add .mic-wrap { grid-column: 1 / -1; } }
   @media (max-width: 420px) { #quick-task .mic-wrap { flex: 1 1 100%; } }
+  .mic-solo { position: static; transform: none; flex: 0 0 auto; width: 44px; height: 44px; align-self: flex-end; }
+  .mic-solo svg { width: 20px; height: 20px; }
 </style>
 </head>
 <body>
@@ -1990,7 +1992,8 @@
     stop() { try { this.rec && this.rec.stop(); } catch (e) { /* já parou */ } },
     start(btn) {
       if (this.rec) { this.stop(); return; }
-      const field = btn.parentElement.querySelector('input, textarea');
+      const field = btn.parentElement.querySelector('input:not([type=time]):not([type=date]), textarea') || (btn.closest('form') && btn.closest('form').querySelector('textarea, input[name=text], input[name=title]'));
+      if (!field) return;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { toast('Seu aparelho não liberou o microfone do Bloom aqui. Toque no campo e use o 🎤 do teclado do iPhone.'); field && field.focus(); return; }
       const rec = new SR();
@@ -2033,6 +2036,13 @@
     const b = e.target.closest('[data-mic]');
     if (b) { e.preventDefault(); Voice.start(b); }
   });
+  // tocar no microfone não deve abrir o teclado nem tirar o foco antes de começar a ouvir
+  document.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-mic]')) e.preventDefault(); });
+  document.addEventListener('touchstart', (e) => { if (e.target.closest('[data-mic]')) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchend', (e) => {
+    const b = e.target.closest('[data-mic]');
+    if (b) { e.preventDefault(); Voice.start(b); }
+  }, { passive: false });
 
   /* Notas rápidas */
   let qnAll = false;
@@ -2041,9 +2051,10 @@
     const shown = qnAll ? notes : notes.slice(0, 6);
     const when = (ms) => { const d = new Date(ms); const day = iso(d); return (day === today() ? 'hoje' : day === addDays(today(), -1) ? 'ontem' : fmtShort(day)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
     return `<div class="card qnotes taped t-butter">
-      <div class="card-head"><h3>notas rápidas</h3><span class="muted">${notes.length ? notes.length + (notes.length === 1 ? ' nota' : ' notas') : 'ideias soltas, lembretes, qualquer coisa'}</span></div>
+      <div class="card-head"><h3>minhas notas</h3><span class="muted">${notes.length ? notes.length + (notes.length === 1 ? ' nota' : ' notas') : 'ideias soltas, lembretes, qualquer coisa'}</span></div>
       <form class="qn-add" id="qn-add">
-        <div class="mic-wrap"><textarea class="input" name="text" id="qn-text" rows="2" placeholder="anota aqui antes que a ideia fuja…" aria-label="Nova nota rápida"></textarea><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+        <textarea class="input" name="text" id="qn-text" rows="2" placeholder="anota aqui antes que a ideia fuja…" aria-label="Nova nota"></textarea>
+        <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button class="btn" type="submit">Anotar</button>
       </form>
       ${shown.length ? `<div class="qn-list">${shown.map((n, i) => `<div class="qn" style="--qc:${['#fdf1b8', '#fde2ec', '#e3f0dc', '#e4ecf9', '#f1e4f7'][i % 5]}">
@@ -2138,15 +2149,7 @@
         </div>
         <div class="grid-2">
           <div class="stack">
-            <div class="card lined focus-card taped t-left">
-              <div class="eyebrow">meu foco de hoje</div>
-              <input class="focus-input" id="focus-in" placeholder="a coisa mais importante de hoje é…" value="${esc(S.focus[t] || '')}" aria-label="Foco do dia">
-              <div class="moods" role="group" aria-label="Como estou me sentindo">
-                ${MOODS.map(([k, e, l]) => `<button class="mood ${S.mood[t] === k ? 'on' : ''}" data-mood="${k}" aria-pressed="${S.mood[t] === k}"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}
-              </div>
-            </div>
             ${quickNotesCard()}
-            ${bizTodayCard()}
             <div class="card taped t-right">
               ${CLIP}
               <div class="card-head"><h3>meu dia</h3><span class="muted">${dayAll.filter((x) => isDoneOn(x, t)).length}/${dayAll.length} feitas</span></div>
@@ -2161,6 +2164,14 @@
               </form>
               <p class="muted qa-hint">🎤 Dica: fale “amanhã às 15h reunião com a cliente” e o Bloom já marca a data e a hora.</p>
             </div>
+            <div class="card lined focus-card taped t-left">
+              <div class="eyebrow">meu foco de hoje</div>
+              <input class="focus-input" id="focus-in" placeholder="a coisa mais importante de hoje é…" value="${esc(S.focus[t] || '')}" aria-label="Foco do dia">
+              <div class="moods" role="group" aria-label="Como estou me sentindo">
+                ${MOODS.map(([k, e, l]) => `<button class="mood ${S.mood[t] === k ? 'on' : ''}" data-mood="${k}" aria-pressed="${S.mood[t] === k}"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}
+              </div>
+            </div>
+            ${bizTodayCard()}
           </div>
           <div class="stack">
             <div class="notes-card" aria-label="Afirmação do dia">
