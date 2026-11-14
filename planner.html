@@ -4117,7 +4117,8 @@
     box.appendChild(div);
     while (box.children.length > 4) box.firstChild.remove();
     try {
-      if ('Notification' in window && Notification.permission === 'granted') new Notification('Bloom 🎀 ' + a.title, { body: `Lembrete de ${a.kind}${a.when ? ' · ' + a.when : ''}` });
+      // com o push ligado neste aparelho o servidor já avisa; evita aviso em dobro (o "adiado" só existe aqui, então continua)
+      if ('Notification' in window && Notification.permission === 'granted' && !(Push.active && a.when !== 'adiado')) new Notification('Bloom 🎀 ' + a.title, { body: `Lembrete de ${a.kind}${a.when ? ' · ' + a.when : ''}` });
     } catch (e) {}
   }
 
@@ -4213,15 +4214,30 @@
       const sub = await this.current();
       if (sub) { await Auth.sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe().catch(() => {}); }
     },
-    async sync() { try { if ((await this.status()) === 'on') await this.save(await this.current()); } catch (e) { /* tenta de novo na próxima abertura */ } },
+    active: false,
+    async sync() { try { if ((await this.status()) === 'on') { this.active = true; await this.save(await this.current()); } } catch (e) { /* tenta de novo na próxima abertura */ } },
     test() { return Social.call('push-test'); },
-    html(st) {
+    isMobile: () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    devName() { return this.isMobile() ? 'celular' : 'computador'; },
+    async count() { try { const { count } = await Auth.sb.from('push_subscriptions').select('endpoint', { count: 'exact', head: true }).eq('user_id', Auth.user.id); return count || 0; } catch (e) { return 0; } },
+    deniedHelp() {
+      const ua = navigator.userAgent;
+      if (this.isMobile()) return /Android/i.test(ua) ? 'No Android: <b>Configurações → Apps → Bloom (ou o navegador) → Notificações</b>.' : 'No iPhone: <b>Ajustes → Notificações → Bloom → Permitir notificações</b>.';
+      if (/Edg\//.test(ua)) return 'No Edge: clique no <b>cadeado</b> ao lado do endereço do site → <b>Permissões</b> → Notificações → Permitir, e recarregue a página.';
+      if (/Firefox\//.test(ua)) return 'No Firefox: clique no <b>cadeado</b> ao lado do endereço → limpe o bloqueio de notificações, e recarregue a página.';
+      if (/Chrome\//.test(ua)) return 'No Chrome: clique no ícone <b>⚙︎ / cadeado</b> ao lado do endereço → <b>Notificações → Permitir</b>, e recarregue a página.';
+      return 'No Safari do Mac: <b>Safari → Ajustes → Sites → Notificações</b> → Bloom → Permitir.';
+    },
+    html(st, n) {
+      const dev = this.devName();
+      const others = n > 1 ? ` Você recebe em <b>${n} aparelhos</b> (celular e computador recebem juntos).` : '';
       const T = {
         'ios-browser': '<p>Para receber notificações no iPhone, abra o Bloom pelo <b>ícone da tela de início</b> (no Safari: Compartilhar → Adicionar à Tela de Início) e ative aqui.</p>',
         unsupported: '<p>Este aparelho ou navegador não recebe notificações do Bloom. Use “Adicionar ao calendário” abaixo.</p>',
-        denied: '<p>As notificações do Bloom estão bloqueadas neste aparelho. No iPhone: <b>Ajustes → Notificações → Bloom → Permitir notificações</b>.</p>',
-        on: '<p>Ativadas neste aparelho ✓ Os lembretes das tarefas e a hora de postar chegam mesmo com o Bloom fechado.</p><div class="row"><button type="button" class="btn sm secondary" id="push-test">Enviar teste</button><button type="button" class="btn sm ghost" id="push-off">Desativar</button></div>',
-        off: '<p>Receba os lembretes das tarefas e a hora de postar <b>mesmo com o Bloom fechado</b>.</p><button type="button" class="btn sm" id="push-on">🔔 Ativar notificações no celular</button>',
+        denied: `<p>As notificações do Bloom estão bloqueadas neste ${dev}. ${this.deniedHelp()}</p>`,
+        on: `<p>Ativadas neste ${dev} ✓ Os lembretes das tarefas e a hora de postar chegam mesmo com o Bloom fechado.${others}</p>${this.isMobile() ? '<p class="muted" style="font-size:13px">Para receber também no computador, entre no Bloom pelo navegador do computador e ative lá.</p>' : '<p class="muted" style="font-size:13px">No computador, os avisos chegam enquanto o navegador estiver aberto (mesmo sem a aba do Bloom). Se não aparecer, confira se as notificações do navegador estão liberadas nos ajustes do sistema.</p>'}`
+          + '<div class="row"><button type="button" class="btn sm secondary" id="push-test">Enviar teste</button><button type="button" class="btn sm ghost" id="push-off">Desativar</button></div>',
+        off: `<p>Receba os lembretes das tarefas e a hora de postar <b>mesmo com o Bloom fechado</b>.${n ? ` Já estão ativadas em ${n === 1 ? 'outro aparelho' : n + ' outros aparelhos'}; ative aqui também para receber neste ${dev}.` : ''}</p><button type="button" class="btn sm" id="push-on">🔔 Ativar notificações neste ${dev}</button>`,
       };
       return T[st] || '';
     },
@@ -4229,6 +4245,7 @@
 
   $('#btn-bell').addEventListener('click', async () => {
     const pushSt = inSupa ? await Push.status() : 'nologin';
+    const pushN = inSupa && pushSt !== 'nologin' ? await Push.count() : 0;
     const list = Reminders.today();
     const hm = nowHM();
     const perm = 'Notification' in window ? Notification.permission : 'unsupported';
@@ -4243,7 +4260,7 @@
         ${list.length ? `<ul class="rem-list">${list.map((r) => `<li class="${r.at < hm || S.notified[r.key] ? 'past' : ''}"><span class="tm">${r.at}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(r.title)}${r.when ? ` <span class="muted">(${esc(r.when)})</span>` : ''}</span><span class="tagpill" style="--c:#b04a74">${r.kind}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0 0 12px">Nenhum lembrete para hoje. Coloque um horário ou um lembrete numa tarefa.</p>'}
         <div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">notificações</div>
-          ${inSupa && pushSt !== 'nologin' ? Push.html(pushSt) : `<p>${permText}</p>
+          ${inSupa && pushSt !== 'nologin' ? Push.html(pushSt, pushN) : `<p>${permText}</p>
           ${perm === 'default' ? '<button type="button" class="btn sm secondary" id="rem-perm">Ativar notificações</button>' : ''}`}
         </div>
         <div class="settings-block">
@@ -4260,15 +4277,15 @@
           try { pr = Notification.requestPermission(); } catch (e) { toast('Este aparelho não liberou as notificações.'); return; }
           on1.disabled = true; on1.textContent = 'Ativando…';
           Promise.resolve(pr).then(async (perm) => {
-            if (perm !== 'granted') { toast('Você não permitiu as notificações. Dá para mudar em Ajustes → Notificações → Bloom.'); dlg.close(); return; }
-            try { await Push.subscribe(); toast('Notificações ativadas ♥ Vou te mandar um teste.'); dlg.close(); setTimeout(() => Push.test().catch(() => {}), 800); }
-            catch (e) { toast('Não consegui ativar agora. Tente de novo.'); on1.disabled = false; on1.textContent = '🔔 Ativar notificações no celular'; }
+            if (perm !== 'granted') { toast(Push.isMobile() ? 'Você não permitiu as notificações. Dá para mudar em Ajustes → Notificações → Bloom.' : 'O navegador não liberou as notificações. Clique no cadeado ao lado do endereço para permitir.'); dlg.close(); return; }
+            try { await Push.subscribe(); Push.active = true; toast('Notificações ativadas ♥ Vou te mandar um teste.'); dlg.close(); setTimeout(() => Push.test().catch(() => {}), 800); }
+            catch (e) { toast('Não consegui ativar agora. Tente de novo.'); on1.disabled = false; on1.textContent = '🔔 Ativar notificações neste ' + Push.devName(); }
           });
         });
         const tb = $('#push-test', form);
-        if (tb) tb.addEventListener('click', async () => { tb.disabled = true; try { await Push.test(); toast('Teste enviado! Deve chegar em alguns segundos.'); } catch (e) { toast('Não consegui enviar o teste. Tente desativar e ativar de novo.'); } tb.disabled = false; });
+        if (tb) tb.addEventListener('click', async () => { tb.disabled = true; try { await Push.test(); toast('Teste enviado para todos os seus aparelhos! Deve chegar em alguns segundos.'); } catch (e) { toast('Não consegui enviar o teste. Tente desativar e ativar de novo.'); } tb.disabled = false; });
         const ob = $('#push-off', form);
-        if (ob) ob.addEventListener('click', async () => { await Push.disable().catch(() => {}); toast('Notificações desativadas neste aparelho.'); dlg.close(); });
+        if (ob) ob.addEventListener('click', async () => { await Push.disable().catch(() => {}); Push.active = false; toast('Notificações desativadas neste ' + Push.devName() + '.'); dlg.close(); });
         const pb = $('#rem-perm', form);
         if (pb) pb.addEventListener('click', () => {
           try {
