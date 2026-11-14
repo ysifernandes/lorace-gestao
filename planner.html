@@ -58,6 +58,7 @@
   }
 
   * { box-sizing: border-box; }
+  button, label, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
     font-family: var(--f-sans);
@@ -930,6 +931,41 @@
     .clock { font-size: 62px; }
     .page-head h1 { font-size: 44px; }
   }
+  /* ---------- Barra de baixo do celular ---------- */
+  .mbar { display: none; }
+  @media (max-width: 860px) {
+    .side { display: none !important; }
+    .mbar {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+      position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 50;
+      padding: 6px; border-radius: 24px;
+      background: color-mix(in srgb, var(--side-a) 92%, transparent);
+      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+      box-shadow: 0 18px 40px -14px rgba(0,0,0,.5);
+    }
+    .mbar-btn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 2px; border-radius: 18px; color: rgba(253, 231, 241, .82); font-size: 10.5px; min-width: 0; }
+    .mbar-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mbar-btn svg { width: 20px; height: 20px; }
+    .mbar-btn.active { background: var(--brand-2); color: var(--side-a); font-weight: 600; }
+    .mbar-btn:focus-visible { outline: 2px solid var(--brand-2); }
+    :root[data-style="clean"] .mbar { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    :root[data-style="clean"] .mbar-btn { color: var(--ink-soft); }
+    :root[data-style="clean"] .mbar-btn.active { background: var(--brand); color: var(--on-brand); }
+  }
+  .more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .more-item { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border-radius: 14px; background: var(--surface-2); color: var(--ink); font-size: 12.5px; font-weight: 500; text-align: center; }
+  .more-item svg { width: 24px; height: 24px; color: var(--brand); }
+  .more-item:hover, .more-item.on { background: var(--accent-soft); }
+  .more-item:focus-visible { outline: 2px solid var(--brand); }
+  .nav-pick { display: grid; gap: 6px; margin-bottom: 8px; }
+  .nav-opt { display: flex; cursor: pointer; position: relative; }
+  .nav-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .nav-opt span { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+  .nav-opt span svg { width: 18px; height: 18px; color: var(--brand); }
+  .nav-opt input:checked + span { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--brand); font-weight: 600; }
+  .nav-opt input:checked + span::after { content: '♥'; margin-left: auto; color: var(--brand); }
+  :root[data-style="clean"] .nav-opt input:checked + span::after { content: '✓'; }
+  .nav-opt input:focus-visible + span { outline: 2px solid var(--brand); }
 </style>
 </head>
 <body>
@@ -979,6 +1015,7 @@
 </div>
 
 <dialog class="modal" id="modal"></dialog>
+<nav class="mbar" id="mbar" aria-label="Menu principal"></nav>
 <div class="alerts" id="alerts" aria-live="polite"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="file-img" accept="image/*" multiple hidden>
@@ -1605,12 +1642,73 @@
       if (b.dataset.page === p) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     $$('main > .page').forEach((s) => { s.hidden = s.id !== 'pg-' + p; });
+    renderMbar();
     PAGES[p].render();
     updateBell();
     if (!AUTH_HASH) { try { history.replaceState(null, '', '#' + p); } catch (e) {} }
     window.scrollTo(0, 0);
   }
   on(document.querySelector('.side'), 'click', '.nav-btn[data-page]', (e, b) => go(b.dataset.page));
+
+  /* Barra de baixo do celular: atalhos que ela escolhe + "Mais" */
+  const NAV_ORDER = ['hoje', 'conteudo', 'gravar', 'insights', 'agenda', 'tarefas', 'habitos', 'metas', 'vision', 'ano', 'mapa'];
+  const NAV_DEFAULT = ['hoje', 'conteudo', 'tarefas', 'agenda'];
+  const NAV_MAX = 4;
+  const navLabel = (pg) => { const b = $(`.side .nav-btn[data-page="${pg}"]`); return b ? b.textContent.trim() : pg; };
+  const navIcon = (pg) => { const b = $(`.side .nav-btn[data-page="${pg}"] svg`); return b ? b.outerHTML : ''; };
+  const navFav = () => { const f = (S.ui.navFav || NAV_DEFAULT).filter((x) => NAV_ORDER.includes(x)); return f.length ? f.slice(0, NAV_MAX) : NAV_DEFAULT; };
+  const MORE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>';
+  function renderMbar() {
+    const fav = navFav();
+    const bar = $('#mbar');
+    if (!bar) return;
+    bar.innerHTML = fav.map((pg) => `<button class="mbar-btn ${current === pg ? 'active' : ''}" data-page="${pg}" ${current === pg ? 'aria-current="page"' : ''}>${navIcon(pg)}<span>${esc(navLabel(pg))}</span></button>`).join('') +
+      `<button class="mbar-btn ${fav.includes(current) ? '' : 'active'}" id="mbar-more" aria-haspopup="dialog">${MORE_ICON}<span>${fav.includes(current) ? 'Mais' : esc(navLabel(current))}</span></button>`;
+  }
+  on($('#mbar'), 'click', '.mbar-btn[data-page]', (e, b) => go(b.dataset.page));
+  on($('#mbar'), 'click', '#mbar-more', () => moreSheet());
+  function moreSheet() {
+    const fav = navFav();
+    const rest = NAV_ORDER.filter((pg) => !fav.includes(pg));
+    modal({
+      title: 'mais',
+      extraHTML: `<div class="more-grid">
+          ${rest.map((pg) => `<button type="button" class="more-item ${current === pg ? 'on' : ''}" data-more="${pg}">${navIcon(pg)}<span>${esc(navLabel(pg))}</span></button>`).join('')}
+          <button type="button" class="more-item" data-more-act="theme">${$('#btn-theme svg').outerHTML}<span>Tema</span></button>
+          <button type="button" class="more-item" data-more-act="settings">${$('#btn-settings svg').outerHTML}<span>Ajustes</span></button>
+        </div>
+        <button type="button" class="btn sm secondary" data-more-act="custom" style="width:100%;margin-top:14px">✎ escolher os atalhos da barra</button>`,
+      cancelLabel: 'Fechar',
+      onOpen: (form) => {
+        on(form, 'click', '[data-more]', (e, b) => { dlg.close(); go(b.dataset.more); });
+        on(form, 'click', '[data-more-act]', (e, b) => {
+          const a = b.dataset.moreAct;
+          dlg.close();
+          setTimeout(() => { if (a === 'theme') $('#btn-theme').click(); else if (a === 'settings') $('#btn-settings').click(); else navCustomize(); }, 60);
+        });
+      },
+    });
+  }
+  function navCustomize() {
+    const fav = navFav();
+    modal({
+      title: 'atalhos da barra',
+      message: `Escolha até ${NAV_MAX} telas para ficarem fixas na barra de baixo. As outras ficam no “Mais”.`,
+      extraHTML: `<div class="nav-pick">${NAV_ORDER.map((pg) => `<label class="nav-opt"><input type="checkbox" name="fav" value="${pg}" ${fav.includes(pg) ? 'checked' : ''}><span>${navIcon(pg)}${esc(navLabel(pg))}</span></label>`).join('')}</div>`,
+      onOpen: (form) => {
+        form.addEventListener('change', (e) => {
+          const checked = $$('input[name=fav]:checked', form);
+          if (checked.length > NAV_MAX) { e.target.checked = false; toast(`Cabem até ${NAV_MAX} atalhos. Desmarque um para trocar.`); }
+        });
+      },
+      onSave: () => {
+        const picked = $$('input[name=fav]:checked', dlg).map((i) => i.value);
+        if (!picked.length) { toast('Escolha pelo menos uma tela.'); return false; }
+        S.ui.navFav = NAV_ORDER.filter((pg) => picked.includes(pg));
+        save(); renderMbar(); toast('Barra atualizada ♥');
+      },
+    });
+  }
   function rerender() { PAGES[current].render(); updateBell(); }
 
   /* =========================================================
