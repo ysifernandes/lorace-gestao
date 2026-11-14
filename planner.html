@@ -750,6 +750,127 @@
     .stat .v { font-size: 34px; }
     .bar-row { grid-template-columns: 90px minmax(0, 1fr) 28px; }
   }
+  /* =========================================================
+     Estilo Clássico: limpo e minimalista (data-style="clean")
+     ========================================================= */
+  .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sty { position: relative; cursor: pointer; display: block; }
+  .sty input { position: absolute; opacity: 0; pointer-events: none; }
+  .sty-card { display: block; border-radius: 12px; overflow: hidden; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .sty input:checked + .sty-card { box-shadow: inset 0 0 0 2.5px var(--brand), 0 0 0 3px var(--accent); }
+  .sty input:focus-visible + .sty-card { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .sty-prev { display: block; height: 70px; position: relative; }
+  .sty-prev.bloom { background: #fbd3e9 radial-gradient(rgba(74,42,48,.45) 1.4px, transparent 2px) 0 0 / 12px 12px; }
+  .sty-prev.bloom i { position: absolute; left: 16%; right: 16%; top: 16px; bottom: 10px; background: #fffaf2; border-radius: 3px; box-shadow: 0 4px 8px -4px rgba(0,0,0,.4); }
+  .sty-prev.bloom i::before { content: ''; position: absolute; top: -5px; left: 50%; width: 34px; height: 9px; margin-left: -17px; background: repeating-linear-gradient(45deg, #f4a9c8 0 4px, #fde7f1 4px 8px); transform: rotate(-4deg); }
+  .sty-prev.bloom i::after { content: 'bom dia ♡'; position: absolute; left: 10px; top: 10px; font: 700 15px 'Dancing Script', cursive; color: #9c3a64; }
+  .sty-prev.clean { background: #f5f5f3; }
+  .sty-prev.clean i { position: absolute; left: 16%; right: 16%; top: 14px; bottom: 12px; background: #fff; border-radius: 8px; border: 1px solid #e6e6e3; }
+  .sty-prev.clean i::before { content: ''; position: absolute; left: 10px; top: 12px; width: 46%; height: 7px; border-radius: 4px; background: #1d1f23; }
+  .sty-prev.clean i::after { content: ''; position: absolute; left: 10px; top: 26px; width: 66%; height: 5px; border-radius: 3px; background: #d9d9d6; box-shadow: 0 9px 0 #d9d9d6; }
+  .sty-name { display: block; padding: 8px 10px 9px; font-size: 13px; font-weight: 600; }
+  .sty-name small { display: block; font-weight: 400; font-size: 11.5px; color: var(--ink-soft); }
+
+  :root[data-style="clean"] {
+    --f-serif: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-mono: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-hand: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-script: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 14px -8px rgba(0,0,0,.12);
+  }
+  :root[data-style="clean"] .vb-board { --f-serif: 'Instrument Serif', serif; --f-mono: 'DM Mono', monospace; --f-hand: 'Caveat', cursive; --f-script: 'Dancing Script', cursive; }
+  :root[data-style="clean"] body { background-image: none; }
+  :root[data-style="clean"] h1, :root[data-style="clean"] h2, :root[data-style="clean"] h3 { font-weight: 700; letter-spacing: -0.02em; }
+  :root[data-style="clean"] h1::first-letter, :root[data-style="clean"] h2::first-letter, :root[data-style="clean"] h3::first-letter, :root[data-style="clean"] .md h2::first-letter { text-transform: uppercase; }
+  :root[data-style="clean"] .page-head h1 { font-size: 40px; line-height: 1.05; color: var(--ink); }
+  :root[data-style="clean"] .page-head .sub, :root[data-style="clean"] .eyebrow { letter-spacing: .06em; font-size: 11.5px; font-weight: 500; }
+  :root[data-style="clean"] .card-head h3, :root[data-style="clean"] .rec-group h3 { font-size: 19px; color: var(--ink); font-weight: 650; }
+  :root[data-style="clean"] .week-nav h2 { font-size: 24px; color: var(--ink); }
+  :root[data-style="clean"] .day-title { font-size: 20px; color: var(--ink); }
+  :root[data-style="clean"] .md h2 { font-size: 24px; color: var(--ink); }
+  :root[data-style="clean"] .card { border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  :root[data-style="clean"] .taped::before, :root[data-style="clean"] .clip-deco, :root[data-style="clean"] dialog.modal::before, :root[data-style="clean"] .notebook::after { display: none; }
+  :root[data-style="clean"] .lined { background-image: none; padding-left: 22px; }
+  :root[data-style="clean"] .notebook { padding-left: 22px; }
+  :root[data-style="clean"] .tilt-l, :root[data-style="clean"] .tilt-r, :root[data-style="clean"] .goal:nth-child(odd), :root[data-style="clean"] .goal:nth-child(even) { transform: none; }
+  :root[data-style="clean"] .side { background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  :root[data-style="clean"] .brand-name { color: var(--ink); font-style: normal; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; }
+  :root[data-style="clean"] .brand-sub { color: var(--ink-soft); letter-spacing: .1em; }
+  :root[data-style="clean"] .logo { background: var(--brand); color: var(--on-brand); box-shadow: none; border-radius: 12px; }
+  :root[data-style="clean"] .nav-btn { color: var(--ink-soft); }
+  :root[data-style="clean"] .nav-btn:hover { background: var(--surface-2); color: var(--ink); }
+  :root[data-style="clean"] .nav-btn.active { background: var(--accent-soft); color: var(--brand); }
+  :root[data-style="clean"] .nav-btn.active::after { display: none; }
+  :root[data-style="clean"] .nav-label { color: var(--ink-soft); opacity: .8; }
+  :root[data-style="clean"] .side-note { color: var(--ink-soft); border-top: 1px solid var(--line); }
+  :root[data-style="clean"] .btn { border-radius: 10px; box-shadow: none; }
+  :root[data-style="clean"] .btn.secondary { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .btn.paper, :root[data-style="clean"] .round-btn { box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .chip { box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .chip.on { box-shadow: none; }
+  :root[data-style="clean"] .tabs { box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .input, :root[data-style="clean"] .field input, :root[data-style="clean"] .field select, :root[data-style="clean"] .field textarea { background: var(--surface-2); border-color: var(--line); color: var(--ink); }
+  :root[data-style="clean"] .check { background: transparent; border-radius: 6px; }
+  :root[data-style="clean"] .progress > span { background: var(--c, var(--brand)); }
+  :root[data-style="clean"] .bar-row .bt i { background: var(--brand); }
+  :root[data-style="clean"] .tagpill { color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); letter-spacing: .03em; }
+  :root[data-style="clean"] .pc-score { color: var(--ink); background: color-mix(in srgb, var(--c) 18%, transparent); }
+  :root[data-style="clean"] .hcell.on::after { content: '✓'; font-weight: 700; }
+  :root[data-style="clean"] .hcell { border-style: solid; border-color: var(--line); }
+  :root[data-style="clean"] .mday.has::after { content: '•'; font-size: 12px; bottom: -3px; color: var(--brand); }
+  :root[data-style="clean"] .day { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .day.sel { transform: none; box-shadow: none; }
+  :root[data-style="clean"] .day .dn { font-weight: 600; font-size: 22px; }
+  :root[data-style="clean"] .day.today .dn { font-style: normal; }
+  :root[data-style="clean"] .clock { color: var(--ink); }
+  :root[data-style="clean"] .hero-date { color: var(--ink-soft); letter-spacing: .08em; font-size: 12px; font-weight: 500; }
+  :root[data-style="clean"] .greet { font-size: 28px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+  :root[data-style="clean"] .scallop { transform: none; filter: none; width: auto; height: auto; padding: 16px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+  :root[data-style="clean"] .scallop svg { display: none; }
+  :root[data-style="clean"] .scallop strong { font-style: normal; font-weight: 700; font-size: 40px; color: var(--brand); }
+  :root[data-style="clean"] .scallop span { font-size: 11px; letter-spacing: .04em; color: var(--ink-soft); }
+  :root[data-style="clean"] .focus-input { font-size: 20px; color: var(--ink); font-weight: 500; height: auto; line-height: 1.4; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  :root[data-style="clean"] .focus-input::placeholder { color: var(--ink-soft); opacity: .7; }
+  :root[data-style="clean"] .empty .hand { font-size: 15px; font-weight: 600; color: var(--ink); }
+  :root[data-style="clean"] .notes-card { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  :root[data-style="clean"] .notes-top { display: none; }
+  :root[data-style="clean"] .notes-card .eyebrow { color: var(--ink-soft); text-align: left; }
+  :root[data-style="clean"] .notes-card p { font-size: 20px; font-weight: 500; text-align: left; line-height: 1.4; }
+  :root[data-style="clean"] .notes-card p .hl { background: none; padding: 0; }
+  :root[data-style="clean"] .notes-card p em { font-style: normal; }
+  :root[data-style="clean"] .ev-block { background: var(--surface-2); border: 0; border-left: 3px solid var(--c); border-radius: 8px; }
+  :root[data-style="clean"] .ev-block .bowi { display: none; }
+  :root[data-style="clean"] .ev-title { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); padding-right: 0; }
+  :root[data-style="clean"] .ev-time { color: var(--ink); font-weight: 600; }
+  :root[data-style="clean"] .prio { background: var(--danger); }
+  :root[data-style="clean"] .goal-why, :root[data-style="clean"] .rec .hook { font-size: 14.5px; font-style: italic; color: var(--ink-soft); }
+  :root[data-style="clean"] .goal h3 { font-size: 20px; }
+  :root[data-style="clean"] .rec { border-top: 1px solid var(--line); border-left: 3px solid var(--c); }
+  :root[data-style="clean"] .rec .ttl { text-transform: none; letter-spacing: 0; }
+  :root[data-style="clean"] .hb-card .em { background: color-mix(in srgb, var(--c) 16%, transparent); }
+  :root[data-style="clean"] .year-word { font-size: 40px; font-weight: 700; color: var(--brand); }
+  :root[data-style="clean"] .letter { font-size: 16px; color: var(--ink); line-height: 1.6; }
+  :root[data-style="clean"] .wishes li .n { font-size: 13px; color: var(--ink-soft); }
+  :root[data-style="clean"] .month-box label { font-size: 15px; font-weight: 600; text-transform: capitalize; color: var(--ink); }
+  :root[data-style="clean"] .area-box { border-style: solid; border-color: var(--line); }
+  :root[data-style="clean"] .stat .v { font-weight: 700; font-size: 34px; color: var(--ink); }
+  :root[data-style="clean"] .pcard { box-shadow: inset 0 0 0 1px var(--line); border-left-width: 3px; }
+  :root[data-style="clean"] .cal-chip { box-shadow: inset 0 0 0 1px var(--line); }
+  :root[data-style="clean"] .kcol { background: var(--surface-2); border: 1px solid var(--line); }
+  :root[data-style="clean"] .ex-note { background: var(--accent-soft); color: var(--ink); }
+  :root[data-style="clean"] .mm-canvas { background-image: radial-gradient(var(--line) 1.2px, transparent 1.6px); background-size: 24px 24px; box-shadow: none; border: 1px solid var(--line); }
+  :root[data-style="clean"] .mm-node { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); border-radius: 10px; }
+  :root[data-style="clean"] .mm-node.root { font-size: 20px; color: #fff; }
+  :root[data-style="clean"] .mm-zoom, :root[data-style="clean"] .mm-colors { background: var(--surface); border: 1px solid var(--line); }
+  :root[data-style="clean"] .vb-wrap { border: 1px solid var(--line); border-radius: 14px; }
+  :root[data-style="clean"] .alert { border: 1px solid var(--line); }
+  :root[data-style="clean"] .alert .ttl { font-size: 17px; font-weight: 600; color: var(--ink); }
+  :root[data-style="clean"] .toast { background: var(--ink); color: var(--surface); border-radius: 12px; }
+  :root[data-style="clean"] .pat-field { display: none; }
+  @media (max-width: 860px) {
+    :root[data-style="clean"] .nav-btn.active { background: var(--brand); color: var(--on-brand); }
+    :root[data-style="clean"] .topbar .mbrand .brand-name { color: var(--ink); }
+  }
 </style>
 </head>
 <body>
@@ -1173,11 +1294,20 @@
       dark: P('#1d1828', '#c9b2ec', '#efe8fb', '#bfb0da', '#cdb6f2', '#7b4fa8', '#b58ee0', '#dccaf2', '#f1e9fb', '#b58ee0', '#140f1d', '#2b2240') },
     pessego: { name: 'Pêssego', light: P('#fcd9c7', '#4a2c22', '#3a2219', '#84553f', '#a8482b', '#b8573a', '#f0a07f', '#f8cdb8', '#fdebe1', '#f5b697', '#3a2219', '#553024'),
       dark: P('#2a1a15', '#f5b697', '#fdebe1', '#ddb3a0', '#f6b294', '#b8573a', '#f0a07f', '#f8cdb8', '#fdebe1', '#f5b697', '#1c110d', '#3a241c') },
+    grafite: { name: 'Grafite', light: P('#ececea', '#2a2a2a', '#1d1f23', '#5f636a', '#1d1f23', '#2b2d31', '#6b6f76', '#d9d9d6', '#efefed', '#c9c9c4', '#1d1f23', '#2d3036'),
+      dark: P('#17181b', '#8a8d93', '#ececec', '#a3a7ae', '#ececec', '#2b2d31', '#9aa0a8', '#d9d9d6', '#efefed', '#9aa0a8', '#101113', '#1f2125') },
+    oceano: { name: 'Oceano', light: P('#dbe6f3', '#23344d', '#1c2738', '#4f6380', '#2a4f8a', '#2f5fa8', '#7da2dc', '#c7d8f0', '#e8f0fa', '#a9c4ea', '#1c2738', '#2a3a55'),
+      dark: P('#121822', '#a9c4ea', '#e8f0fa', '#a9b9d0', '#a9c4ea', '#2f5fa8', '#7da2dc', '#c7d8f0', '#e8f0fa', '#7da2dc', '#0c1118', '#1c2738') },
     menta: { name: 'Menta', light: P('#dce9cc', '#2f3a2a', '#24301f', '#5c7052', '#3f6a34', '#4f7a43', '#8fb87c', '#cfe2bf', '#ecf4e4', '#b9d39f', '#24301f', '#34442d'),
       dark: P('#182016', '#b9d39f', '#ecf4e4', '#b2c7a6', '#b5d89f', '#4f7a43', '#8fb87c', '#cfe2bf', '#ecf4e4', '#b9d39f', '#10160e', '#24301f') },
   };
   const PATTERNS = { dots: 'Bolinhas', plaid: 'Xadrez', gingham: 'Vichy', checker: 'Quadriculado', stripes: 'Listras', plain: 'Liso' };
-  const LEGACY_PAL = { lorace: 'rosa', oceano: 'lavanda' };
+  const LEGACY_PAL = { lorace: 'rosa' };
+  const STYLES = { bloom: 'Bloom', clean: 'Clássico' };
+  const CLEAN_BASE = {
+    light: { bg: '#f5f5f3', surface: '#ffffff', 'surface-2': '#f3f3f1', ink: '#1d1f23', 'ink-soft': '#6b6f76', line: '#e6e6e3', 'bg-ink': '#1d1f23', 'bg-ink-soft': '#6b6f76', title: '#1d1f23', butter: '#fdf3c4', cherry: '#1d1f23', 'side-a': '#1d1f23', 'side-b': '#1d1f23' },
+    dark: { bg: '#141518', surface: '#1e2024', 'surface-2': '#26282d', ink: '#ececec', 'ink-soft': '#a3a7ae', line: '#33363c', 'bg-ink': '#ececec', 'bg-ink-soft': '#a3a7ae', title: '#ececec', butter: '#3a3524', cherry: '#ececec', 'side-a': '#ececec', 'side-b': '#ececec' },
+  };
   const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   const hostTheme = document.documentElement.getAttribute('data-theme');
   function getPref(k, lsKey, def) {
@@ -1187,19 +1317,35 @@
   const curPalette = () => { let p = getPref('palette', 'lorace_planner_palette', 'rosa'); p = LEGACY_PAL[p] || p; return PALETTES[p] ? p : 'rosa'; };
   const curMode = () => getPref('mode', 'lorace_planner_theme', 'auto');
   const curPattern = () => { const p = getPref('pattern', 'bloom_pattern', 'dots'); return PATTERNS[p] ? p : 'dots'; };
-  function applyTheme(palette, mode, pattern) {
+  const curStyle = () => { const p = getPref('style', 'bloom_style', 'bloom'); return STYLES[p] ? p : 'bloom'; };
+  function applyTheme(palette, mode, pattern, style) {
     palette = PALETTES[palette] ? palette : curPalette();
     mode = mode || curMode();
     pattern = PATTERNS[pattern] ? pattern : curPattern();
+    style = STYLES[style] ? style : curStyle();
     const root = document.documentElement;
     const autoDark = hostTheme ? hostTheme === 'dark' : !!(darkMQ && darkMQ.matches);
     const dark = mode === 'dark' || (mode === 'auto' && autoDark);
     if (mode === 'auto') { if (hostTheme) root.setAttribute('data-theme', hostTheme); else root.removeAttribute('data-theme'); }
     else root.setAttribute('data-theme', mode);
-    const vars = Object.assign({}, BASE_VARS[dark ? 'dark' : 'light'], PALETTES[palette][dark ? 'dark' : 'light']);
+    let vars;
+    if (style === 'clean') {
+      const pl = PALETTES[palette].light;
+      const brand = dark ? pl['brand-2'] : pl.brand;
+      vars = Object.assign({}, CLEAN_BASE[dark ? 'dark' : 'light'], {
+        brand, 'brand-2': pl['brand-2'], tape: pl.tape, 'on-brand': dark ? '#141518' : '#ffffff',
+        accent: dark ? `color-mix(in srgb, ${brand} 35%, #1e2024)` : pl.accent,
+        'accent-soft': dark ? `color-mix(in srgb, ${brand} 18%, #1e2024)` : pl['accent-soft'],
+        dot: 'transparent',
+      });
+    } else {
+      vars = Object.assign({}, BASE_VARS[dark ? 'dark' : 'light'], PALETTES[palette][dark ? 'dark' : 'light']);
+    }
     for (const [k, v] of Object.entries(vars)) root.style.setProperty('--' + k, v);
+    root.style.colorScheme = style === 'clean' && dark ? 'dark' : 'light';
     root.dataset.palette = palette;
-    root.dataset.pattern = pattern;
+    root.dataset.pattern = style === 'clean' ? 'plain' : pattern;
+    root.dataset.style = style;
   }
   applyTheme();
   if (darkMQ) {
@@ -1483,7 +1629,7 @@
           <div>
             <div class="hero-date">${esc(fmtLong(t))}</div>
             <div class="clock" id="clock">${nowHM()}</div>
-            <div class="greet">${saud}${esc(nome)} ♡</div>
+            <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
           </div>
           <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
         </div>
@@ -3277,7 +3423,7 @@
      Tema e ajustes
      ========================================================= */
   $('#btn-theme').addEventListener('click', () => {
-    const prev = [curPalette(), curMode(), curPattern()];
+    const prev = [curPalette(), curMode(), curPattern(), curStyle()];
     let saved = false;
     const card = ([k, p]) => {
       const l = p.light;
@@ -3295,19 +3441,23 @@
     modal({
       title: 'escolha seu tema',
       message: 'Toque para ver como fica.',
-      extraHTML: `<div class="field"><label>Cores</label><div class="pal-grid" role="radiogroup" aria-label="Cores">${Object.entries(PALETTES).map(card).join('')}</div></div>
-        <div class="field"><label>Estampa do fundo</label><div class="pat-grid" role="radiogroup" aria-label="Estampa do fundo">${Object.entries(PATTERNS).map(([k, n]) => `<label class="pat"><input type="radio" name="pattern" value="${k}" ${k === prev[2] ? 'checked' : ''}><span class="pat-card"><span class="pat-prev" style="${patCSS[k]}"></span><span class="pat-name">${n}</span></span></label>`).join('')}</div></div>
+      extraHTML: `<div class="field"><label>Estilo</label><div class="style-grid" role="radiogroup" aria-label="Estilo">
+          <label class="sty"><input type="radio" name="style" value="bloom" ${prev[3] === 'bloom' ? 'checked' : ''}><span class="sty-card"><span class="sty-prev bloom"><i></i></span><span class="sty-name">Bloom<small>fitas, estampas e letra de mão</small></span></span></label>
+          <label class="sty"><input type="radio" name="style" value="clean" ${prev[3] === 'clean' ? 'checked' : ''}><span class="sty-card"><span class="sty-prev clean"><i></i></span><span class="sty-name">Clássico<small>limpo e minimalista</small></span></span></label>
+        </div></div>
+        <div class="field"><label>Cores</label><div class="pal-grid" role="radiogroup" aria-label="Cores">${Object.entries(PALETTES).map(card).join('')}</div></div>
+        <div class="field pat-field"><label>Estampa do fundo</label><div class="pat-grid" role="radiogroup" aria-label="Estampa do fundo">${Object.entries(PATTERNS).map(([k, n]) => `<label class="pat"><input type="radio" name="pattern" value="${k}" ${k === prev[2] ? 'checked' : ''}><span class="pat-card"><span class="pat-prev" style="${patCSS[k]}"></span><span class="pat-name">${n}</span></span></label>`).join('')}</div></div>
         <div class="field"><label>Modo</label><div class="seg" role="radiogroup" aria-label="Modo">${modes.map(([v, l]) => `<label><input type="radio" name="mode" value="${v}" ${v === prev[1] ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`,
       onOpen: (form) => {
-        form.addEventListener('change', () => { const v = Object.fromEntries(new FormData(form).entries()); applyTheme(v.palette, v.mode, v.pattern); });
+        form.addEventListener('change', () => { const v = Object.fromEntries(new FormData(form).entries()); applyTheme(v.palette, v.mode, v.pattern, v.style); });
         dlg.addEventListener('close', () => { if (!saved) applyTheme(...prev); }, { once: true });
       },
       onSave: (v) => {
         saved = true;
-        S.ui.palette = v.palette; S.ui.mode = v.mode; S.ui.pattern = v.pattern;
-        try { localStorage.setItem('lorace_planner_palette', v.palette); localStorage.setItem('lorace_planner_theme', v.mode); localStorage.setItem('bloom_pattern', v.pattern); } catch (e) {}
-        applyTheme(v.palette, v.mode, v.pattern); save();
-        toast(`Tema ${PALETTES[v.palette].name} aplicado ♥`);
+        S.ui.palette = v.palette; S.ui.mode = v.mode; S.ui.pattern = v.pattern; S.ui.style = v.style;
+        try { localStorage.setItem('lorace_planner_palette', v.palette); localStorage.setItem('lorace_planner_theme', v.mode); localStorage.setItem('bloom_pattern', v.pattern); localStorage.setItem('bloom_style', v.style); } catch (e) {}
+        applyTheme(v.palette, v.mode, v.pattern, v.style); save(); rerender();
+        toast(v.style === 'clean' ? `Estilo Clássico · ${PALETTES[v.palette].name}` : `Tema ${PALETTES[v.palette].name} aplicado ♥`);
       },
     });
   });
