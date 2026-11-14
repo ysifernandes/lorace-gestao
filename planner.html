@@ -1092,6 +1092,16 @@
   .pinfo-cap summary { cursor: pointer; font-size: 13px; color: var(--ink-soft); }
   .pinfo-cap p { white-space: pre-wrap; font-size: 13px; margin: 6px 0 0; overflow-wrap: anywhere; }
   .pinfo-notes { font-size: 13px; display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 12px; border: 1.5px dashed var(--line); }
+  .md { position: relative; }
+  .md-x { all: unset; box-sizing: border-box; cursor: pointer; position: sticky; top: 0; float: right; margin: -10px -8px 0 8px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; color: var(--ink-soft); background: var(--accent-soft); z-index: 3; }
+  .md-x:hover { color: var(--ink); }
+  .md-x:focus-visible { outline: 2px solid var(--brand); }
+  dialog.modal { touch-action: pan-y; }
+  .ai-idea { flex-direction: column; align-items: stretch !important; }
+  .ai-idea-top { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .ai-hook { font-size: 13px; margin-top: 6px; font-style: italic; }
+  .ai-script summary { cursor: pointer; font-size: 13px; color: var(--brand); margin-top: 6px; }
+  .ai-script-body { white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin-top: 6px; padding: 10px; border-radius: 10px; background: var(--surface); overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -1734,6 +1744,7 @@
   function modal({ title, message, fields = [], saveLabel = 'Salvar', danger = false, onSave, onDelete, extraHTML = '', onOpen, cancelLabel = 'Cancelar' }) {
     const twoCol = fields.length > 2;
     dlg.innerHTML = `<form class="md" novalidate>
+      <button type="button" class="md-x" data-act="cancel" aria-label="Fechar">✕</button>
       <h2>${esc(title)}</h2>
       ${message ? `<p class="msg">${esc(message)}</p>` : ''}
       <div class="${twoCol ? 'fields' : ''}">${fields.map((f) => fieldHTML(Object.assign({ full: !twoCol || f.full }, f))).join('')}</div>
@@ -1769,6 +1780,44 @@
     const first = form.querySelector('input:not([type=radio]), textarea, select');
     if (first) setTimeout(() => first.focus(), 30);
   }
+  /* Fechar a janela como no iPhone: arrastar para a direita (ou para baixo, do topo) ou tocar fora */
+  (() => {
+    let sx = 0, sy = 0, dx = 0, dy = 0, mode = null, box = null;
+    const reset = (anim) => { dlg.style.transition = anim ? 'transform .2s ease, opacity .2s ease' : ''; dlg.style.transform = ''; dlg.style.opacity = ''; };
+    dlg.addEventListener('close', () => reset(false));
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // toque no fundo escuro
+    dlg.addEventListener('touchstart', (e) => {
+      if (!dlg.open || e.touches.length !== 1) { mode = 'off'; return; }
+      const t = e.touches[0]; sx = t.clientX; sy = t.clientY; dx = dy = 0; mode = null;
+      box = e.target.closest('.md, .tele');
+      if (e.target.closest('input, textarea, select, [contenteditable], .tele, .no-swipe')) mode = 'off'; // não atrapalha digitar nem rolar textos
+      dlg.style.transition = '';
+    }, { passive: true });
+    dlg.addEventListener('touchmove', (e) => {
+      if (mode === 'off' || !dlg.open) return;
+      const t = e.touches[0]; dx = t.clientX - sx; dy = t.clientY - sy;
+      if (!mode) {
+        if (dx > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) mode = 'x';
+        else if (dy > 12 && Math.abs(dy) > Math.abs(dx) * 1.3 && (!box || box.scrollTop <= 0)) mode = 'y';
+        else if (Math.abs(dx) > 12 || Math.abs(dy) > 12) { mode = 'off'; return; }
+        else return;
+      }
+      e.preventDefault();
+      if (mode === 'x') { dlg.style.transform = `translateX(${Math.max(0, dx)}px) rotate(${Math.max(0, dx) / 60}deg)`; dlg.style.opacity = String(1 - Math.min(0.5, Math.max(0, dx) / 700)); }
+      else dlg.style.transform = `translateY(${Math.max(0, dy)}px)`;
+    }, { passive: false });
+    dlg.addEventListener('touchend', () => {
+      if (mode !== 'x' && mode !== 'y') { mode = null; return; }
+      const dist = mode === 'x' ? dx : dy;
+      if (dist > 90) {
+        dlg.style.transition = 'transform .18s ease, opacity .18s ease';
+        dlg.style.transform = mode === 'x' ? 'translateX(110vw) rotate(8deg)' : 'translateY(100vh)';
+        dlg.style.opacity = '0';
+        setTimeout(() => dlg.close(), 170);
+      } else reset(true);
+      mode = null;
+    });
+  })();
   function confirmBox(title, message, onYes, label = 'Excluir') {
     modal({ title, message, saveLabel: label, danger: true, onSave: () => { onYes(); } });
   }
@@ -4212,7 +4261,7 @@
                 ${Array.isArray(ai.ganchos) && ai.ganchos.length ? `<h4>ganchos para repetir</h4><ul>${ai.ganchos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
                 ${ai.melhor_horario ? `<h4>melhor horário</h4><p>${esc(ai.melhor_horario)}</p>` : ''}
                 ${Array.isArray(ai.evitar) && ai.evitar.length ? `<h4>evite</h4><ul>${ai.evitar.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-                ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">+ ideia</button></div>`).join('')}` : ''}
+                ${Array.isArray(ai.proximas_ideias) && ai.proximas_ideias.length ? `<h4>próximas ideias</h4>${ai.proximas_ideias.map((x, i) => `<div class="ai-idea"><div class="ai-idea-top"><div><b>${esc(x.titulo || '')}</b><div class="muted" style="font-size:12.5px">${esc(FORMATS[ideaFormat(x.formato)] || x.formato || '')}${x.por_que ? ' · ' + esc(x.por_que) : ''}</div></div><button class="btn sm secondary" data-ai-idea="${i}">${x.roteiro ? '+ guardar com roteiro' : '+ ideia'}</button></div>${x.gancho ? `<div class="ai-hook">🎣 “${esc(x.gancho)}”</div>` : ''}${x.roteiro ? `<details class="ai-script"><summary>ver roteiro${x.legenda ? ' e legenda' : ''}</summary><div class="ai-script-body">${esc(x.roteiro)}</div>${x.legenda ? `<div class="eyebrow" style="margin-top:8px">legenda</div><div class="ai-script-body">${esc(x.legenda)}</div>` : ''}</details>` : ''}</div>`).join('')}` : ''}
                 <p class="muted" style="font-size:11.5px;margin-top:8px">Análise de ${new Date(B().analysis.at).toLocaleDateString('pt-BR')}</p>
               </div>` : `<p class="muted" style="margin:0">A Claude lê os resultados dos seus posts e diz o que postar mais, que ganchos repetir e o melhor horário. </p>`}
             </div>
@@ -4245,13 +4294,23 @@
         onDelete: isNew ? null : () => { B().goals = B().goals.filter((x) => x.id !== g.id); save(); render(); },
       });
     }
+    // a Claude devolve o formato em palavras; aqui vira um dos formatos do Bloom
+    function ideaFormat(f) {
+      const t = String(f || '').toLowerCase();
+      if (FORMATS[t]) return t;
+      if (t.includes('carrossel') || t.includes('carousel')) return 'carrossel';
+      if (t.includes('stor')) return 'stories';
+      if (t.includes('post') || t.includes('foto')) return 'post';
+      if (t.includes('live')) return 'live';
+      return 'reels';
+    }
     async function analyze() {
       const withData = B().posts.filter((p) => p.metrics);
       if (withData.length < 2) { toast('Anote os números de pelo menos 2 posts para a análise.'); return; }
       const sample = inClaude ? await window.claude.use('sample') : null;
       if (!sample && !inSupa) { toast('Entre no app Bloom para usar a análise da Claude.'); return; }
       const data = withData.map((p) => ({ titulo: p.title, rede: platOf(p).label, formato: FORMATS[p.format], pasta: folderOf(p).name, data: p.date, dia_semana: p.date ? DOW_LONG[dow(p.date)] : '', hora: p.time, gancho: p.hook, nota_0_100: scoreOf(p), minha_avaliacao: p.rating || null, o_que_funcionou: p.worked || '', ...p.metrics }));
-      const prompt = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Analise os resultados dos posts abaixo (JSON). A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).\n\nResponda SOMENTE com um objeto JSON neste formato:\n{"resumo": "2 a 3 frases", "fazer_mais": ["até 3 itens"], "ganchos": ["até 3 ganchos que funcionaram ou variações deles"], "melhor_horario": "uma frase", "evitar": ["até 2 itens"], "proximas_ideias": [{"titulo": "...", "formato": "...", "por_que": "..."}]}\n\nRegras: português do Brasil, tom carinhoso e direto, baseie-se apenas nos dados, 3 próximas ideias.\n\nPosts:\n${JSON.stringify(data)}`;
+      const prompt = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Analise os resultados dos posts abaixo (JSON). A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).\n\nResponda SOMENTE com um objeto JSON neste formato:\n{"resumo": "2 a 3 frases", "fazer_mais": ["até 3 itens"], "ganchos": ["até 3 ganchos que funcionaram ou variações deles"], "melhor_horario": "uma frase", "evitar": ["até 2 itens"], "proximas_ideias": [{"titulo": "...", "formato": "reels | carrossel | stories | post", "por_que": "...", "gancho": "primeira frase que prende nos 3 primeiros segundos", "roteiro": "reels/stories: 30 a 60 s em cenas, uma por linha (CENA 1 (o que aparece): fala); carrossel: SLIDE 1: ...; termine com chamada para ação", "legenda": "legenda pronta com chamada para ação e até 5 hashtags"}]}\n\nRegras: português do Brasil, tom carinhoso e direto, baseie-se apenas nos dados, 3 próximas ideias, roteiro na voz dela em primeira pessoa.\n\nPosts:\n${JSON.stringify(data)}`;
       busy = true; render();
       if (!sample) { // app Bloom: o servidor chama a Claude
         try {
@@ -4297,8 +4356,11 @@
     on(el, 'click', '[data-ai-idea]', (e, b) => {
       const x = B().analysis.data.proximas_ideias[Number(b.dataset.aiIdea)];
       if (!x) return;
-      B().posts.push({ id: uid(), title: x.titulo || 'Nova ideia', folderId: B().folders[0]?.id || '', platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: x.por_que || '', checklist: [], createdAt: today() });
-      save(); b.disabled = true; b.textContent = '✓ guardada'; toast('Ideia guardada no banco de ideias 💡');
+      const fmt = ideaFormat(x.formato);
+      const tags = String(x.legenda || '').match(/#[\p{L}\p{N}_]+/gu) || [];
+      B().posts.push({ id: uid(), title: x.titulo || 'Nova ideia', folderId: B().folders[0]?.id || '', platform: 'instagram', format: fmt, status: x.roteiro ? 'roteiro' : 'ideia', date: '', time: '', hook: x.gancho || '', script: x.roteiro || '', caption: String(x.legenda || '').replace(/(\s*#[\p{L}\p{N}_]+)+\s*$/u, '').trim(), hashtags: tags.join(' '), scene: '', look: '', duration: '', link: '', notes: x.por_que ? 'Sugestão da Claude: ' + x.por_que : '', checklist: [], createdAt: today() });
+      save(); b.disabled = true; b.textContent = '✓ guardada';
+      toast(x.roteiro ? (VIDEO_FORMATS.includes(fmt) ? 'Guardada com roteiro ✨ Já está na fila de Gravar.' : 'Guardada com o texto pronto ✨') : 'Ideia guardada no banco de ideias 💡');
     });
     bindPostActions(el);
     return { render };

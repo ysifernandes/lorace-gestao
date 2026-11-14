@@ -393,8 +393,15 @@ const AI_SCHEMA = {
     proximas_ideias: {
       type: 'array',
       items: {
-        type: 'object', additionalProperties: false, required: ['titulo', 'formato', 'por_que'],
-        properties: { titulo: { type: 'string' }, formato: { type: 'string' }, por_que: { type: 'string' } },
+        type: 'object', additionalProperties: false, required: ['titulo', 'formato', 'por_que', 'gancho', 'roteiro', 'legenda'],
+        properties: {
+          titulo: { type: 'string' },
+          formato: { type: 'string', enum: ['reels', 'carrossel', 'stories', 'post'] },
+          por_que: { type: 'string' },
+          gancho: { type: 'string' },
+          roteiro: { type: 'string' },
+          legenda: { type: 'string' },
+        },
       },
     },
   },
@@ -402,7 +409,11 @@ const AI_SCHEMA = {
 const AI_SYSTEM = `Você é uma estrategista de conteúdo para pequenas empreendedoras brasileiras. Você recebe os resultados dos posts de uma empreendedora (JSON) e devolve uma análise curta e prática, em português do Brasil, com tom acolhedor e direto.
 A "nota_0_100" compara o engajamento e as visualizações de cada post com a média da própria empreendedora (50 = na média).
 Baseie cada conclusão nos números recebidos; se houver poucos posts, diga que a conclusão é preliminar. Não invente números.
-Campos: "resumo" (2 a 3 frases), "fazer_mais" (até 3 itens), "ganchos" (até 3 ganchos ou começos que funcionaram, citando o post), "melhor_horario" (1 frase), "evitar" (até 2 itens), "proximas_ideias" (3 ideias de post com titulo, formato e por_que).`;
+Campos: "resumo" (2 a 3 frases), "fazer_mais" (até 3 itens), "ganchos" (até 3 ganchos ou começos que funcionaram, citando o post), "melhor_horario" (1 frase), "evitar" (até 2 itens), "proximas_ideias" (3 ideias de post, cada uma pronta para produzir):
+- "formato": reels, carrossel, stories ou post.
+- "gancho": a primeira frase falada ou escrita, que prende nos 3 primeiros segundos.
+- "roteiro": para reels e stories, um roteiro de 30 a 60 segundos dividido em cenas, cada linha no formato "CENA 1 (o que aparece): o que ela fala"; para carrossel, o texto de cada slide ("SLIDE 1: ..."); para post, o texto da arte. Termine com uma chamada para ação. Use a voz da empreendedora, em primeira pessoa, e frases curtas.
+- "legenda": legenda pronta para o Instagram, com 2 a 4 parágrafos curtos, chamada para ação e até 5 hashtags no final.`;
 // mantém só campos conhecidos e textos curtos: o que vai para a Claude é decidido aqui, não pelo app
 function cleanPosts(raw: unknown) {
   const keys = ['titulo', 'rede', 'formato', 'pasta', 'data', 'dia_semana', 'hora', 'gancho', 'nota_0_100', 'minha_avaliacao', 'o_que_funcionou', 'views', 'reach', 'likes', 'comments', 'saves', 'shares', 'follows', 'clicks', 'sales'];
