@@ -469,8 +469,8 @@
   .vb-rs { position: absolute; right: 0; bottom: 0; width: 30px; height: 30px; border-radius: 50%; background: #c0587a; border: 3px solid #fff; display: none; cursor: nwse-resize; touch-action: none; box-shadow: 0 2px 6px rgba(0,0,0,.35); transform: translate(45%, 45%) scale(var(--inv, 1)); }
   .vb-item.sel .vb-rs { display: block; }
   .vb-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-family: var(--f-hand); color: #5a2e35; font-size: 40px; pointer-events: none; padding: 0 20%; }
-  .stickers { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 8px; }
-  .stickers button { all: unset; cursor: pointer; aspect-ratio: 1; display: grid; place-items: center; font-size: 30px; border-radius: 14px; background: var(--surface-2); }
+  .stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .stickers button { all: unset; cursor: pointer; aspect-ratio: 1; display: grid; place-items: center; font-size: clamp(22px, 7vw, 30px); min-width: 0; overflow: hidden; border-radius: 14px; background: var(--surface-2); }
   .stickers button:hover { background: var(--accent); }
   .stickers button:focus-visible { outline: 2px solid var(--brand); }
   .page-hint { font-family: var(--f-mono); font-size: 11px; color: var(--bg-ink-soft); margin-top: 12px; line-height: 1.7; }
@@ -1106,6 +1106,10 @@
   .ai-script-body { white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin-top: 6px; padding: 10px; border-radius: 10px; background: var(--surface); overflow-wrap: anywhere; }
   .ai-write { background: linear-gradient(135deg, #b04a74, #9161b5); color: #fff; border: 0; }
   .ai-write[disabled] { opacity: .75; }
+  .md .ai-write { white-space: normal; text-align: center; justify-content: center; width: 100%; box-sizing: border-box; line-height: 1.25; }
+  .md { overflow-x: hidden; }
+  .md .field { min-width: 0; }
+  .md .field > input, .md .field > select, .md .field > textarea { max-width: 100%; box-sizing: border-box; }
   /* ---------- Previsão do tempo ---------- */
   .wx-chip { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 8px; padding: 6px 13px; border-radius: 99px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: 13px; }
   .wx-chip b { font-size: 15px; }
