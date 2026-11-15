@@ -1116,6 +1116,26 @@
   .ai-script-body { white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin-top: 6px; padding: 10px; border-radius: 10px; background: var(--surface); overflow-wrap: anywhere; }
   .ai-write { background: linear-gradient(135deg, #b04a74, #9161b5); color: #fff; border: 0; }
   .ai-write[disabled] { opacity: .75; }
+  /* ---------- Previsão do tempo ---------- */
+  .wx-chip { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 8px; padding: 6px 13px; border-radius: 99px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: 13px; }
+  .wx-chip b { font-size: 15px; }
+  .wx-chip .wx-ic { font-size: 17px; line-height: 1; }
+  .wx-chip .wx-mm { color: var(--ink-soft); font-family: var(--f-mono); font-size: 11.5px; }
+  .wx-chip .wx-rain { font-size: 12px; }
+  .wx-chip.off { color: var(--ink-soft); }
+  .wx-chip:focus-visible { outline: 2px solid var(--brand); }
+  .day-wx { font-family: var(--f-mono); font-size: 10px; line-height: 1.2; color: var(--ink-soft); display: flex; flex-direction: column; align-items: center; margin-top: 2px; }
+  .day-wx span { font-size: 13px; }
+  .day.sel .day-wx { color: inherit; opacity: .9; }
+  .wx-week { display: flex; flex-direction: column; }
+  .wx-row { display: grid; grid-template-columns: 74px 24px 1fr auto 34px 30px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 13.5px; }
+  .wx-row:last-child { border-bottom: 0; }
+  .wx-row .wx-d { font-family: var(--f-mono); font-size: 11.5px; }
+  .wx-row .wx-l { min-width: 0; line-height: 1.2; }
+  .wx-row .wx-r { font-size: 12px; color: var(--ink-soft); }
+  .wx-row b, .wx-row .muted { text-align: right; }
+  .wx-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; width: 100%; padding: 8px 10px; margin-top: 6px; border-radius: 10px; background: var(--accent-soft); }
+  .wx-opt .muted { font-size: 12px; }
 </style>
 </head>
 <body>
@@ -2139,6 +2159,124 @@
     return out;
   }
 
+  /* Previsão do tempo (Open-Meteo, grátis e sem chave). O lugar fica só neste aparelho, fora da nuvem do Bloom. */
+  const Weather = {
+    LOC: 'bloom_weather_loc', CACHE: 'bloom_weather_cache',
+    data: null, busy: false, error: false,
+    loc() { try { return JSON.parse(localStorage.getItem(this.LOC) || 'null'); } catch (e) { return null; } },
+    setLoc(l) { try { if (l) localStorage.setItem(this.LOC, JSON.stringify(l)); else localStorage.removeItem(this.LOC); localStorage.removeItem(this.CACHE); } catch (e) {} this.data = null; this.error = false; },
+    icon(code, night) {
+      if (code === 0) return night ? '🌙' : '☀️';
+      if (code <= 2) return night ? '☁️' : (code === 1 ? '🌤️' : '⛅');
+      if (code === 3) return '☁️';
+      if (code <= 48) return '🌫️';
+      if (code <= 57) return '🌦️';
+      if (code <= 67) return '🌧️';
+      if (code <= 77) return '❄️';
+      if (code <= 82) return '🌧️';
+      if (code <= 86) return '❄️';
+      return '⛈️';
+    },
+    label(code) {
+      if (code === 0) return 'céu limpo';
+      if (code <= 2) return 'poucas nuvens';
+      if (code === 3) return 'nublado';
+      if (code <= 48) return 'neblina';
+      if (code <= 57) return 'garoa';
+      if (code <= 67) return 'chuva';
+      if (code <= 77) return 'neve';
+      if (code <= 82) return 'pancadas de chuva';
+      if (code <= 86) return 'neve';
+      return 'tempestade';
+    },
+    day(date) { return this.data && this.data.days ? this.data.days[date] : null; },
+    async load(force) {
+      const l = this.loc();
+      if (!l || this.busy) return;
+      const key = `${l.lat},${l.lon}`;
+      if (!force) {
+        try {
+          const c = JSON.parse(localStorage.getItem(this.CACHE) || 'null');
+          if (c && c.key === key && c.day === today()) { this.data = c.data; if (Date.now() - c.at < 30 * 60000) return; }
+        } catch (e) {}
+      }
+      this.busy = true;
+      try {
+        const u = `https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=8`;
+        const r = await fetch(u);
+        if (!r.ok) throw new Error('http ' + r.status);
+        const j = await r.json();
+        const days = {};
+        (j.daily.time || []).forEach((d, i) => { days[d] = { code: j.daily.weather_code[i], max: Math.round(j.daily.temperature_2m_max[i]), min: Math.round(j.daily.temperature_2m_min[i]), rain: j.daily.precipitation_probability_max ? j.daily.precipitation_probability_max[i] : null }; });
+        this.data = { now: { temp: Math.round(j.current.temperature_2m), code: j.current.weather_code, night: j.current.is_day === 0 }, days };
+        this.error = false;
+        try { localStorage.setItem(this.CACHE, JSON.stringify({ key, at: Date.now(), day: today(), data: this.data })); } catch (e) {}
+      } catch (e) { this.error = true; }
+      this.busy = false;
+      if (current === 'hoje' || current === 'agenda') rerender();
+    },
+    async search(name) {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=5&language=pt`);
+      if (!r.ok) throw new Error('http');
+      return ((await r.json()).results || []).map((x) => ({ lat: Math.round(x.latitude * 100) / 100, lon: Math.round(x.longitude * 100) / 100, name: x.name, sub: [x.admin1, x.country].filter(Boolean).join(', ') }));
+    },
+    locate() {
+      return new Promise((res, rej) => {
+        if (!navigator.geolocation) { rej(new Error('nogeo')); return; }
+        // 2 casas decimais = posição aproximada (cerca de 1 km), suficiente para a previsão
+        navigator.geolocation.getCurrentPosition((pos) => res({ lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100, name: 'minha localização', geo: true }), (e) => rej(e), { timeout: 12000, maximumAge: 3600000 });
+      });
+    },
+    chip() {
+      if (inClaude) return '';
+      const l = this.loc();
+      if (!l) return '<button type="button" class="wx-chip off" data-wx>🌤️ ver a previsão do tempo</button>';
+      const d = this.data, t = d && d.days[today()];
+      if (!d) return `<button type="button" class="wx-chip off" data-wx>${this.error ? '🌥️ previsão indisponível agora' : '🌤️ buscando a previsão…'}</button>`;
+      return `<button type="button" class="wx-chip" data-wx aria-label="Previsão do tempo: ${d.now.temp} graus, ${this.label(d.now.code)}"><span class="wx-ic" aria-hidden="true">${this.icon(d.now.code, d.now.night)}</span><b>${d.now.temp}°</b><span>${this.label(d.now.code)}</span>${t ? `<span class="wx-mm">↑${t.max}° ↓${t.min}°</span>${t.rain != null && t.rain >= 20 ? `<span class="wx-rain">☔ ${t.rain}%</span>` : ''}` : ''}</button>`;
+    },
+    dayIcon(date) { const x = this.day(date); return x ? `<div class="day-wx" title="${this.label(x.code)}, máx ${x.max}°${x.rain != null ? ', chuva ' + x.rain + '%' : ''}"><span aria-hidden="true">${this.icon(x.code)}</span>${x.max}°</div>` : ''; },
+    modal() {
+      const l = this.loc(), d = this.data;
+      const week = d ? Object.entries(d.days).slice(0, 7).map(([date, x]) => `<div class="wx-row"><span class="wx-d">${date === today() ? 'hoje' : DOW[dow(date)]} ${fmtShort(date)}</span><span class="wx-ic" aria-hidden="true">${this.icon(x.code)}</span><span class="wx-l">${this.label(x.code)}</span><span class="wx-r">${x.rain != null ? '☔ ' + x.rain + '%' : ''}</span><b>${x.max}°</b><span class="muted">${x.min}°</span></div>`).join('') : '';
+      modal({
+        title: 'previsão do tempo',
+        extraHTML: `
+          ${l ? `<p class="muted" style="margin:0 0 8px">📍 ${esc(l.name)}${l.sub ? ' · ' + esc(l.sub) : ''}</p>` : '<p style="margin:0 0 10px">Escolha de onde quer ver a previsão. O lugar fica guardado só neste aparelho.</p>'}
+          ${week ? `<div class="wx-week">${week}</div>` : (l && this.error ? '<p class="muted">Não consegui buscar a previsão agora. Tente de novo em instantes.</p>' : '')}
+          <div class="settings-block">
+            <div class="eyebrow" style="margin-bottom:6px">${l ? 'trocar o lugar' : 'lugar'}</div>
+            <button type="button" class="btn sm" id="wx-geo">📍 usar minha localização</button>
+            <div class="quick-add" style="margin-top:8px"><input class="input" id="wx-city" placeholder="ou digite a cidade…" aria-label="Cidade" autocomplete="off"><button type="button" class="btn sm secondary" id="wx-find">Buscar</button></div>
+            <div id="wx-res"></div>
+            ${l ? '<button type="button" class="btn sm ghost" id="wx-off" style="margin-top:8px">não mostrar a previsão</button>' : ''}
+          </div>
+          <p class="muted" style="font-size:11.5px;margin:8px 0 0">Previsão do Open-Meteo. Só a posição aproximada é enviada para buscar o tempo.</p>`,
+        cancelLabel: 'Fechar',
+        onOpen: (form) => {
+          const use = (loc) => { this.setLoc(loc); dlg.close(); rerender(); this.load(true).then(() => { if (this.data) toast(`Previsão ativada para ${loc.name} 🌤️`); else toast('Não consegui buscar a previsão agora.'); }); };
+          $('#wx-geo', form).addEventListener('click', async (e) => {
+            const b = e.currentTarget; b.disabled = true; b.textContent = '📍 localizando…';
+            try { use(await this.locate()); }
+            catch (err) { b.disabled = false; b.textContent = '📍 usar minha localização'; toast(err && err.code === 1 ? 'A localização está bloqueada para o Bloom. Libere nos ajustes ou digite a cidade.' : 'Não consegui pegar a localização. Digite a cidade.'); }
+          });
+          const find = async () => {
+            const q = $('#wx-city', form).value.trim(); if (q.length < 2) return;
+            const box = $('#wx-res', form); box.innerHTML = '<p class="muted" style="margin:8px 0 0">buscando…</p>';
+            try {
+              const list = await this.search(q);
+              box.innerHTML = list.length ? list.map((c, i) => `<button type="button" class="wx-opt" data-wx-i="${i}"><b>${esc(c.name)}</b><span class="muted">${esc(c.sub)}</span></button>`).join('') : '<p class="muted" style="margin:8px 0 0">Não achei essa cidade. Confira o nome.</p>';
+              box.onclick = (ev) => { const o = ev.target.closest('[data-wx-i]'); if (o) use(list[Number(o.dataset.wxI)]); };
+            } catch (err) { box.innerHTML = '<p class="muted" style="margin:8px 0 0">Não consegui buscar agora. Tente de novo.</p>'; }
+          };
+          $('#wx-find', form).addEventListener('click', find);
+          $('#wx-city', form).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); find(); } });
+          const off = $('#wx-off', form); if (off) off.addEventListener('click', () => { this.setLoc(null); dlg.close(); rerender(); toast('Previsão desativada.'); });
+        },
+      });
+    },
+  };
+
   /* Contagem regressiva: aniversários e datas especiais, Natal e tarefas de prioridade alta */
   const SP_EMOJI = [['🎂', 'aniversário'], ['🎉', 'festa'], ['💍', 'casamento / bodas'], ['✈️', 'viagem'], ['🎓', 'formatura / curso'], ['🚀', 'lançamento'], ['💐', 'homenagem'], ['🏆', 'conquista'], ['⭐', 'especial']];
   const specials = () => (S.special = Array.isArray(S.special) ? S.special : []);
@@ -2443,6 +2581,7 @@
             <div class="hero-date">${esc(fmtLong(t))}</div>
             <div class="clock" id="clock">${nowHM()}</div>
             <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
+            ${Weather.chip()}
             ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${h.emoji} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
           </div>
           <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
@@ -2498,6 +2637,7 @@
     el.addEventListener('input', (e) => { if (e.target.id === 'focus-in') { S.focus[today()] = e.target.value; save(); } });
     on(el, 'click', '[data-mood]', (e, b) => { const t = today(); S.mood[t] = S.mood[t] === b.dataset.mood ? null : b.dataset.mood; save(); render(); });
     on(el, 'click', '[data-go]', (e, b) => go(b.dataset.go));
+    on(el, 'click', '[data-wx]', () => Weather.modal());
     bindCountdown(el);
     on(el, 'submit', '#quick-task', (e, f) => {
       e.preventDefault();
@@ -2552,7 +2692,7 @@
               <button class="round-btn" data-week="7" aria-label="Próxima semana">${ICON.right}</button>
             </div>
             <div class="week">
-              ${week.map((d) => { const es = itemsOn(d).filter((x) => !isDoneOn(x, d)).slice(0, 4); const hs = holidaysOn(d); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''} ${isHoliday(d) ? 'hol' : ''} ${isImportant(d) ? 'imp' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${hs.length ? ', ' + esc(hs.map((h) => h.name).join(', ')) : ''}${isImportant(d) ? ', dia importante' : ''}" title="${esc(hs.map((h) => h.name).join(' · '))}">${hs.length ? `<span class="day-hol" aria-hidden="true">${hs[0].emoji}</span>` : ''}${isImportant(d) ? '<span class="day-imp" aria-hidden="true">★</span>' : ''}<div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div><div class="dots">${es.map((ev) => `<i style="--c:${listById(ev.listId).color}"></i>`).join('')}</div></button>`; }).join('')}
+              ${week.map((d) => { const es = itemsOn(d).filter((x) => !isDoneOn(x, d)).slice(0, 4); const hs = holidaysOn(d); return `<button class="day ${d === sel ? 'sel' : ''} ${d === t ? 'today' : ''} ${isHoliday(d) ? 'hol' : ''} ${isImportant(d) ? 'imp' : ''}" data-goto="${d}" aria-label="${fmtLong(d)}${hs.length ? ', ' + esc(hs.map((h) => h.name).join(', ')) : ''}${isImportant(d) ? ', dia importante' : ''}" title="${esc(hs.map((h) => h.name).join(' · '))}">${hs.length ? `<span class="day-hol" aria-hidden="true">${hs[0].emoji}</span>` : ''}${isImportant(d) ? '<span class="day-imp" aria-hidden="true">★</span>' : ''}<div class="dw">${DOW[dow(d)]}</div><div class="dn">${parseISO(d).getDate()}</div>${Weather.dayIcon(d)}<div class="dots">${es.map((ev) => `<i style="--c:${listById(ev.listId).color}"></i>`).join('')}</div></button>`; }).join('')}
             </div>
             <div class="card notebook">
               <div class="card-head"><h3 class="day-title"><em>${sel === t ? 'hoje' : DOW_LONG[dow(sel)]}</em>${parseISO(sel).getDate()} de ${MONTHS[sd.getMonth()]}</h3><button class="btn sm secondary" data-new-ev>+ adicionar</button></div>
@@ -4939,6 +5079,9 @@
   go((location.hash || '#hoje').slice(1));
   window.addEventListener('hashchange', () => { const p = location.hash.slice(1); if (p && p !== current && PAGES[p]) go(p); });
   Reminders.prune();
+  Weather.load();
+  setInterval(() => { if (!document.hidden) Weather.load(); }, 30 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) Weather.load(); });
   Reminders.tick();
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });
