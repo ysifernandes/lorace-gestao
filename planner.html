@@ -1130,6 +1130,34 @@
   .wx-row b, .wx-row .muted { text-align: right; }
   .wx-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; width: 100%; padding: 8px 10px; margin-top: 6px; border-radius: 10px; background: var(--accent-soft); }
   .wx-opt .muted { font-size: 12px; }
+  /* ---------- Assistente de conteúdo ---------- */
+  .as-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .as-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .as-f > span { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .as-sel { display: flex; gap: 4px; align-items: center; }
+  .as-sel select { flex: 1; min-width: 0; }
+  .as-talk { display: flex; gap: 8px; align-items: flex-end; }
+  .as-talk textarea { flex: 1; min-width: 0; }
+  .as-go { width: 100%; justify-content: center; margin-top: 10px; white-space: normal; text-align: center; }
+  .as-plan { margin-top: 18px; scroll-margin-top: 12px; }
+  .as-hook { font-size: 17px; font-weight: 600; line-height: 1.35; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); }
+  .as-hook .eyebrow, .as-lesson .eyebrow { display: block; margin-bottom: 4px; font-weight: 400; }
+  .as-idea { margin: 10px 0 0; color: var(--ink-soft); }
+  .as-ask { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--butter) 70%, var(--surface)); font-size: 14px; }
+  .as-ask ul, .as-box ul { margin: 6px 0; padding-left: 20px; }
+  .as-ask .muted { font-size: 12px; }
+  .as-box { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px dashed var(--line); font-size: 14px; }
+  .as-box summary { cursor: pointer; font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .as-box p { margin: 8px 0 0; overflow-wrap: anywhere; }
+  .as-scene { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1.5px dashed var(--line); }
+  .as-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .as-sb { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .as-what { font-weight: 600; overflow-wrap: anywhere; }
+  .as-dur { font-family: var(--f-mono); font-size: 11px; font-weight: 400; color: var(--ink-soft); margin-left: 8px; }
+  .as-line { display: flex; gap: 8px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  .as-line > span:first-child { flex: none; width: 20px; }
+  .as-say { font-size: 15px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+  .as-lesson { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #5f8a52 14%, var(--surface)); font-size: 14px; line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -4046,6 +4074,152 @@
   });
 
   /* CONTEÚDO */
+  /* ASSISTENTE DE CONTEÚDO: ela conta a história (falando ou escrevendo) e recebe o plano de gravação */
+  const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const Assist = {
+    busy: false, draft: '', adj: '',
+    st() {
+      const a = (B().assist = B().assist || {});
+      a.formats = a.formats || []; a.brands = a.brands || []; a.plans = a.plans || []; a.sel = a.sel || { format: '', brand: '', tipo: 'reels' };
+      return a;
+    },
+    cur() { const a = this.st(); return a.plans.find((x) => x.id === a.cur) || null; },
+    html() {
+      const a = this.st(), cur = this.cur();
+      const opt = (list, selId, none) => `<option value="">${none}</option>${list.map((x) => `<option value="${x.id}" ${x.id === selId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}`;
+      const form = `<div class="card taped as-card">
+          <div class="card-head"><h3>assistente de conteúdo</h3>${a.plans.length ? `<button class="btn sm ghost" data-as-hist>meus planos (${a.plans.length})</button>` : ''}</div>
+          <p class="muted" style="margin:0 0 10px">Conte a história ou a ideia do seu jeito, falando ou escrevendo. Eu monto o roteiro, as cenas, o ângulo de cada take e a legenda.</p>
+          <div class="as-row">
+            <label class="as-f"><span>Marca / perfil</span><div class="as-sel"><select class="input" data-as-brand>${opt(a.brands, a.sel.brand, 'sem marca definida')}</select><button type="button" class="icon-btn" data-as-edit="brand" aria-label="Adicionar ou editar marca">${ICON.edit}</button></div></label>
+            <label class="as-f"><span>Formato do vídeo</span><div class="as-sel"><select class="input" data-as-format>${opt(a.formats, a.sel.format, 'história livre')}</select><button type="button" class="icon-btn" data-as-edit="format" aria-label="Adicionar ou editar formato">${ICON.edit}</button></div></label>
+            <label class="as-f"><span>Tipo</span><select class="input" data-as-tipo>${['reels', 'stories', 'carrossel', 'post'].map((k) => `<option value="${k}" ${a.sel.tipo === k ? 'selected' : ''}>${FORMATS[k]}</option>`).join('')}</select></label>
+          </div>
+          <form class="as-talk" data-as-form>
+            <textarea class="input" name="relato" rows="5" placeholder="Ex: hoje uma cliente pediu 200 brindes para sexta, o teste de impressão deu errado, eu refiz tudo e consegui entregar…" aria-label="Conte a história ou a ideia">${esc(this.draft)}</textarea>
+            <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
+          </form>
+          <p class="muted qa-hint">🎤 Toque no microfone e fale. Quando você fizer uma pausa ele para; toque de novo para continuar de onde parou.</p>
+          <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ montando o plano… (uns 30 segundos)' : '✨ montar meu vídeo'}</button>
+          ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: toque no lápis ao lado de “Formato do vídeo” e explique o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
+        </div>`;
+      return form + (cur ? this.planHTML(cur) : '');
+    },
+    planHTML(rec) {
+      const pl = rec.plan, total = (pl.cenas || []).reduce((n, c) => n + (Number(c.duracao_seg) || 0), 0);
+      const li = (arr) => arr.map((x) => `<li>${esc(x)}</li>`).join('');
+      return `<div class="card as-plan" id="as-plan">
+          <div class="card-head"><h3>${esc(pl.titulo || 'seu vídeo')}</h3><span class="muted">${esc(FORMATS[pl.formato_video] || '')}${total ? ` · ~${total}s` : ''}</span></div>
+          ${pl.gancho ? `<div class="as-hook"><span class="eyebrow">gancho</span>“${esc(pl.gancho)}”</div>` : ''}
+          ${pl.ideia_central ? `<p class="as-idea">${esc(pl.ideia_central)}</p>` : ''}
+          ${pl.perguntas && pl.perguntas.length ? `<div class="as-ask"><b>Para ficar melhor, me responda:</b><ul>${li(pl.perguntas)}</ul><span class="muted">Responda no campo “ajustar” lá embaixo.</span></div>` : ''}
+          ${pl.sobre_o_formato ? `<details class="as-box" open><summary>como usei o formato</summary><p>${esc(pl.sobre_o_formato)}</p></details>` : ''}
+          <div class="eyebrow" style="margin:14px 0 6px">cenas, na ordem</div>
+          ${(pl.cenas || []).map((c, i) => `<div class="as-scene">
+              <div class="as-n">${i + 1}</div>
+              <div class="as-sb">
+                <div class="as-what">${esc(c.o_que_gravar)}${c.duracao_seg ? `<span class="as-dur">${c.duracao_seg}s</span>` : ''}</div>
+                ${c.enquadramento ? `<div class="as-line"><span aria-hidden="true">📐</span><span><b>Como gravar:</b> ${esc(c.enquadramento)}</span></div>` : ''}
+                ${c.fala ? `<div class="as-line as-say"><span aria-hidden="true">🗣️</span><span>“${esc(c.fala)}”</span></div>` : ''}
+                ${c.texto_na_tela ? `<div class="as-line"><span aria-hidden="true">🔤</span><span><b>Na tela:</b> ${esc(c.texto_na_tela)}</span></div>` : ''}
+                ${c.dica ? `<div class="as-line muted"><span aria-hidden="true">💡</span><span>${esc(c.dica)}</span></div>` : ''}
+              </div>
+            </div>`).join('')}
+          ${pl.takes_de_apoio && pl.takes_de_apoio.length ? `<details class="as-box" open><summary>takes de apoio (imagens extras)</summary><ul>${li(pl.takes_de_apoio)}</ul></details>` : ''}
+          ${pl.preparar && pl.preparar.length ? `<details class="as-box"><summary>separar antes de gravar</summary><ul>${li(pl.preparar)}</ul></details>` : ''}
+          ${pl.legenda ? `<details class="as-box"><summary>legenda</summary><p style="white-space:pre-wrap">${esc(pl.legenda)}</p></details>` : ''}
+          ${pl.licao ? `<div class="as-lesson"><span class="eyebrow">para você aprender</span>${esc(pl.licao)}</div>` : ''}
+          <div class="row" style="margin-top:14px">
+            <button class="btn" data-as-save ${rec.postId && B().posts.find((x) => x.id === rec.postId) ? 'disabled' : ''}>${rec.postId && B().posts.find((x) => x.id === rec.postId) ? '✓ guardado no conteúdo' : '+ guardar no conteúdo'}</button>
+            <button class="btn sm ghost" data-as-new>começar outro</button>
+          </div>
+          <div class="settings-block">
+            <div class="eyebrow" style="margin-bottom:6px">ajustar</div>
+            <form class="as-talk" data-as-adj>
+              <textarea class="input" name="ajuste" rows="2" placeholder="Ex: deixa mais curto · não quero aparecer, só as mãos · responde: levou 2 dias" aria-label="Pedir um ajuste">${esc(this.adj)}</textarea>
+              <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
+            </form>
+            <button class="btn sm ai-write" data-as-adjgo ${this.busy ? 'disabled' : ''} style="margin-top:8px">${this.busy ? '✨ ajustando…' : '✨ ajustar o plano'}</button>
+          </div>
+        </div>`;
+    },
+    payload() {
+      const a = this.st();
+      const f = a.formats.find((x) => x.id === a.sel.format), b = a.brands.find((x) => x.id === a.sel.brand);
+      return { tipo: a.sel.tipo, formato: f ? { nome: f.name, descricao: f.desc } : { nome: '', descricao: '' }, marca: b ? { nome: b.name, descricao: b.desc } : { nome: '', descricao: '' } };
+    },
+    async run(relato, prev, ajuste) {
+      if (!inSupa) { toast('O assistente funciona no app Bloom.'); return; }
+      this.busy = true; rerender();
+      try {
+        const j = await Social.call('assist', Object.assign(this.payload(), { relato }, prev ? { anterior: prev.plan, ajuste } : {}));
+        const a = this.st();
+        if (prev) { prev.plan = j.data; prev.at = Date.now(); (prev.adjusts = prev.adjusts || []).push(ajuste); this.adj = ''; }
+        else { const rec = { id: uid(), at: Date.now(), relato, plan: j.data, sel: Object.assign({}, a.sel) }; a.plans.unshift(rec); a.plans = a.plans.slice(0, 15); a.cur = rec.id; this.draft = ''; }
+        save(); toast(prev ? 'Plano ajustado ✨' : 'Seu plano de gravação está pronto ✨');
+      } catch (e) { toast(e.code === 'no_story' ? 'Conte um pouco mais da história ou da ideia.' : aiErr(e)); }
+      this.busy = false; rerender();
+      const el = document.getElementById('as-plan'); if (el && !prev) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    toPost(rec) {
+      const pl = rec.plan, tg = splitTags(pl.legenda);
+      const script = (pl.cenas || []).map((c, i) => `CENA ${i + 1} · ${c.o_que_gravar}\n📐 ${c.enquadramento}${c.fala ? `\n🗣️ ${c.fala}` : ''}${c.texto_na_tela ? `\n🔤 ${c.texto_na_tela}` : ''}`).join('\n\n');
+      const notes = [pl.takes_de_apoio && pl.takes_de_apoio.length ? 'Takes de apoio: ' + pl.takes_de_apoio.join(' · ') : '', pl.preparar && pl.preparar.length ? 'Separar: ' + pl.preparar.join(' · ') : ''].filter(Boolean).join('\n');
+      const total = (pl.cenas || []).reduce((n, c) => n + (Number(c.duracao_seg) || 0), 0);
+      const post = { id: uid(), title: pl.titulo || 'Vídeo do assistente', folderId: B().folders[0]?.id || '', platform: 'instagram', format: FORMATS[pl.formato_video] ? pl.formato_video : 'reels', status: 'roteiro', date: '', time: '', hook: pl.gancho || '', script, caption: tg.caption, hashtags: tg.hashtags, scene: '', look: '', duration: total ? total + 's' : '', link: '', notes, checklist: [], createdAt: today() };
+      B().posts.push(post); rec.postId = post.id; save(); rerender();
+      toast(VIDEO_FORMATS.includes(post.format) ? 'Guardado ✨ Já está na fila de Gravar, com o roteiro.' : 'Guardado no conteúdo ✨');
+    },
+    editList(kind) {
+      const a = this.st(), list = kind === 'format' ? a.formats : a.brands, selKey = kind === 'format' ? 'format' : 'brand';
+      const it = list.find((x) => x.id === a.sel[selKey]);
+      const L = kind === 'format'
+        ? { t: it ? 'editar formato' : 'novo formato de vídeo', n: 'Nome do formato', np: 'Ex: o nome do método que você está estudando', d: 'Como esse formato funciona', dp: 'Explique com as suas palavras ou cole as regras: quais são as partes, em que ordem, o que não pode faltar…' }
+        : { t: it ? 'editar marca' : 'nova marca / perfil', n: 'Nome', np: 'Ex: nome da loja ou do perfil', d: 'Sobre a marca', dp: 'O que você vende, para quem, o seu jeito de falar, o que não combina com a marca…' };
+      modal({
+        title: L.t,
+        message: it ? '' : (kind === 'format' ? 'Explique uma vez e eu sigo essas regras em todos os vídeos desse formato.' : 'Assim os roteiros saem com a cara da marca.'),
+        fields: [
+          { name: 'name', label: L.n, value: it ? it.name : '', required: true, full: true, placeholder: L.np },
+          { name: 'desc', label: L.d, type: 'textarea', value: it ? it.desc : '', full: true, rows: 7, placeholder: L.dp },
+        ],
+        extraHTML: it ? '<button type="button" class="btn sm secondary" id="as-add-new" style="margin-bottom:8px">+ criar outro em vez de editar este</button>' : '',
+        onOpen: (form) => { const b = $('#as-add-new', form); if (b) b.addEventListener('click', () => { a.sel[selKey] = ''; dlg.close(); setTimeout(() => this.editList(kind), 50); }); },
+        onSave: (v) => {
+          const d = { name: v.name.trim(), desc: (v.desc || '').trim() };
+          if (it) Object.assign(it, d); else { const n = Object.assign({ id: uid() }, d); list.push(n); a.sel[selKey] = n.id; }
+          save(); rerender(); toast('Salvo. Vou usar nos próximos vídeos ✨');
+        },
+        onDelete: it ? () => { const i = list.indexOf(it); if (i >= 0) list.splice(i, 1); a.sel[selKey] = ''; save(); rerender(); } : null,
+      });
+    },
+    history() {
+      const a = this.st();
+      modal({
+        title: 'meus planos',
+        extraHTML: `<div class="ig-pick">${a.plans.map((r) => `<button type="button" class="ig-opt ${r.id === a.cur ? 'on' : ''}" data-as-open="${r.id}"><span class="ig-t"><b>${esc(r.plan.titulo || 'vídeo')}</b><span class="muted">${new Date(r.at).toLocaleDateString('pt-BR')} · ${esc((r.relato || '').slice(0, 60))}…</span></span></button>`).join('')}</div>`,
+        cancelLabel: 'Fechar',
+        onOpen: (form) => form.addEventListener('click', (e) => { const b = e.target.closest('[data-as-open]'); if (!b) return; a.cur = b.dataset.asOpen; save(); dlg.close(); rerender(); }),
+      });
+    },
+    bind(el) {
+      const keep = () => { const t = $('[data-as-form] textarea', el); if (t) this.draft = t.value; const j = $('[data-as-adj] textarea', el); if (j) this.adj = j.value; };
+      el.addEventListener('input', (e) => { if (e.target.closest('[data-as-form], [data-as-adj]')) keep(); });
+      el.addEventListener('change', (e) => {
+        const a = this.st(), t = e.target;
+        if (t.matches('[data-as-brand]')) a.sel.brand = t.value; else if (t.matches('[data-as-format]')) a.sel.format = t.value; else if (t.matches('[data-as-tipo]')) a.sel.tipo = t.value; else return;
+        keep(); save();
+      });
+      el.addEventListener('submit', (e) => { if (e.target.closest('[data-as-form], [data-as-adj]')) e.preventDefault(); });
+      on(el, 'click', '[data-as-edit]', (e, b) => { keep(); this.editList(b.dataset.asEdit); });
+      on(el, 'click', '[data-as-hist]', () => { keep(); this.history(); });
+      on(el, 'click', '[data-as-go]', () => { keep(); if (this.busy) return; if (this.draft.trim().length < 15) { toast('Conte a história ou a ideia primeiro (pode ser falando 🎤).'); return; } this.run(this.draft.trim()); });
+      on(el, 'click', '[data-as-adjgo]', () => { keep(); const c = this.cur(); if (this.busy || !c) return; if (this.adj.trim().length < 3) { toast('Escreva ou fale o que você quer mudar.'); return; } this.run(c.relato, c, this.adj.trim()); });
+      on(el, 'click', '[data-as-save]', () => { const c = this.cur(); if (c) this.toPost(c); });
+      on(el, 'click', '[data-as-new]', () => { this.st().cur = ''; this.draft = ''; this.adj = ''; save(); rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    },
+  };
+
   PAGES.conteudo = (() => {
     const el = $('#pg-conteudo');
     let month = today().slice(0, 7);
@@ -4095,6 +4269,8 @@
             ${kanOpen[k] && !pub && ps.length > 5 ? `<button class="kmore" data-kmore="${k}">mostrar menos</button>` : ''}
             ${pub ? '' : `<button class="kadd" data-new-post-status="${k}">+ adicionar</button>`}
           </div>`; }).join('')}</div>`;
+      } else if (tab === 'assist') {
+        body = Assist.html();
       } else {
         const ideas = posts.filter((p) => p.status === 'ideia');
         body = `<div class="card taped t-left">
@@ -4110,15 +4286,15 @@
       }
       el.innerHTML = `
         <div class="page-head">
-          <div><h1>conteúdo</h1><div class="sub">calendário · produção · <b>ideias</b></div></div>
+          <div><h1>conteúdo</h1><div class="sub">calendário · produção · ideias · <b>assistente</b></div></div>
           <button class="btn" data-new-post>+ novo conteúdo</button>
         </div>
         ${exampleNote()}
         <div class="cont-bar">
-          <div class="tabs" role="tablist">${[['cal', '📅 Calendário'], ['kanban', '🎞️ Produção'], ['ideias', '💡 Ideias']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-ctab="${k}" role="tab" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+          <div class="tabs" role="tablist">${[['cal', '📅 Calendário'], ['kanban', '🎞️ Produção'], ['ideias', '💡 Ideias'], ['assist', '✨ Assistente']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-ctab="${k}" role="tab" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
           ${f !== 'all' ? '<div class="row" style="gap:6px"><button class="btn sm secondary" data-folder-map>🧠 mapa de ideias</button><button class="btn sm paper" data-edit-folder>editar pasta</button></div>' : ''}
         </div>
-        <div class="chips scroll" style="margin-bottom:20px">
+        <div class="chips scroll" style="margin-bottom:20px;${tab === 'assist' ? 'display:none' : ''}">
           <button class="chip ${f === 'all' ? 'on' : ''}" data-cf="all">Todas as pastas</button>
           ${B().folders.map((x) => `<button class="chip ${f === x.id ? 'on' : ''}" data-cf="${x.id}"><span aria-hidden="true">${x.emoji}</span>${esc(x.name)} <span class="count">${count(x.id)}</span></button>`).join('')}
           <button class="chip" data-new-folder>+ nova pasta</button>
@@ -4126,6 +4302,7 @@
         ${body}`;
     }
     on(el, 'click', '[data-ctab]', (e, b) => { S.ui.contTab = b.dataset.ctab; save(); render(); });
+    Assist.bind(el);
     on(el, 'click', '[data-cf]', (e, b) => { S.ui.contFolder = b.dataset.cf; save(); render(); });
     on(el, 'click', '[data-new-folder]', () => folderModal());
     on(el, 'click', '[data-edit-folder]', () => folderModal(B().folders.find((x) => x.id === S.ui.contFolder)));

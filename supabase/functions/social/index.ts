@@ -9,6 +9,7 @@
 //   POST /choices / /choose   { ext_id }                             (usuária logada: escolher a conta do Instagram)
 //   POST /analyze             { posts }                              (usuária logada: análise dos resultados pela Claude)
 //   POST /script              { titulo, formato, notas }             (usuária logada: gancho, roteiro e legenda de uma ideia)
+//   POST /assist              { relato, formato, marca, tipo, anterior, ajuste } (usuária logada: plano de gravação a partir de um relato)
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -39,7 +40,7 @@ const TT_KEY = Deno.env.get('TIKTOK_CLIENT_KEY') ?? '';
 const TT_SECRET = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? '';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
-const AI_PER_DAY = 30; // pedidos à Claude por usuária por dia (análises + roteiros)
+const AI_PER_DAY = 40; // pedidos à Claude por usuária por dia (análises + roteiros)
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://bloom-planner-nine.vercel.app';
@@ -479,6 +480,80 @@ async function writeScript(userId: string, body: any) {
   const system = `Você é roteirista de conteúdo para pequenas empreendedoras brasileiras no Instagram e no TikTok. Escreva em português do Brasil, com tom acolhedor e direto. Use só o que a ideia diz; não invente dados, preços ou promessas sobre o negócio dela.\n${SCRIPT_RULES}`;
   return askClaude(system, `Ideia de conteúdo (JSON):\n${JSON.stringify(ideia)}`, SCRIPT_SCHEMA);
 }
+/* Assistente de conteúdo: transforma um relato (falado ou escrito) num plano de gravação, cena por cena */
+const ASSIST_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['titulo', 'formato_video', 'gancho', 'ideia_central', 'sobre_o_formato', 'cenas', 'takes_de_apoio', 'preparar', 'legenda', 'licao', 'perguntas'],
+  properties: {
+    titulo: { type: 'string' },
+    formato_video: { type: 'string', enum: ['reels', 'stories', 'carrossel', 'post'] },
+    gancho: { type: 'string' },
+    ideia_central: { type: 'string' },
+    sobre_o_formato: { type: 'string' },
+    cenas: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        required: ['o_que_gravar', 'enquadramento', 'fala', 'texto_na_tela', 'duracao_seg', 'dica'],
+        properties: {
+          o_que_gravar: { type: 'string' }, enquadramento: { type: 'string' }, fala: { type: 'string' },
+          texto_na_tela: { type: 'string' }, duracao_seg: { type: 'integer' }, dica: { type: 'string' },
+        },
+      },
+    },
+    takes_de_apoio: { type: 'array', items: { type: 'string' } },
+    preparar: { type: 'array', items: { type: 'string' } },
+    legenda: { type: 'string' },
+    licao: { type: 'string' },
+    perguntas: { type: 'array', items: { type: 'string' } },
+  },
+};
+const ASSIST_SYSTEM = `Você é a diretora de conteúdo e professora de uma pequena empreendedora brasileira. Ela te conta, falando do jeito dela, uma história do dia ou uma ideia de vídeo. Você devolve um plano de gravação que ela consegue seguir sozinha com o celular, e ensina o porquê de cada escolha, para ela aprender o formato e um dia não precisar mais de você.
+
+Como trabalhar:
+- Use a história e os detalhes que ela contou. Não invente fatos, clientes, preços, números ou promessas sobre o negócio. Se faltar um detalhe importante, escreva a cena com um espaço claro para ela completar ("[diga aqui quanto tempo levou]") e pergunte em "perguntas".
+- O texto dela pode vir de ditado por voz: ignore repetições, erros de transcrição e nomes escritos errado; entenda a intenção.
+- Formato: se ela explicou como o formato funciona, siga essas regras à risca e mostre em "sobre_o_formato" como cada parte da história entrou em cada parte do formato. Se veio só o nome do formato, sem explicação, e você não tem certeza do que ele é, NÃO finja que conhece: diga isso em "sobre_o_formato", monte o vídeo com uma estrutura de história (situação, problema, virada, resultado, convite) e peça em "perguntas" que ela explique o formato com as palavras dela.
+- Marca: respeite o que ela descreveu sobre a marca, o produto e o público.
+- Escreva em português do Brasil, na voz dela, em primeira pessoa, com frases curtas que soam naturais faladas.
+
+Campos:
+- "titulo": nome curto do vídeo. "formato_video": reels, stories, carrossel ou post.
+- "gancho": a primeira frase, que prende nos 3 primeiros segundos.
+- "ideia_central": em 1 frase, o que quem assiste deve sentir ou entender.
+- "cenas": de 4 a 8 cenas, na ordem de gravação do vídeo final. Em cada uma:
+  - "o_que_gravar": o que aparece na imagem.
+  - "enquadramento": instrução concreta de câmera: posição dela (em pé, sentada, na mesa de trabalho), plano (close no rosto, meio corpo, mãos vistas de cima, detalhe do produto), onde fica o celular (tripé na altura dos olhos, apoiado na mesa, na mão), câmera frontal ou traseira, e a luz (de frente para a janela, por exemplo).
+  - "fala": o que ela diz, palavra por palavra. Vazio se a cena for só imagem.
+  - "texto_na_tela": o texto curto que aparece escrito. Vazio se não tiver.
+  - "duracao_seg": duração em segundos.
+  - "dica": por que essa cena existe ou um cuidado ao gravar (1 frase).
+- "takes_de_apoio": imagens extras para gravar e cobrir as falas (detalhes, mãos, produto, bastidor), cada uma com o ângulo.
+- "preparar": o que separar antes de gravar (produtos, cenário, roupa, luz).
+- "legenda": legenda pronta, com chamada para ação e até 5 hashtags no final.
+- "licao": 2 a 3 frases ensinando o princípio por trás deste vídeo, para ela aplicar sozinha da próxima vez.
+- "perguntas": no máximo 3 perguntas, só se a resposta mudaria o roteiro. Lista vazia se não houver.
+
+Se ela pedir um ajuste num plano anterior, devolva o plano inteiro de novo com a mudança aplicada e mantenha o que ela não pediu para mudar.`;
+async function assistPlan(userId: string, body: any) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const relato = clip(body?.relato, 6000);
+  if (relato.length < 15) return { status: 400, body: { error: 'no_story' } };
+  if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
+  const pedido: Record<string, unknown> = {
+    relato,
+    tipo_de_video: clip(body?.tipo, 40) || 'reels',
+    formato: { nome: clip(body?.formato?.nome, 80), como_funciona: clip(body?.formato?.descricao, 3000) },
+    marca: { nome: clip(body?.marca?.nome, 80), sobre: clip(body?.marca?.descricao, 1500) },
+  };
+  let user = `Pedido (JSON):\n${JSON.stringify(pedido)}`;
+  const ajuste = clip(body?.ajuste, 1500);
+  if (ajuste && body?.anterior && typeof body.anterior === 'object') {
+    user += `\n\nPlano anterior que você escreveu (JSON):\n${JSON.stringify(body.anterior).slice(0, 14000)}\n\nAjuste que ela pediu:\n${ajuste}`;
+  }
+  return askClaude(ASSIST_SYSTEM, user, ASSIST_SCHEMA);
+}
 async function analyzePosts(userId: string, raw: unknown) {
   if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
   const posts = cleanPosts(raw);
@@ -591,6 +666,14 @@ Deno.serve(async (req) => {
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { posts } = await req.json().catch(() => ({}));
       const r = await analyzePosts(user.id, posts);
+      return json(r.body, r.status);
+    }
+
+    if (route[0] === 'assist' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await req.json().catch(() => ({}));
+      const r = await assistPlan(user.id, body);
       return json(r.body, r.status);
     }
 
