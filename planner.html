@@ -2446,40 +2446,33 @@
 
   /* Falar em vez de digitar: reconhecimento de voz do próprio aparelho */
   const Voice = {
-    rec: null, btn: null,
+    rec: null, btn: null, ses: null,
     available: () => !!(window.SpeechRecognition || window.webkitSpeechRecognition),
     stop() { try { this.rec && this.rec.stop(); } catch (e) { /* já parou */ } },
     start(btn) {
-      if (this.rec) { this.stop(); return; }
+      if (this.rec || this.ses) { if (this.ses) this.ses.stopped = true; this.stop(); return; }
       const field = btn.parentElement.querySelector('input:not([type=time]):not([type=date]), textarea') || (btn.closest('form') && btn.closest('form').querySelector('textarea, input[name=text], input[name=title]'));
       if (!field) return;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { toast('Seu aparelho não liberou o microfone do Bloom aqui. Toque no campo e use o 🎤 do teclado do iPhone.'); field && field.focus(); return; }
-      const rec = new SR();
-      rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-      const before = field.value.trim();
-      let finalText = '';
-      this.rec = rec; this.btn = btn;
+      // Em campos de texto longo (notas, assistente) o microfone fica ouvindo até ela tocar de novo:
+      // o aparelho encerra a escuta a cada pausa, então religamos sozinhos e vamos juntando o texto.
+      const long = field.tagName === 'TEXTAREA';
+      const ses = { field, btn, long, base: field.value.trim(), acc: '', stopped: false, t0: Date.now(), empty: 0, fatal: false };
+      this.ses = ses; this.btn = btn;
       btn.classList.add('on'); btn.setAttribute('aria-label', 'Parar de ouvir');
-      field.placeholder = 'ouvindo… pode falar';
-      rec.onresult = (e) => {
-        let interim = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const r = e.results[i];
-          if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
-        }
-        field.value = [before, (finalText + ' ' + interim).trim()].filter(Boolean).join(' ');
-      };
-      rec.onerror = (e) => {
-        const c = e.error;
-        toast(c === 'not-allowed' || c === 'service-not-allowed' ? 'O microfone não foi liberado. No iPhone: Ajustes → Safari → Microfone, ou use o 🎤 do teclado.' : c === 'no-speech' ? 'Não ouvi nada. Toque no 🎤 e fale de novo.' : c === 'network' ? 'O reconhecimento de voz precisa de internet. Tente de novo.' : 'Não consegui ouvir agora. Use o 🎤 do teclado do iPhone.');
-      };
-      rec.onend = () => {
+      if (!field.getAttribute('data-ph')) field.setAttribute('data-ph', field.getAttribute('placeholder') || '');
+      field.placeholder = long ? 'ouvindo… conte tudo, sem pressa. Toque no 🎤 de novo quando terminar' : 'ouvindo… pode falar';
+      if (long) toast('Ouvindo 🎤 Pode fazer pausas. Toque no microfone de novo quando terminar.');
+      const show = (extra) => { field.value = [ses.base, ses.acc.trim(), extra].filter(Boolean).join(' ').replace(/\s+/g, ' '); field.dispatchEvent(new Event('input', { bubbles: true })); if (long) field.scrollTop = field.scrollHeight; };
+      const finish = () => {
         btn.classList.remove('on'); btn.setAttribute('aria-label', 'Falar em vez de digitar');
-        field.placeholder = field.getAttribute('data-ph') || field.placeholder.replace('ouvindo… pode falar', '');
-        this.rec = null; this.btn = null;
-        if (finalText.trim()) {
-          field.focus();
+        field.placeholder = field.getAttribute('data-ph') || '';
+        this.rec = null; this.btn = null; this.ses = null;
+        if (long && !ses.acc.trim() && !ses.fatal && !ses.stopped) toast('Não ouvi nada. Toque no 🎤 e fale de novo.');
+        if (ses.acc.trim()) {
+          show('');
+          if (!long) field.focus();
           const form = field.closest('form');
           if (form && (form.id === 'quick-task' || form.id === 'task-add')) {
             const ps = parsePT(field.value);
@@ -2487,8 +2480,37 @@
           }
         }
       };
-      if (!field.getAttribute('data-ph')) field.setAttribute('data-ph', field.getAttribute('placeholder') || '');
-      try { rec.start(); } catch (e) { btn.classList.remove('on'); this.rec = null; toast('Não consegui ligar o microfone. Use o 🎤 do teclado do iPhone.'); }
+      const listen = () => {
+        const rec = new SR();
+        rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = long; rec.maxAlternatives = 1;
+        let got = '';
+        this.rec = rec;
+        rec.onresult = (e) => {
+          let fin = '', interim = '';
+          for (let i = 0; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fin += r[0].transcript + ' '; else interim += r[0].transcript; }
+          got = fin.trim();
+          show([got, interim.trim()].filter(Boolean).join(' '));
+        };
+        rec.onerror = (e) => {
+          const c = e.error;
+          if (c === 'no-speech' || c === 'aborted') { if (!long || !ses.acc.trim() && !got) { if (c === 'no-speech' && !long) toast('Não ouvi nada. Toque no 🎤 e fale de novo.'); } return; }
+          // se o aparelho não deixar religar sozinho no meio da história, só avisa para tocar de novo
+          if ((c === 'not-allowed' || c === 'service-not-allowed') && ses.acc.trim()) { ses.empty = 9; return; }
+          ses.fatal = true;
+          toast(c === 'not-allowed' || c === 'service-not-allowed' ? 'O microfone não foi liberado. No iPhone: Ajustes → Safari → Microfone, ou use o 🎤 do teclado.' : c === 'network' ? 'O reconhecimento de voz precisa de internet. Tente de novo.' : 'Não consegui ouvir agora. Tente de novo ou use o 🎤 do teclado.');
+        };
+        rec.onend = () => {
+          if (got) { ses.acc = (ses.acc + ' ' + got).trim(); ses.empty = 0; } else ses.empty++;
+          show('');
+          // continua ouvindo: até ela tocar para parar, 2 silêncios seguidos ou 10 minutos
+          const more = long && !ses.stopped && !ses.fatal && ses.empty < 2 && Date.now() - ses.t0 < 10 * 60000 && document.contains(field);
+          if (more) { try { listen(); return; } catch (err) { /* o aparelho não deixou religar */ } }
+          if (long && !ses.stopped && !ses.fatal && ses.acc.trim()) toast(Date.now() - ses.t0 >= 10 * 60000 ? 'Parei depois de 10 minutos. Toque no 🎤 para continuar.' : 'Parei de ouvir. Toque no 🎤 para continuar de onde parou.');
+          finish();
+        };
+        rec.start();
+      };
+      try { listen(); } catch (e) { btn.classList.remove('on'); this.rec = null; this.ses = null; toast('Não consegui ligar o microfone. Use o 🎤 do teclado do iPhone.'); }
     },
   };
   document.addEventListener('click', (e) => {
@@ -4099,7 +4121,7 @@
             <textarea class="input" name="relato" rows="5" placeholder="Ex: hoje uma cliente pediu 200 brindes para sexta, o teste de impressão deu errado, eu refiz tudo e consegui entregar…" aria-label="Conte a história ou a ideia">${esc(this.draft)}</textarea>
             <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
           </form>
-          <p class="muted qa-hint">🎤 Toque no microfone e fale. Quando você fizer uma pausa ele para; toque de novo para continuar de onde parou.</p>
+          <p class="muted qa-hint">🎤 Toque no microfone e conte tudo, com pausas à vontade. Ele só para quando você tocar de novo.</p>
           <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ montando o plano… (uns 30 segundos)' : '✨ montar meu vídeo'}</button>
           ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: toque no lápis ao lado de “Formato do vídeo” e explique o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
         </div>`;
