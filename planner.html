@@ -1157,6 +1157,10 @@
   .as-line { display: flex; gap: 8px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
   .as-line > span:first-child { flex: none; width: 20px; }
   .as-say { font-size: 15px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+  .as-tele { margin-top: 14px; border-radius: 12px; background: #2b1a1d; color: #fff; padding: 12px 14px; }
+  .as-tele-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .as-tele-h .eyebrow { color: #f3c6d3; }
+  .as-tele-t { white-space: pre-wrap; font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
   .as-lesson { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #5f8a52 14%, var(--surface)); font-size: 14px; line-height: 1.45; }
 </style>
 </head>
@@ -2449,8 +2453,24 @@
     rec: null, btn: null, ses: null,
     available: () => !!(window.SpeechRecognition || window.webkitSpeechRecognition),
     stop() { try { this.rec && this.rec.stop(); } catch (e) { /* já parou */ } },
+    // fecha de vez a escuta atual (sem religar). Devolve true se havia uma.
+    kill() {
+      const ses = this.ses, rec = this.rec;
+      if (!ses && !rec) return false;
+      if (ses) { ses.stopped = true; ses.btn.classList.remove('on'); ses.btn.setAttribute('aria-label', 'Falar em vez de digitar'); if (ses.field) ses.field.placeholder = ses.field.getAttribute('data-ph') || ''; }
+      this.ses = null; this.rec = null; this.btn = null;
+      try { rec && (rec.abort ? rec.abort() : rec.stop()); } catch (e) { /* já parou */ }
+      return true;
+    },
     start(btn) {
-      if (this.rec || this.ses) { if (this.ses) this.ses.stopped = true; this.stop(); return; }
+      if (this.ses || this.rec) {
+        const same = this.ses && this.ses.btn === btn && document.contains(btn);
+        if (same) { const ses = this.ses; ses.stopped = true; this.stop(); setTimeout(() => { if (this.ses === ses) this.kill(); }, 1500); return; } // tocar de novo no mesmo microfone = parar (o texto já está no campo)
+        // outro microfone (ou a tela foi redesenhada): o iPhone pode ter deixado a escuta antiga presa
+        this.kill();
+        setTimeout(() => this.start(btn), 300);
+        return;
+      }
       const field = btn.parentElement.querySelector('input:not([type=time]):not([type=date]), textarea') || (btn.closest('form') && btn.closest('form').querySelector('textarea, input[name=text], input[name=title]'));
       if (!field) return;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2468,7 +2488,7 @@
       const finish = () => {
         btn.classList.remove('on'); btn.setAttribute('aria-label', 'Falar em vez de digitar');
         field.placeholder = field.getAttribute('data-ph') || '';
-        this.rec = null; this.btn = null; this.ses = null;
+        if (this.ses === ses) { this.rec = null; this.btn = null; this.ses = null; } // não apaga uma escuta nova
         if (long && !ses.acc.trim() && !ses.fatal && !ses.stopped) toast('Não ouvi nada. Toque no 🎤 e fale de novo.');
         if (ses.acc.trim()) {
           show('');
@@ -2481,11 +2501,13 @@
         }
       };
       const listen = () => {
+        if (ses.stopped || this.ses !== ses) return;
         const rec = new SR();
         rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = long; rec.maxAlternatives = 1;
         let got = '';
         this.rec = rec;
         rec.onresult = (e) => {
+          if (ses.stopped && this.ses !== ses && !document.contains(field)) return;
           let fin = '', interim = '';
           for (let i = 0; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fin += r[0].transcript + ' '; else interim += r[0].transcript; }
           got = fin.trim();
@@ -3998,11 +4020,20 @@
     });
   }
 
+  async function copyText(txt) {
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); return true; } } catch (e) { /* tenta o jeito antigo */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, txt.length);
+      const ok = document.execCommand('copy'); ta.remove(); return ok;
+    } catch (e) { return false; }
+  }
   function teleprompter(p) {
     let speed = 1, playing = false, raf = 0, last = 0;
     modal({
       title: 'teleprompter',
-      extraHTML: `<div class="tele" id="tele">${p.hook ? esc(p.hook) + '\n\n' : ''}${esc(p.script || 'Sem roteiro ainda.')}</div>
+      extraHTML: `<div class="tele" id="tele">${p.falas ? esc(p.falas) : `${p.hook ? esc(p.hook) + '\n\n' : ''}${esc(p.script || 'Sem roteiro ainda.')}`}</div>
         <div class="row"><button type="button" class="btn" id="tl-play">▶ começar</button><button type="button" class="btn sm secondary" id="tl-slow">− devagar</button><button type="button" class="btn sm secondary" id="tl-fast">+ rápido</button><span class="muted mono" id="tl-sp" style="font-family:var(--f-mono);font-size:12px">velocidade 1x</span></div>`,
       cancelLabel: 'Fechar',
       onOpen: (form) => {
@@ -4127,6 +4158,7 @@
         </div>`;
       return form + (cur ? this.planHTML(cur) : '');
     },
+    falas(pl) { return (pl.cenas || []).map((c) => String(c.fala || '').trim()).filter(Boolean).join('\n\n'); },
     planHTML(rec) {
       const pl = rec.plan, total = (pl.cenas || []).reduce((n, c) => n + (Number(c.duracao_seg) || 0), 0);
       const li = (arr) => arr.map((x) => `<li>${esc(x)}</li>`).join('');
@@ -4147,9 +4179,10 @@
                 ${c.dica ? `<div class="as-line muted"><span aria-hidden="true">💡</span><span>${esc(c.dica)}</span></div>` : ''}
               </div>
             </div>`).join('')}
+          ${this.falas(pl) ? `<div class="as-tele"><div class="as-tele-h"><span class="eyebrow">📜 só as falas · para o teleprompter</span><button type="button" class="btn sm" data-as-copy="falas">copiar</button></div><div class="as-tele-t">${esc(this.falas(pl))}</div></div>` : ''}
           ${pl.takes_de_apoio && pl.takes_de_apoio.length ? `<details class="as-box" open><summary>takes de apoio (imagens extras)</summary><ul>${li(pl.takes_de_apoio)}</ul></details>` : ''}
           ${pl.preparar && pl.preparar.length ? `<details class="as-box"><summary>separar antes de gravar</summary><ul>${li(pl.preparar)}</ul></details>` : ''}
-          ${pl.legenda ? `<details class="as-box"><summary>legenda</summary><p style="white-space:pre-wrap">${esc(pl.legenda)}</p></details>` : ''}
+          ${pl.legenda ? `<details class="as-box"><summary>legenda</summary><p style="white-space:pre-wrap">${esc(pl.legenda)}</p><button type="button" class="btn sm secondary" data-as-copy="legenda" style="margin-top:8px">copiar legenda</button></details>` : ''}
           ${pl.licao ? `<div class="as-lesson"><span class="eyebrow">para você aprender</span>${esc(pl.licao)}</div>` : ''}
           <div class="row" style="margin-top:14px">
             <button class="btn" data-as-save ${rec.postId && B().posts.find((x) => x.id === rec.postId) ? 'disabled' : ''}>${rec.postId && B().posts.find((x) => x.id === rec.postId) ? '✓ guardado no conteúdo' : '+ guardar no conteúdo'}</button>
@@ -4172,6 +4205,7 @@
     },
     async run(relato, prev, ajuste) {
       if (!inSupa) { toast('O assistente funciona no app Bloom.'); return; }
+      Voice.kill();
       this.busy = true; rerender();
       try {
         const j = await Social.call('assist', Object.assign(this.payload(), { relato }, prev ? { anterior: prev.plan, ajuste } : {}));
@@ -4188,7 +4222,7 @@
       const script = (pl.cenas || []).map((c, i) => `CENA ${i + 1} · ${c.o_que_gravar}\n📐 ${c.enquadramento}${c.fala ? `\n🗣️ ${c.fala}` : ''}${c.texto_na_tela ? `\n🔤 ${c.texto_na_tela}` : ''}`).join('\n\n');
       const notes = [pl.takes_de_apoio && pl.takes_de_apoio.length ? 'Takes de apoio: ' + pl.takes_de_apoio.join(' · ') : '', pl.preparar && pl.preparar.length ? 'Separar: ' + pl.preparar.join(' · ') : ''].filter(Boolean).join('\n');
       const total = (pl.cenas || []).reduce((n, c) => n + (Number(c.duracao_seg) || 0), 0);
-      const post = { id: uid(), title: pl.titulo || 'Vídeo do assistente', folderId: B().folders[0]?.id || '', platform: 'instagram', format: FORMATS[pl.formato_video] ? pl.formato_video : 'reels', status: 'roteiro', date: '', time: '', hook: pl.gancho || '', script, caption: tg.caption, hashtags: tg.hashtags, scene: '', look: '', duration: total ? total + 's' : '', link: '', notes, checklist: [], createdAt: today() };
+      const post = { falas: this.falas(pl), id: uid(), title: pl.titulo || 'Vídeo do assistente', folderId: B().folders[0]?.id || '', platform: 'instagram', format: FORMATS[pl.formato_video] ? pl.formato_video : 'reels', status: 'roteiro', date: '', time: '', hook: pl.gancho || '', script, caption: tg.caption, hashtags: tg.hashtags, scene: '', look: '', duration: total ? total + 's' : '', link: '', notes, checklist: [], createdAt: today() };
       B().posts.push(post); rec.postId = post.id; save(); rerender();
       toast(VIDEO_FORMATS.includes(post.format) ? 'Guardado ✨ Já está na fila de Gravar, com o roteiro.' : 'Guardado no conteúdo ✨');
     },
@@ -4238,6 +4272,13 @@
       on(el, 'click', '[data-as-go]', () => { keep(); if (this.busy) return; if (this.draft.trim().length < 15) { toast('Conte a história ou a ideia primeiro (pode ser falando 🎤).'); return; } this.run(this.draft.trim()); });
       on(el, 'click', '[data-as-adjgo]', () => { keep(); const c = this.cur(); if (this.busy || !c) return; if (this.adj.trim().length < 3) { toast('Escreva ou fale o que você quer mudar.'); return; } this.run(c.relato, c, this.adj.trim()); });
       on(el, 'click', '[data-as-save]', () => { const c = this.cur(); if (c) this.toPost(c); });
+      on(el, 'click', '[data-as-copy]', async (e, b) => {
+        const c = this.cur(); if (!c) return;
+        const txt = b.dataset.asCopy === 'falas' ? this.falas(c.plan) : String(c.plan.legenda || '');
+        const ok = await copyText(txt);
+        if (ok) { const t = b.textContent; b.textContent = '✓ copiado'; setTimeout(() => { b.textContent = t; }, 1600); toast(b.dataset.asCopy === 'falas' ? 'Falas copiadas ✨ Cole no teleprompter do CapCut.' : 'Legenda copiada ✨'); }
+        else toast('Não consegui copiar. Toque e segure no texto para copiar.');
+      });
       on(el, 'click', '[data-as-new]', () => { this.st().cur = ''; this.draft = ''; this.adj = ''; save(); rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
     },
   };
