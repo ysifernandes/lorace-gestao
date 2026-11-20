@@ -129,3 +129,20 @@ alter table public.ai_usage enable row level security;
 alter table public.social_tokens add column if not exists alt_token text;
 alter table public.social_choices add column if not exists user_token text;
 alter table public.social_choices add column if not exists user_expires_at timestamptz;
+
+-- Pedidos à Claude que rodam em segundo plano (assistente de conteúdo). A usuária só lê os dela.
+create table if not exists public.ai_jobs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null,
+  status text not null default 'running',
+  input jsonb,
+  result jsonb,
+  error text,
+  created_at timestamptz not null default now(),
+  done_at timestamptz
+);
+create index if not exists ai_jobs_user on public.ai_jobs (user_id, created_at desc);
+alter table public.ai_jobs enable row level security;
+drop policy if exists "ai_jobs_select_own" on public.ai_jobs;
+create policy "ai_jobs_select_own" on public.ai_jobs for select using (auth.uid() = user_id);

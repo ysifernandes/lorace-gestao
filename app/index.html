@@ -1172,6 +1172,11 @@
   .as-tele-h .eyebrow { color: #f3c6d3; }
   .as-tele-t { white-space: pre-wrap; font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
   .as-lesson { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #5f8a52 14%, var(--surface)); font-size: 14px; line-height: 1.45; }
+  .as-wait { margin-top: 14px; display: flex; gap: 12px; align-items: center; background: color-mix(in srgb, #9161b5 10%, var(--surface)); }
+  .as-wait .muted { font-size: 13px; overflow-wrap: anywhere; }
+  .as-spin { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--brand) 25%, transparent); border-top-color: var(--brand); animation: as-spin 0.9s linear infinite; }
+  @keyframes as-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .as-spin { animation-duration: 3s; } }
 </style>
 </head>
 <body>
@@ -4163,10 +4168,12 @@
             <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
           </form>
           <p class="muted qa-hint">🎤 Toque no microfone e conte tudo, com pausas à vontade. Ele só para quando você tocar de novo.</p>
-          <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ montando o plano… (uns 30 segundos)' : '✨ montar meu vídeo'}</button>
+          <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ enviando…' : '✨ montar meu vídeo'}</button>
           ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: toque no lápis ao lado de “Formato do vídeo” e explique o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
         </div>`;
-      return form + (cur ? this.planHTML(cur) : '');
+      const jobs = a.jobs || [];
+      const wait = jobs.length ? `<div class="card as-wait"><div class="as-spin" aria-hidden="true"></div><div><b>${jobs.length === 1 ? 'Montando o seu vídeo…' : `Montando ${jobs.length} pedidos…`}</b><div class="muted">${esc((jobs[jobs.length - 1].ajuste || jobs[jobs.length - 1].relato || '').slice(0, 80))}…</div><div class="muted" style="font-size:12px;margin-top:4px">Pode sair desta tela ou do app. ${Push.active ? 'Eu te mando uma notificação quando ficar pronto.' : 'Quando voltar, o plano vai estar aqui.'}</div></div></div>` : '';
+      return form + wait + (cur ? this.planHTML(cur) : '');
     },
     falas(pl) { return (pl.cenas || []).map((c) => String(c.fala || '').trim()).filter(Boolean).join('\n\n'); },
     planHTML(rec) {
@@ -4204,7 +4211,7 @@
               <textarea class="input" name="ajuste" rows="2" placeholder="Ex: deixa mais curto · não quero aparecer, só as mãos · responde: levou 2 dias" aria-label="Pedir um ajuste">${esc(this.adj)}</textarea>
               <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
             </form>
-            <button class="btn sm ai-write" data-as-adjgo ${this.busy ? 'disabled' : ''} style="margin-top:8px">${this.busy ? '✨ ajustando…' : '✨ ajustar o plano'}</button>
+            <button class="btn sm ai-write" data-as-adjgo ${this.busy ? 'disabled' : ''} style="margin-top:8px">${this.busy ? '✨ enviando…' : '✨ ajustar o plano'}</button>
           </div>
         </div>`;
     },
@@ -4220,12 +4227,47 @@
       try {
         const j = await Social.call('assist', Object.assign(this.payload(), { relato }, prev ? { anterior: prev.plan, ajuste } : {}));
         const a = this.st();
-        if (prev) { prev.plan = j.data; prev.at = Date.now(); (prev.adjusts = prev.adjusts || []).push(ajuste); this.adj = ''; }
-        else { const rec = { id: uid(), at: Date.now(), relato, plan: j.data, sel: Object.assign({}, a.sel) }; a.plans.unshift(rec); a.plans = a.plans.slice(0, 15); a.cur = rec.id; this.draft = ''; }
-        save(); toast(prev ? 'Plano ajustado ✨' : 'Seu plano de gravação está pronto ✨');
+        a.jobs = a.jobs || [];
+        a.jobs.push({ id: j.job, at: Date.now(), relato, prevId: prev ? prev.id : null, ajuste: ajuste || '', sel: Object.assign({}, a.sel) });
+        if (prev) this.adj = ''; else this.draft = '';
+        save();
+        toast(Push.active ? 'Estou montando ✨ Pode sair: te mando uma notificação quando ficar pronto.' : 'Estou montando ✨ Pode ir para outra tela; quando voltar, o plano vai estar aqui.');
+        this.watch();
       } catch (e) { toast(e.code === 'no_story' ? 'Conte um pouco mais da história ou da ideia.' : aiErr(e)); }
       this.busy = false; rerender();
-      const el = document.getElementById('as-plan'); if (el && !prev) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    // confere os pedidos em andamento (ao abrir o app, ao voltar para ele e a cada poucos segundos)
+    async check() {
+      const a = this.st();
+      if (!inSupa || !Auth.user || !(a.jobs || []).length) return;
+      const { data, error } = await Auth.sb.from('ai_jobs').select('id,status,result,error,created_at').in('id', a.jobs.map((x) => x.id));
+      if (error || !data) return;
+      let changed = false, newest = null;
+      for (const row of data) {
+        if (row.status === 'running') continue;
+        const job = a.jobs.find((x) => x.id === row.id);
+        if (!job) continue;
+        a.jobs = a.jobs.filter((x) => x.id !== row.id); changed = true;
+        if (row.status !== 'done' || !row.result) { toast(aiErr({ code: row.error })); continue; }
+        const prev = job.prevId && a.plans.find((x) => x.id === job.prevId);
+        if (prev) { prev.plan = row.result; prev.at = Date.now(); (prev.adjusts = prev.adjusts || []).push(job.ajuste); newest = prev; }
+        else { const rec = { id: uid(), at: Date.now(), relato: job.relato, plan: row.result, sel: job.sel, jobId: row.id }; a.plans.unshift(rec); a.plans = a.plans.slice(0, 15); newest = rec; }
+      }
+      // pedido que sumiu do servidor (muito antigo): para de esperar
+      const known = new Set(data.map((x) => x.id));
+      const lost = a.jobs.filter((x) => !known.has(x.id) && Date.now() - x.at > 10 * 60000);
+      if (lost.length) { a.jobs = a.jobs.filter((x) => !lost.includes(x)); changed = true; }
+      if (newest) { a.cur = newest.id; toast(`✨ Pronto: ${newest.plan.titulo || 'seu vídeo'}. Está em Conteúdo → Assistente.`); }
+      if (changed) { save(); rerender(); }
+      if (!(a.jobs || []).length) this.stopWatch();
+    },
+    timer: null,
+    watch() { if (!this.timer) this.timer = setInterval(() => { if (!document.hidden) this.check(); }, 5000); },
+    stopWatch() { clearInterval(this.timer); this.timer = null; },
+    open(jobId) {
+      const a = this.st();
+      const go2 = () => { const r = a.plans.find((x) => x.jobId === jobId); if (r) a.cur = r.id; S.ui.contTab = 'assist'; save(); go('conteudo'); };
+      this.check().then(go2, go2);
     },
     toPost(rec) {
       const pl = rec.plan, tg = splitTags(pl.legenda);
@@ -5026,6 +5068,8 @@
   // abrir pelo toque na notificação (?task=id:data,id:data)
   function openFromUrl(url) {
     try {
+      const jb = new URL(url, location.href).searchParams.get('job');
+      if (jb) { setTimeout(() => Assist.open(jb), 300); return; }
       const q = new URL(url, location.href).searchParams.get('task');
       if (q) setTimeout(() => pendingModal(q.split(',').filter(Boolean)), 300);
     } catch (e) {}
@@ -5345,6 +5389,9 @@
   setInterval(() => { if (!document.hidden) Weather.load(); }, 30 * 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Weather.load(); });
   Reminders.tick();
+  if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
+  setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });
   Cloud.start();

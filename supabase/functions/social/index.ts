@@ -10,6 +10,7 @@
 //   POST /analyze             { posts }                              (usuária logada: análise dos resultados pela Claude)
 //   POST /script              { titulo, formato, notas }             (usuária logada: gancho, roteiro e legenda de uma ideia)
 //   POST /assist              { relato, formato, marca, tipo, anterior, ajuste } (usuária logada: plano de gravação a partir de um relato)
+//                             → responde na hora com { job }; o plano fica pronto em segundo plano (tabela ai_jobs) e chega uma notificação
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -24,6 +25,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import webpush from 'npm:web-push@3.6.7';
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -373,6 +376,10 @@ function dueReminders(core: any, biz: any, nowN: number) {
   }
   return out;
 }
+async function notifyUser(userId: string, payload: Record<string, string>) {
+  const { data: subs } = await admin.from('push_subscriptions').select('*').eq('user_id', userId);
+  for (const sub of subs ?? []) await sendTo(sub, payload);
+}
 async function sendTo(sub: any, payload: Record<string, string>) {
   try {
     await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 3600 });
@@ -595,7 +602,22 @@ async function assistPlan(userId: string, body: any) {
   if (ajuste && body?.anterior && typeof body.anterior === 'object') {
     user += `\n\nPlano anterior que você escreveu (JSON):\n${JSON.stringify(body.anterior).slice(0, 14000)}\n\nAjuste que ela pediu:\n${ajuste}`;
   }
-  return askClaude(ASSIST_SYSTEM, user, ASSIST_SCHEMA);
+  // segundo plano: guarda o pedido, responde na hora e termina sozinho, mesmo se ela fechar o app
+  const { data: job, error } = await admin.from('ai_jobs').insert({ user_id: userId, kind: 'assist', status: 'running', input: { relato, ajuste: ajuste || null } }).select('id').single();
+  if (error || !job) return { status: 500, body: { error: 'db' } };
+  const work = (async () => {
+    const r = await askClaude(ASSIST_SYSTEM, user, ASSIST_SCHEMA);
+    const ok = r.status === 200;
+    await admin.from('ai_jobs').update({ status: ok ? 'done' : 'error', result: ok ? (r.body as any).data : null, error: ok ? null : String((r.body as any).error || 'failed'), done_at: nowIso() }).eq('id', job.id);
+    const title = ok ? `✨ ${ajuste ? 'Plano ajustado' : 'Seu vídeo está pronto'}: ${String((r.body as any).data?.titulo || '').slice(0, 60)}` : '😕 Não consegui montar o seu vídeo';
+    await notifyUser(userId, { title, body: ok ? 'Toque para ver o roteiro, as cenas e os takes.' : 'Toque para tentar de novo.', url: (APP_URL || '') + '/?job=' + job.id, tag: 'bloom-job-' + job.id });
+  })().catch(async (e) => {
+    console.error('job', e);
+    await admin.from('ai_jobs').update({ status: 'error', error: 'failed', done_at: nowIso() }).eq('id', job.id);
+  });
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(work);
+  else await work;
+  return { status: 202, body: { ok: true, job: job.id } };
 }
 async function analyzePosts(userId: string, raw: unknown) {
   if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
