@@ -135,6 +135,23 @@ async function syncInstagram(userId: string, tok: any) {
   // Login do Facebook para Empresas: token da página (não expira) + id da conta profissional do Instagram
   const fbIg = typeof tok.refresh_token === 'string' && tok.refresh_token.startsWith('fb:') ? tok.refresh_token.slice(3) : '';
   const get = fbIg ? fbGet : igGet;
+  if (fbIg) {
+    // renova o token do usuário antes de vencer
+    if (tok.alt_token && tok.expires_at && new Date(tok.expires_at).getTime() - Date.now() < 20 * 864e5 && META_APP_ID && META_APP_SECRET) {
+      try {
+        const r = await fetch(`${FB}/oauth/access_token?` + new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: META_APP_ID, client_secret: META_APP_SECRET, fb_exchange_token: access }));
+        const j = await r.json();
+        if (j.access_token) { access = j.access_token; await admin.from('social_tokens').update({ access_token: access, expires_at: new Date(Date.now() + (j.expires_in ?? 5184000) * 1000).toISOString(), updated_at: nowIso() }).eq('user_id', userId).eq('platform', 'instagram'); }
+      } catch (e) { console.error('fb refresh', e); }
+    }
+    // se um token falhar, tenta o outro antes de desistir
+    try { await fbGet(`${fbIg}?fields=id`, access); }
+    catch (e) {
+      if (!tok.alt_token) throw new Error('reconnect: ' + String((e as Error).message).slice(0, 200));
+      try { await fbGet(`${fbIg}?fields=id`, tok.alt_token); access = tok.alt_token; }
+      catch (e2) { throw new Error('reconnect: ' + String((e2 as Error).message).slice(0, 200)); }
+    }
+  }
   if (!fbIg && tok.expires_at && new Date(tok.expires_at).getTime() - Date.now() < 20 * 864e5) {
     try {
       const rr = await igGet(`refresh_access_token?grant_type=ig_refresh_token`, access);
@@ -171,7 +188,8 @@ async function useIgChoice(userId: string, extId: string) {
   if (!ch) return false;
   const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', userId).eq('platform', 'instagram').maybeSingle();
   if (cur?.refresh_token !== 'fb:' + extId) await admin.from('social_posts').delete().eq('user_id', userId).eq('platform', 'instagram'); // números da conta anterior saem
-  await admin.from('social_tokens').upsert({ user_id: userId, platform: 'instagram', access_token: ch.access_token, refresh_token: 'fb:' + extId, expires_at: null, updated_at: nowIso() });
+  // token do usuário primeiro (vale ~60 dias e é renovado sozinho); o da página fica de reserva
+  await admin.from('social_tokens').upsert({ user_id: userId, platform: 'instagram', access_token: ch.user_token || ch.access_token, alt_token: ch.user_token ? ch.access_token : null, refresh_token: 'fb:' + extId, expires_at: ch.user_token ? ch.user_expires_at : null, updated_at: nowIso() });
   await admin.from('social_accounts').upsert({ user_id: userId, platform: 'instagram', connected_at: nowIso(), last_error: null, username: ch.username, avatar_url: ch.avatar_url });
   return true;
 }
@@ -287,13 +305,23 @@ function nagSlot(base: number, snooze: number, now: number, every: number, win: 
   return now - (anchor + k * every) < win ? { anchor, k } : null;
 }
 const snoozeMin = (it: any) => (typeof it.snooze === 'string' && it.snooze.length >= 16 ? naive(it.snooze.slice(0, 10), it.snooze.slice(11, 16)) : 0);
+// Antes: cada tarefa tinha o seu próprio relógio de 30 em 30 min, e 4 tarefas pendentes viravam
+// ~60 avisos por dia. Agora todas entram numa rodada só, nos minutos redondos (ex.: 11:00, 11:30),
+// e as atrasadas de dias anteriores só aparecem às 9h, 14h e 19h.
+const OVERDUE_HOURS = [9, 14, 19];
 function pendingNags(core: any, nowN: number) {
-  const out: { key: string; id: string; date: string; text: string; since: string }[] = [];
+  const groups: { key: string; items: { id: string; date: string; text: string; since: string }[] }[] = [];
   const every = core?.ui?.nagMin === undefined || core?.ui?.nagMin === null ? 30 : Number(core.ui.nagMin) || 0;
-  const hour = Math.floor((((nowN % 1440) + 1440) % 1440) / 60);
+  const mod = ((nowN % 1440) + 1440) % 1440;
+  const hour = Math.floor(mod / 60);
   const quiet = core?.ui?.nagQuiet !== false && (hour >= 22 || hour < 8);
   const today = isoDay(nowN * 60000);
   const oldest = isoDay((nowN - 14 * 1440) * 60000);
+  const WIN = 15;
+  const slot = every ? Math.floor(nowN / every) * every : 0;
+  const inSlot = every > 0 && nowN - slot < WIN && !quiet;
+  const overdueHour = OVERDUE_HOURS.find((h) => mod >= h * 60 && mod < h * 60 + WIN);
+  const round: any[] = [], late: any[] = [], snoozes: any[] = [];
   for (const it of core?.tasks?.items ?? []) {
     if (it.remindMin === undefined || it.remindMin === null || it.remindMin === '' || !it.due) continue;
     const rep = it.repeat && it.repeat !== 'none';
@@ -301,12 +329,25 @@ function pendingNags(core: any, nowN: number) {
     for (const d of dates) {
       if (!occursOn(it, d) || isDoneOn(it, d)) continue;
       const base = naive(d, it.time || '09:00') - Number(it.remindMin);
-      const slot = nagSlot(base, snoozeMin(it), nowN, it.nag === 'off' ? 0 : every, 15);
-      if (!slot || (quiet && slot.k > 0)) continue;
-      out.push({ key: `n:${it.id}:${d}:${slot.anchor}:${slot.k}`, id: it.id, date: d, text: it.text, since: d === today ? (it.time ? `era às ${it.time}` : 'era para hoje') : `atrasada desde ${d.slice(8)}/${d.slice(5, 7)}` });
+      const sn = snoozeMin(it);
+      const item = { id: it.id, date: d, text: it.text, since: d === today ? (it.time ? `era às ${it.time}` : 'era para hoje') : `atrasada desde ${d.slice(8)}/${d.slice(5, 7)}` };
+      if (sn && sn > base) {
+        if (nowN < sn) continue; // adiada: fica quieta até a hora escolhida
+        if (nowN - sn < WIN) { snoozes.push({ key: `s:${it.id}:${d}:${sn}`, item }); continue; }
+        if (it.nag === 'off') continue;
+        if (inSlot && slot >= sn + every) (d === today ? round : late).push(item);
+        else if (overdueHour !== undefined && d !== today) late.push(item);
+        continue;
+      }
+      if (it.nag === 'off') continue;
+      if (d === today) { if (inSlot && slot >= base + every) round.push(item); }
+      else if (overdueHour !== undefined && !quiet) late.push(item);
     }
   }
-  return out;
+  for (const x of snoozes) groups.push({ key: x.key, items: [x.item] });
+  if (round.length) groups.push({ key: `g:${slot}`, items: round });
+  if (late.length) groups.push({ key: overdueHour !== undefined ? `o:${today}:${overdueHour}` : `g:${slot}:late`, items: late });
+  return groups;
 }
 
 function dueReminders(core: any, biz: any, nowN: number) {
@@ -362,9 +403,11 @@ async function pushTick() {
     }
     // tarefas que continuam sem concluir: um aviso só, juntando todas
     const nags: any[] = [];
-    for (const n of pendingNags(core, nowN)) {
-      const { error } = await admin.from('push_sent').insert({ user_id: uid, key: n.key });
-      if (!error) nags.push(n);
+    const seen = new Set<string>();
+    for (const g of pendingNags(core, nowN)) {
+      const { error } = await admin.from('push_sent').insert({ user_id: uid, key: g.key });
+      if (error) continue; // essa rodada já foi enviada
+      for (const n of g.items) { const k = n.id + ':' + n.date; if (!seen.has(k)) { seen.add(k); nags.push(n); } }
     }
     if (nags.length) {
       const one = nags.length === 1;
@@ -582,7 +625,7 @@ Deno.serve(async (req) => {
       const { error } = await admin.from('oauth_states').insert({ state, user_id: user.id, platform, return_to: safeReturn(return_to) });
       if (error) return json({ error: 'db', detail: error.message }, 500);
       const authUrl = platform === 'instagram' && fbMode()
-        ? `https://www.facebook.com/v21.0/dialog/oauth?` + new URLSearchParams({ client_id: META_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', state, ...(META_CONFIG_ID ? { config_id: META_CONFIG_ID } : { scope: 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management' }) })
+        ? `https://www.facebook.com/v21.0/dialog/oauth?` + new URLSearchParams({ client_id: META_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', state, auth_type: 'rerequest', ...(META_CONFIG_ID ? { config_id: META_CONFIG_ID } : { scope: 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management' }) })
         : platform === 'instagram'
         ? 'https://www.instagram.com/oauth/authorize?' + new URLSearchParams({ enable_fb_login: '0', force_authentication: '1', client_id: IG_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', scope: 'instagram_business_basic,instagram_business_manage_insights', state })
         : 'https://www.tiktok.com/v2/auth/authorize/?' + new URLSearchParams({ client_key: TT_KEY, scope: 'user.info.basic,user.info.stats,video.list', response_type: 'code', redirect_uri: REDIRECT.tiktok, state });
@@ -610,14 +653,28 @@ Deno.serve(async (req) => {
             if (j2.access_token) userTok = j2.access_token;
           } catch (e) { console.error('fb long-lived', e); }
           // a conta profissional do Instagram fica ligada a uma página do Facebook
+          let userExp: string | null = null;
+          try {
+            const dbg = await fetch(`${FB}/debug_token?` + new URLSearchParams({ input_token: userTok, access_token: `${META_APP_ID}|${META_APP_SECRET}` }));
+            const dj = await dbg.json();
+            const exp = dj?.data?.data_access_expires_at || dj?.data?.expires_at;
+            if (exp) userExp = new Date(exp * 1000).toISOString();
+            const scopes: string[] = dj?.data?.scopes ?? [];
+            const need = ['instagram_basic', 'instagram_manage_insights', 'pages_show_list', 'pages_read_engagement'];
+            const missing = need.filter((x) => !scopes.includes(x));
+            if (scopes.length && missing.length) { console.error('fb missing scopes', missing); return backTo(st.return_to, { social: 'error', platform, reason: 'perms' }); }
+          } catch (e) { console.error('fb debug', e); }
           const pages = await fbGet('me/accounts?fields=id,name,access_token,instagram_business_account{id,username,profile_picture_url}&limit=100', userTok);
           const found = (pages.data ?? []).filter((x: any) => x.instagram_business_account?.id);
           if (!found.length) return backTo(st.return_to, { social: 'error', platform, reason: 'no_page' });
           // guarda todas as contas liberadas, para a usuária escolher (e poder trocar depois)
           await admin.from('social_choices').delete().eq('user_id', st.user_id).eq('platform', platform);
-          await admin.from('social_choices').insert(found.map((x: any) => ({ user_id: st.user_id, platform, ext_id: x.instagram_business_account.id, username: x.instagram_business_account.username ?? null, page_name: x.name ?? null, avatar_url: x.instagram_business_account.profile_picture_url ?? null, access_token: x.access_token || userTok })));
-          if (found.length > 1) return backTo(st.return_to, { social: 'choose', platform });
-          await useIgChoice(st.user_id, found[0].instagram_business_account.id);
+          await admin.from('social_choices').insert(found.map((x: any) => ({ user_id: st.user_id, platform, ext_id: x.instagram_business_account.id, username: x.instagram_business_account.username ?? null, page_name: x.name ?? null, avatar_url: x.instagram_business_account.profile_picture_url ?? null, access_token: x.access_token || userTok, user_token: userTok, user_expires_at: userExp })));
+          // reconectando: se a conta que ela já usava continua liberada, segue com ela sem perguntar
+          const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', st.user_id).eq('platform', 'instagram').maybeSingle();
+          const keep = found.find((x: any) => cur?.refresh_token === 'fb:' + x.instagram_business_account.id);
+          if (!keep && found.length > 1) return backTo(st.return_to, { social: 'choose', platform });
+          await useIgChoice(st.user_id, (keep || found[0]).instagram_business_account.id);
         } else if (platform === 'instagram') {
           const r = await fetch('https://api.instagram.com/oauth/access_token', {
             method: 'POST',

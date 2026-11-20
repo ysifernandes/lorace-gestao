@@ -4566,8 +4566,8 @@
     if (!inSupa) return `<div class="card">${ic}<div class="txt"><b>${L.label}</b>Os números automáticos funcionam no app Bloom, no endereço próprio.</div></div>`;
     const a = Social.accounts[k];
     if (!a) return `<div class="card">${ic}<div class="txt"><b>${L.label}</b>Conecte uma vez e os números entram sozinhos todo dia.</div><button class="btn sm" data-sconnect="${k}">Conectar</button></div>`;
-    return `<div class="card">${ic}<div class="txt"><b>${L.label}${a.username ? ' · @' + esc(a.username) : ''}</b>${a.last_error ? `<span style="color:var(--danger)">Não atualizou: ${esc(a.last_error.slice(0, 90))}</span>` : `${a.followers != null ? fmtNum(a.followers) + ' seguidores · ' : ''}atualizado ${a.last_sync ? fmtWhen(a.last_sync) : 'agora'}`}</div>
-      <div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm secondary" data-ssync ${Social.busy ? 'disabled' : ''}>${Social.busy ? 'atualizando…' : 'atualizar'}</button>${k === 'instagram' ? '<button class="btn sm ghost" data-schoose>trocar conta</button>' : ''}<button class="btn sm ghost" data-sdisc="${k}">desconectar</button></div></div>`;
+    return `<div class="card">${ic}<div class="txt"><b>${L.label}${a.username ? ' · @' + esc(a.username) : ''}</b>${a.last_error ? (/reconnect|permission|impersonat|expired|session|token/i.test(a.last_error) ? `<span style="color:var(--danger)">A Meta pediu para você entrar de novo. Toque em <b>reconectar</b> e, na tela do Facebook, deixe todas as permissões marcadas.</span>` : `<span style="color:var(--danger)">Não atualizou: ${esc(a.last_error.slice(0, 90))}</span>`) : `${a.followers != null ? fmtNum(a.followers) + ' seguidores · ' : ''}atualizado ${a.last_sync ? fmtWhen(a.last_sync) : 'agora'}`}</div>
+      <div style="display:flex;flex-direction:column;gap:4px">${a.last_error && /reconnect|permission|impersonat|expired|session|token/i.test(a.last_error) ? `<button class="btn sm" data-sconnect="${k}">reconectar</button>` : ''}<button class="btn sm secondary" data-ssync ${Social.busy ? 'disabled' : ''}>${Social.busy ? 'atualizando…' : 'atualizar'}</button>${k === 'instagram' ? '<button class="btn sm ghost" data-schoose>trocar conta</button>' : ''}<button class="btn sm ghost" data-sdisc="${k}">desconectar</button></div></div>`;
   }
 
   /* INSIGHTS */
@@ -4862,15 +4862,31 @@
         S.notified[key] = now;
         if (now - stampToMs(st) < 3 * 3600000) due.push({ title: 'hora de postar: ' + p.title, kind: 'conteúdo', when: platOf(p).label + ' · ' + p.time });
       });
-      const nowMin = Math.floor(now / 60000), every = nagEvery();
+      const nowMin = Math.floor(now / 60000), every = nagEvery(), tday = today();
+      const lt = new Date(), mod = lt.getHours() * 60 + lt.getMinutes(), WIN = 10;
+      const slot = every ? Math.floor(mod / every) * every : -1;
+      const inSlot = every > 0 && mod - slot < WIN && !quietNow();
+      const ovH = [9, 14, 19].find((h) => mod >= h * 60 && mod < h * 60 + WIN);
+      const round = [];
       pendingTasks().forEach(({ it, d }) => {
-        const slot = nagSlot(Math.floor(remindAt(it, d) / 60000), it.snooze ? Math.floor(stampToMs(it.snooze) / 60000) : 0, nowMin, it.nag === 'off' ? 0 : every, 10);
-        if (!slot || (slot.k > 0 && quietNow())) return;
-        const key = `n:${it.id}:${d}:${slot.anchor}:${slot.k}`;
-        if (S.notified[key]) return;
-        S.notified[key] = now;
-        due.push({ title: it.text, kind: 'ainda pendente', taskId: it.id, date: d, when: sinceLabel(it, d) });
+        const base = Math.floor(remindAt(it, d) / 60000), sn = it.snooze ? Math.floor(stampToMs(it.snooze) / 60000) : 0;
+        const slotAbs = nowMin - (mod - slot);
+        if (sn && sn > base) {
+          if (nowMin < sn) return;
+          if (nowMin - sn < WIN) { const k = `s:${it.id}:${d}:${sn}`; if (!S.notified[k]) { S.notified[k] = now; due.push({ title: it.text, kind: 'ainda pendente', taskId: it.id, date: d, when: sinceLabel(it, d) }); } return; }
+          if (it.nag === 'off') return;
+          if ((inSlot && slotAbs >= sn + every) || (ovH !== undefined && d !== tday)) round.push({ it, d });
+          return;
+        }
+        if (it.nag === 'off') return;
+        if (d === tday ? inSlot && slotAbs >= base + every : ovH !== undefined && !quietNow()) round.push({ it, d });
       });
+      const rk = `g:${tday}:${inSlot ? slot : 'o' + ovH}`;
+      if (round.length && !S.notified[rk]) {
+        S.notified[rk] = now;
+        if (round.length === 1) due.push({ title: round[0].it.text, kind: 'ainda pendente', taskId: round[0].it.id, date: round[0].d, when: sinceLabel(round[0].it, round[0].d) });
+        else due.push({ title: `${round.length} tarefas ainda pendentes`, kind: 'ainda pendente', pend: round.map((x) => x.it.id + ':' + x.d), when: round.slice(0, 3).map((x) => x.it.text).join(' · ') });
+      }
       S.snoozes = S.snoozes.filter((z) => { if (z.at <= now) { due.push({ title: z.title, kind: z.kind, taskId: z.taskId, date: z.date, when: 'adiado' }); return false; } return true; });
       if (due.length) { save(); due.forEach(showAlert); chime(); }
       updateBell();
@@ -4970,10 +4986,11 @@
     div.className = 'alert taped';
     div.innerHTML = `<div class="eyebrow">🔔 lembrete · ${esc(a.kind)}${a.when ? ' · ' + esc(a.when) : ''}</div>
       <div class="ttl">${esc(a.title)}</div>
-      <div class="row">${a.taskId ? '<button class="btn sm" data-al="done">Concluir</button>' : ''}<button class="btn sm secondary" data-al="snooze">${a.taskId ? 'Adiar 30 min' : 'Adiar 10 min'}</button><button class="btn sm ghost" data-al="ok">Ok</button></div>`;
+      <div class="row">${a.pend ? '<button class="btn sm" data-al="pend">ver e concluir</button>' : ''}${a.taskId ? '<button class="btn sm" data-al="done">Concluir</button>' : ''}${a.pend ? '' : `<button class="btn sm secondary" data-al="snooze">${a.taskId ? 'Adiar 30 min' : 'Adiar 10 min'}</button>`}<button class="btn sm ghost" data-al="ok">Ok</button></div>`;
     div.addEventListener('click', (e) => {
       const b = e.target.closest('[data-al]');
       if (!b) return;
+      if (b.dataset.al === 'pend') { div.remove(); pendingModal(a.pend); return; }
       if (b.dataset.al === 'done') { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { markDone(it, a.date); toast('Concluída ♥'); } }
       if (b.dataset.al === 'snooze' && a.taskId) { const it = S.tasks.items.find((x) => x.id === a.taskId); if (it) { snoozeTask(it, 30); toast('Vou te lembrar de novo em 30 minutos.'); } }
       else if (b.dataset.al === 'snooze') { S.snoozes.push({ id: uid(), at: Date.now() + 10 * 60000, title: a.title, kind: a.kind, taskId: a.taskId, date: a.date }); toast('Vou te lembrar de novo em 10 minutos.'); }
@@ -5264,6 +5281,7 @@
     const pl = (PLATFORMS[qsSocial.get('platform')] || { label: 'rede' }).label;
     const st = qsSocial.get('social');
     if (st === 'choose') setTimeout(() => Social.choose(), 900);
+    else if (st === 'error' && qsSocial.get('reason') === 'perms') setTimeout(() => modal({ title: 'faltou uma permissão', message: 'Na tela do Facebook, alguma permissão ficou desmarcada, e sem ela o Bloom não consegue ler os números do Instagram. Toque em reconectar de novo e, se aparecer "Editar acesso", deixe a página e todas as permissões marcadas.', saveLabel: 'Reconectar agora', onSave: () => { Social.connect('instagram'); } }), 700);
     else if (st === 'error' && qsSocial.get('reason') === 'no_page') setTimeout(() => modal({ title: 'falta um passo no Instagram', message: 'Não achei uma conta profissional do Instagram ligada a uma página do Facebook. No app do Instagram: Editar perfil → Página → conecte (ou crie) uma página do Facebook. Depois tente conectar de novo e, na tela da Meta, marque essa página e a conta do Instagram.', saveLabel: 'Entendi' }), 700);
     else setTimeout(() => toast(st === 'connected' ? `${pl} conectado! Seus números estão chegando ✨` : st === 'cancelled' ? 'Conexão cancelada.' : `Não consegui conectar o ${pl}. Tente de novo.`), 700);
     try { history.replaceState(null, '', location.pathname + '#insights'); } catch (e) {}

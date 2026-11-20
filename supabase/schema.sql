@@ -124,3 +124,8 @@ create table if not exists public.ai_usage (
 );
 create index if not exists ai_usage_user_at on public.ai_usage (user_id, at);
 alter table public.ai_usage enable row level security;
+
+-- Instagram pelo Login do Facebook: token do usuário (renovável) + token da página de reserva
+alter table public.social_tokens add column if not exists alt_token text;
+alter table public.social_choices add column if not exists user_token text;
+alter table public.social_choices add column if not exists user_expires_at timestamptz;
