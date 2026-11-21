@@ -1177,6 +1177,43 @@
   .as-spin { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--brand) 25%, transparent); border-top-color: var(--brand); animation: as-spin 0.9s linear infinite; }
   @keyframes as-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .as-spin { animation-duration: 3s; } }
+  /* ---------- Plano do mês, feed e pilares ---------- */
+  .plan-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 12px; }
+  .plan-bar .ai-write { white-space: normal; }
+  .seg.sm { display: inline-flex; background: var(--surface-2); border-radius: 99px; padding: 3px; gap: 2px; }
+  .seg.sm button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 99px; font-size: 13px; }
+  .seg.sm button.on { background: var(--surface); box-shadow: var(--shadow); font-weight: 600; }
+  .plan-wait { font-size: 13px; margin: -4px 0 12px; }
+  .plan-sum { margin: 0 0 12px; }
+  .cal-chip.pend { outline: 1.5px dashed var(--brand); outline-offset: -1px; opacity: .85; }
+  .pc-pend { font-size: 11px; color: var(--brand); font-weight: 600; margin: 2px 0; }
+  .pc-tag { display: inline-block; font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-right: 6px; vertical-align: 2px; background: color-mix(in srgb, var(--brand) 14%, var(--surface)); color: var(--brand); }
+  .plan-info { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; padding: 12px; border-radius: 12px; background: var(--accent-soft); font-size: 14px; line-height: 1.45; }
+  .plan-pend { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 600; }
+  .plan-okd { font-size: 12.5px; color: #5f8a52; font-weight: 600; }
+  .plan-l { overflow-wrap: anywhere; }
+  .plan-why { padding: 8px 10px; border-radius: 10px; background: var(--surface); }
+  .plan-insp { padding-left: 10px; border-left: 3px solid var(--brand-2); }
+  .feed { margin-top: 4px; }
+  .feed-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .feed-head img, .feed-av { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--surface-2); font-size: 20px; flex: none; }
+  .feed-head > div { display: flex; flex-direction: column; min-width: 0; }
+  .feed-head .muted { font-size: 12px; }
+  .feed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-radius: 10px; overflow: hidden; }
+  .feed-tile { all: unset; box-sizing: border-box; cursor: pointer; position: relative; aspect-ratio: 4 / 5; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 8px; text-align: center; background: color-mix(in srgb, var(--c) 22%, var(--surface)); }
+  .feed-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .feed-tile img + .ft-t { display: none; }
+  .feed-tile .ft-t { font-size: 11.5px; font-weight: 600; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .feed-tile .ft-ic { position: absolute; top: 5px; right: 6px; font-size: 12px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .feed-tile .ft-d { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); font-family: var(--f-mono); font-size: 10px; padding: 2px 7px; border-radius: 99px; background: var(--brand); color: #fff; white-space: nowrap; }
+  .feed-tile.plan { box-shadow: inset 0 0 0 2px var(--brand-2); }
+  .feed-tile.pend { box-shadow: inset 0 0 0 2px var(--brand); outline: 2px dashed #fff; outline-offset: -6px; }
+  .feed-tile:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
+  .mix-bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; gap: 2px; margin-bottom: 10px; }
+  .mix-bar i { background: var(--c); }
+  .mix-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .mix-leg span { display: inline-flex; align-items: center; gap: 5px; }
+  .mix-leg span > i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
 </style>
 </head>
 <body>
@@ -3837,7 +3874,8 @@
     const i = ST_ORDER.indexOf(p.status);
     return `<div class="pcard" style="--c:${f.color}" data-post="${p.id}" tabindex="0" ${opts.drag ? 'draggable="true"' : ''}>
       <div class="pc-top"><span class="pc-plat" title="${platOf(p).label}" aria-label="${platOf(p).label}">${platOf(p).icon}</span><span class="tagpill" style="--c:${st.color}">${st.label}</span>${p.example ? '<span class="pc-ex">exemplo</span>' : ''}</div>
-      <div class="pc-title">${esc(p.title)}</div>
+      ${p.approval === 'pending' ? '<div class="pc-pend">⏳ esperando aprovação</div>' : ''}
+      <div class="pc-title">${p.plan && p.plan.etiqueta ? `<span class="pc-tag">${esc(p.plan.etiqueta)}</span>` : ''}${esc(p.title)}</div>
       <div class="pc-meta">${f.emoji} ${esc(f.name)} · ${esc(FORMATS[p.format] || '')}${p.date ? ` · ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}` : ''}</div>
       ${bd ? `<div class="pc-score" style="--c:${bd.c}"><b>${s}</b> ${bd.t}</div>` : ''}
       ${opts.move ? `<div class="pc-move"><button class="icon-btn" data-pmove="${p.id}:-1" aria-label="Voltar uma etapa" ${i <= 0 ? 'disabled' : ''}>${ICON.left}</button><button class="icon-btn" data-pmove="${p.id}:1" aria-label="Avançar uma etapa" ${i >= ST_ORDER.length - 1 ? 'disabled' : ''}>${ICON.right}</button></div>` : ''}
@@ -3885,7 +3923,12 @@
         { name: 'hashtags', label: 'Hashtags', value: p.hashtags, full: true, placeholder: '#empreendedorismo #feitoamao' },
         { name: 'notes', label: 'Anotações / o que levar', value: p.notes, full: true },
       ],
-      extraHTML: isNew ? '' : `<div class="settings-block">
+      extraHTML: isNew ? '' : `${p.plan ? `<div class="plan-info">
+          ${p.approval === 'pending' ? '<div class="plan-pend"><span>⏳ Este post do plano espera a sua aprovação.</span><button type="button" class="btn sm" id="pm-approve">✓ aprovar</button></div>' : '<div class="plan-okd">✓ aprovado</div>'}
+          ${p.plan.receita ? `<div class="plan-l"><b>Receita:</b> ${esc(p.plan.receita)}</div>` : ''}
+          ${p.plan.por_que ? `<div class="plan-l plan-why"><b>Por quê:</b> ${esc(p.plan.por_que)}</div>` : ''}
+          ${p.plan.inspirado_em ? `<div class="plan-l plan-insp"><b>Inspirado em:</b> ${esc(p.plan.inspirado_em)}</div>` : ''}
+        </div>` : ''}<div class="settings-block">
           <div class="eyebrow" style="margin-bottom:6px">tarefas deste conteúdo</div>
           <div id="pm-tasks">${linked.map((t) => `<label class="row" style="padding:4px 0;flex-wrap:nowrap"><input type="checkbox" class="check" data-pm-task="${t.id}" ${t.done ? 'checked' : ''}><span style="${t.done ? 'text-decoration:line-through;color:var(--ink-soft)' : ''}">${esc(t.text)}</span></label>`).join('') || '<p style="margin:0 0 6px">Nenhuma tarefa ligada ainda.</p>'}</div>
           <div class="quick-add"><input class="input" id="pm-task-in" placeholder="Ex: comprar fundo para foto" aria-label="Nova tarefa do conteúdo"><button type="button" class="btn sm secondary" id="pm-task-add">Adicionar</button></div>
@@ -3906,7 +3949,7 @@
             if ((el.script.value.trim() || el.caption.value.trim()) && !confirm('Substituir o gancho, o roteiro e a legenda que já estão escritos?')) return;
             btn.disabled = true; btn.textContent = '✨ escrevendo… (uns 20 segundos)';
             try {
-              const d = await aiScript({ titulo: title, formato: FORMATS[el.format.value] || el.format.value, notas: el.notes.value, gancho: el.hook.value, pasta: (B().folders.find((f) => f.id === el.folderId.value) || {}).name || '' });
+              const d = await aiScript({ titulo: title, formato: FORMATS[el.format.value] || el.format.value, por_que: p.plan ? [p.plan.receita, p.plan.por_que].filter(Boolean).join(' ') : '', notas: el.notes.value, gancho: el.hook.value, pasta: (B().folders.find((f) => f.id === el.folderId.value) || {}).name || '' });
               const t = splitTags(d.legenda);
               el.hook.value = d.gancho || el.hook.value; el.script.value = d.roteiro || ''; el.caption.value = t.caption; if (t.hashtags) el.hashtags.value = t.hashtags;
               if (el.status.value === 'ideia') el.status.value = 'roteiro';
@@ -3917,6 +3960,8 @@
           });
         }
         if (isNew) return;
+        const ap = $('#pm-approve', form);
+        if (ap) ap.addEventListener('click', () => { Plan.approve(p); ap.closest('.plan-pend').outerHTML = '<div class="plan-okd">✓ aprovado</div>'; rerender(); toast('Aprovado ✨'); });
         const addT = () => {
           const inp = $('#pm-task-in', form);
           const text = inp.value.trim();
@@ -4171,7 +4216,7 @@
           <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ enviando…' : '✨ montar meu vídeo'}</button>
           ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: toque no lápis ao lado de “Formato do vídeo” e explique o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
         </div>`;
-      const jobs = a.jobs || [];
+      const jobs = (a.jobs || []).filter((j) => j.kind !== 'plan');
       const wait = jobs.length ? `<div class="card as-wait"><div class="as-spin" aria-hidden="true"></div><div><b>${jobs.length === 1 ? 'Montando o seu vídeo…' : `Montando ${jobs.length} pedidos…`}</b><div class="muted">${esc((jobs[jobs.length - 1].ajuste || jobs[jobs.length - 1].relato || '').slice(0, 80))}…</div><div class="muted" style="font-size:12px;margin-top:4px">Pode sair desta tela ou do app. ${Push.active ? 'Eu te mando uma notificação quando ficar pronto.' : 'Quando voltar, o plano vai estar aqui.'}</div></div></div>` : '';
       return form + wait + (cur ? this.planHTML(cur) : '');
     },
@@ -4242,13 +4287,19 @@
       if (!inSupa || !Auth.user || !(a.jobs || []).length) return;
       const { data, error } = await Auth.sb.from('ai_jobs').select('id,status,result,error,created_at').in('id', a.jobs.map((x) => x.id));
       if (error || !data) return;
-      let changed = false, newest = null;
+      let changed = false, newest = null, planDone = null;
       for (const row of data) {
         if (row.status === 'running') continue;
         const job = a.jobs.find((x) => x.id === row.id);
         if (!job) continue;
         a.jobs = a.jobs.filter((x) => x.id !== row.id); changed = true;
         if (row.status !== 'done' || !row.result) { toast(aiErr({ code: row.error })); continue; }
+        if (job.kind === 'plan') {
+          const n = Plan.apply(job, row.result);
+          planDone = job;
+          toast(`🗓️ Plano pronto: ${n} posts esperando a sua aprovação no calendário.`);
+          continue;
+        }
         const prev = job.prevId && a.plans.find((x) => x.id === job.prevId);
         if (prev) { prev.plan = row.result; prev.at = Date.now(); (prev.adjusts = prev.adjusts || []).push(job.ajuste); newest = prev; }
         else { const rec = { id: uid(), at: Date.now(), relato: job.relato, plan: row.result, sel: job.sel, jobId: row.id }; a.plans.unshift(rec); a.plans = a.plans.slice(0, 15); newest = rec; }
@@ -4257,6 +4308,7 @@
       const known = new Set(data.map((x) => x.id));
       const lost = a.jobs.filter((x) => !known.has(x.id) && Date.now() - x.at > 10 * 60000);
       if (lost.length) { a.jobs = a.jobs.filter((x) => !lost.includes(x)); changed = true; }
+      if (planDone && (current === 'conteudo')) { PAGES.conteudo.setMonth(planDone.mes); S.ui.contTab = 'cal'; }
       if (newest) { a.cur = newest.id; toast(`✨ Pronto: ${newest.plan.titulo || 'seu vídeo'}. Está em Conteúdo → Assistente.`); }
       if (changed) { save(); rerender(); }
       if (!(a.jobs || []).length) this.stopWatch();
@@ -4266,7 +4318,11 @@
     stopWatch() { clearInterval(this.timer); this.timer = null; },
     open(jobId) {
       const a = this.st();
-      const go2 = () => { const r = a.plans.find((x) => x.jobId === jobId); if (r) a.cur = r.id; S.ui.contTab = 'assist'; save(); go('conteudo'); };
+      const pj = (a.jobs || []).find((x) => x.id === jobId && x.kind === 'plan');
+      const go2 = () => {
+        if (pj) { PAGES.conteudo.setMonth(pj.mes); S.ui.contTab = 'cal'; save(); go('conteudo'); return; }
+        const r = a.plans.find((x) => x.jobId === jobId); if (r) a.cur = r.id; S.ui.contTab = 'assist'; save(); go('conteudo');
+      };
       this.check().then(go2, go2);
     },
     toPost(rec) {
@@ -4335,12 +4391,112 @@
     },
   };
 
+  const Plan = {
+    payload(month, v) {
+      const a = Assist.st(), b = a.brands.find((x) => x.id === (v.brand || a.sel.brand));
+      const [y, m] = month.split('-').map(Number);
+      const days = new Date(y, m, 0).getDate(), datas = [];
+      for (let d = 1; d <= days; d++) { const iso2 = `${month}-${pad(d)}`; holidaysOn(iso2).forEach((h) => datas.push(`${iso2} ${h.name}`)); specialsOn(iso2).forEach((h) => datas.push(`${iso2} ${h.name}`)); }
+      const historico = B().posts.filter((x) => x.metrics && x.status === 'publicado' && x.date).sort((p1, p2) => p2.date.localeCompare(p1.date)).slice(0, 60)
+        .map((x) => Object.assign({ titulo: x.title, data: x.date, dia_semana: DOW_LONG[dow(x.date)], hora: x.time || '', formato: FORMATS[x.format] || x.format, pilar: folderOf(x).name, nota_0_100: scoreOf(x) }, ...['views', 'reach', 'likes', 'comments', 'saves', 'shares', 'follows'].map((k) => (x.metrics[k] != null ? { [k]: x.metrics[k] } : {}))));
+      return {
+        mes: month, por_semana: Number(v.por_semana) || 4, eventos: v.eventos || '',
+        pilares: B().folders.map((f) => f.name), marca: b ? { nome: b.name, descricao: b.desc } : { nome: '', descricao: '' },
+        formatos: a.formats.map((f) => `${f.name}: ${f.desc}`).join('\n').slice(0, 1500), datas, historico,
+      };
+    },
+    async request(month, v) {
+      try {
+        const j = await Social.call('plan', this.payload(month, v));
+        const a = Assist.st(); a.jobs = a.jobs || [];
+        a.jobs.push({ id: j.job, kind: 'plan', mes: month, at: Date.now() });
+        save(); rerender(); Assist.watch();
+        toast(Push.active ? 'Montando o plano do mês ✨ Pode sair: te aviso quando ficar pronto.' : 'Montando o plano do mês ✨ Os posts aparecem no calendário quando ficar pronto.');
+      } catch (e) { toast(e.code === 'no_pillars' ? 'Crie pelo menos uma pasta (pilar) antes.' : aiErr(e)); }
+    },
+    // chegou o plano: troca os pendentes antigos do mês pelos novos e cria as tarefas
+    apply(job, res) {
+      const mo = job.mes;
+      const old = new Set(B().posts.filter((x) => x.planned && x.approval === 'pending' && (x.date || '').startsWith(mo)).map((x) => x.id));
+      B().posts = B().posts.filter((x) => !old.has(x.id));
+      S.tasks.items = S.tasks.items.filter((t) => !(t.planMonth === mo && !t.done && t.planAuto));
+      const byName = (n) => { const k = String(n || '').toLowerCase().trim(); return B().folders.find((f) => f.name.toLowerCase().trim() === k) || B().folders.find((f) => k && (f.name.toLowerCase().includes(k) || k.includes(f.name.toLowerCase()))); };
+      const used = new Set();
+      let n = 0;
+      (res.posts || []).forEach((x) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(x.data) || !x.data.startsWith(mo)) return;
+        const f = byName(x.pilar);
+        B().posts.push({ id: uid(), title: x.titulo || 'Post do plano', folderId: f ? f.id : (B().folders[0]?.id || ''), platform: 'instagram', format: FORMATS[x.formato] ? x.formato : 'reels', status: 'ideia', date: x.data, time: '', hook: x.gancho || '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '', checklist: [], createdAt: today(), planned: true, approval: 'pending', plan: { receita: x.receita || '', por_que: x.por_que || '', inspirado_em: x.inspirado_em || '', etiqueta: x.etiqueta || '' } });
+        used.add(x.data); n++;
+      });
+      const list = (S.tasks.lists.find((l) => l.id === 'l-negocio') || S.tasks.lists[0]);
+      (res.tarefas || []).forEach((t) => {
+        if (!t.texto) return;
+        const due = /^\d{4}-\d{2}-\d{2}$/.test(t.ate) ? t.ate : '';
+        S.tasks.items.push({ id: uid(), listId: list.id, text: t.texto, done: false, doneDates: {}, prio: 'normal', due, time: '', end: '', repeat: 'none', remindMin: due ? '0' : '', notes: 'Do plano do mês', planMonth: mo, planAuto: true });
+      });
+      B().planNotes = Object.assign({}, B().planNotes, { [mo]: res.resumo || '' });
+      return n;
+    },
+    approve(p) { p.approval = 'ok'; save(); },
+    approveMonth(mo) { let n = 0; B().posts.forEach((x) => { if (x.approval === 'pending' && (x.date || '').startsWith(mo)) { x.approval = 'ok'; n++; } }); save(); rerender(); return n; },
+  };
+
   PAGES.conteudo = (() => {
     const el = $('#pg-conteudo');
     let month = today().slice(0, 7);
     const kanOpen = {}; // colunas da produção abertas por inteiro
     let sel = today();
     function filtered() { const f = S.ui.contFolder || 'all'; return B().posts.filter((p) => f === 'all' || p.folderId === f); }
+    // prévia do feed: os planejados por cima dos já publicados, do mais novo para o mais antigo
+    function feedHTML(mo) {
+      const end = `${mo}-31`;
+      const list = B().posts.filter((x) => x.date && x.date <= end && (x.status === 'publicado' || x.date.startsWith(mo)) && x.format !== 'stories')
+        .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))).slice(0, 30);
+      const acc = Social.accounts && Social.accounts.instagram;
+      return `<div class="feed">
+          <div class="feed-head">${acc && acc.avatar_url ? `<img src="${esc(acc.avatar_url)}" alt="" referrerpolicy="no-referrer">` : '<span class="feed-av">🎀</span>'}<div><b>@${esc((acc && acc.username) || 'seu_perfil')}</b><span class="muted">${acc && acc.followers != null ? fmtNum(acc.followers) + ' seguidores · ' : ''}prévia com os posts planejados</span></div></div>
+          <div class="feed-grid">${list.map((x) => { const plan = x.status !== 'publicado'; return `<button type="button" class="feed-tile ${plan ? 'plan' : ''} ${x.approval === 'pending' ? 'pend' : ''}" data-post="${x.id}" style="--c:${folderOf(x).color}">
+              ${x.thumb ? `<img src="${esc(x.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
+              <span class="ft-t">${esc(x.title)}</span>
+              ${VIDEO_FORMATS.includes(x.format) ? '<span class="ft-ic" aria-hidden="true">▶</span>' : x.format === 'carrossel' ? '<span class="ft-ic" aria-hidden="true">❐</span>' : ''}
+              ${plan ? `<span class="ft-d">${fmtShort(x.date)}</span>` : ''}
+            </button>`; }).join('') || '<p class="muted" style="grid-column:1/-1;padding:12px">Nenhum post ainda.</p>'}</div>
+          <p class="muted" style="font-size:12px;margin:8px 0 0">Os com data foram planejados; os tracejados esperam a sua aprovação. Toque num post para abrir.</p>
+        </div>`;
+    }
+    // mix de pilares: quanto do mês é de cada pasta
+    function pillarMixHTML(mo) {
+      const mp = B().posts.filter((x) => (x.date || '').startsWith(mo));
+      if (mp.length < 2) return '';
+      const g = {};
+      mp.forEach((x) => { const f = folderOf(x); const k = f.id || ''; (g[k] = g[k] || { f, n: 0 }).n++; });
+      const rows = Object.values(g).sort((a, b) => b.n - a.n);
+      return `<div class="card mix"><div class="card-head"><h3>mix de pilares</h3><span class="muted">${mp.length} posts no mês</span></div>
+          <div class="mix-bar">${rows.map((r) => `<i style="flex:${r.n};--c:${r.f.color}" title="${esc(r.f.name)}: ${r.n}"></i>`).join('')}</div>
+          <div class="mix-leg">${rows.map((r) => `<span><i style="--c:${r.f.color}"></i>${r.f.emoji} ${esc(r.f.name)} <b>${Math.round((r.n / mp.length) * 100)}%</b></span>`).join('')}</div>
+        </div>`;
+    }
+    function planModal() {
+      const a = Assist.st(), [y, m] = month.split('-').map(Number);
+      const hasPlanned = B().posts.some((x) => (x.date || '').startsWith(month) && x.planned && x.approval === 'pending');
+      modal({
+        title: `planejar ${MONTHS[m - 1]}`,
+        message: 'A Claude monta os posts do mês usando os números dos seus posts, as datas comerciais e as suas pastas como pilares. Os posts chegam esperando a sua aprovação.',
+        fields: [
+          { name: 'por_semana', label: 'Posts por semana', type: 'select', value: String(S.ui.planPerWeek || 4), options: [2, 3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: n + ' posts' })) },
+          { name: 'brand', label: 'Marca / perfil', type: 'select', value: a.sel.brand || '', options: [{ value: '', label: 'sem marca definida' }, ...a.brands.map((b) => ({ value: b.id, label: b.name }))] },
+          { name: 'eventos', label: 'O que vai acontecer no mês?', type: 'textarea', value: (S.ui.planEvents || {})[month] || '', full: true, rows: 4, placeholder: 'Ex: lançamento da coleção de Natal dia 10, promoção na Black Friday, quero mostrar mais bastidores…' },
+        ],
+        extraHTML: `<p class="muted" style="font-size:12.5px;margin:0">Pilares: ${B().folders.map((f) => `${f.emoji} ${esc(f.name)}`).join(' · ')}. Para mudar, edite as pastas.</p>${hasPlanned ? '<p class="muted" style="font-size:12.5px;margin:6px 0 0">Os posts do plano anterior que ainda não foram aprovados serão trocados pelos novos.</p>' : ''}`,
+        saveLabel: '✨ montar o plano',
+        onSave: (v) => {
+          S.ui.planPerWeek = Number(v.por_semana); S.ui.planEvents = Object.assign({}, S.ui.planEvents, { [month]: v.eventos });
+          if (v.brand) a.sel.brand = v.brand;
+          save(); Plan.request(month, v);
+        },
+      });
+    }
     function render() {
       const tab = S.ui.contTab || 'cal';
       const f = S.ui.contFolder || 'all';
@@ -4357,16 +4513,30 @@
         const selPosts = byDay(sel);
         body = `<div class="card taped">
             <div class="card-head"><div class="row" style="gap:6px"><button class="icon-btn" data-cm="-1" aria-label="Mês anterior">${ICON.left}</button><h3>${MONTHS[m - 1]} ${y}</h3><button class="icon-btn" data-cm="1" aria-label="Próximo mês">${ICON.right}</button></div><span class="muted">arraste os posts para mudar o dia</span></div>
-            <div class="cal-grid">
+            ${(() => {
+              const mp = B().posts.filter((x) => (x.date || '').startsWith(month));
+              const pend = mp.filter((x) => x.approval === 'pending').length;
+              const jobs = (Assist.st().jobs || []).filter((j) => j.kind === 'plan' && j.mes === month).length;
+              return `<div class="plan-bar">
+                <button class="btn sm ai-write" data-plan-new ${jobs ? 'disabled' : ''}>${jobs ? '✨ montando o plano…' : (mp.some((x) => x.planned) ? '✨ refazer o plano do mês' : '✨ planejar o mês com a Claude')}</button>
+                <div class="seg sm" role="group" aria-label="Visualização"><button class="${S.ui.calView !== 'feed' ? 'on' : ''}" data-calview="cal">📅 calendário</button><button class="${S.ui.calView === 'feed' ? 'on' : ''}" data-calview="feed">📱 feed</button></div>
+                ${pend ? `<button class="btn sm" data-plan-ok-all>${pend === 1 ? '✓ aprovar o post pendente' : `✓ aprovar os ${pend} posts`}</button>` : ''}
+              </div>
+              ${jobs ? '<p class="muted plan-wait">A Claude está montando o plano em segundo plano. Pode sair: os posts aparecem aqui e chega uma notificação.</p>' : ''}
+              ${(B().planNotes || {})[month] ? `<details class="as-box plan-sum"><summary>estratégia do mês</summary><p>${esc(B().planNotes[month])}</p></details>` : ''}`;
+            })()}
+            <div class="cal-grid" ${S.ui.calView === 'feed' ? 'style="display:none"' : ''}>
               ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="cal-h">${d}</div>`).join('')}
               ${cells.map((d) => { const ps = byDay(d); return `<div class="cal-cell ${parseISO(d).getMonth() !== m - 1 ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-day="${d}" role="button" tabindex="0" aria-label="${fmtLong(d)}, ${ps.length} conteúdo(s)">
                 <div class="cal-dn ${isHoliday(d) ? 'hol' : ''}">${parseISO(d).getDate()}${isImportant(d) ? '<span class="cal-imp" title="dia importante"> ★</span>' : ''}</div>
                 ${holidaysOn(d).slice(0, 1).map((h) => `<div class="hol-chip t-${h.type}" title="${esc(h.name)} · ${holLabel(h)}"><span>${h.emoji}</span><span class="t">${esc(h.name)}</span></div>`).join('')}
-                ${ps.slice(0, 3).map((p) => `<div class="cal-chip ${p.status === 'publicado' ? 'pub' : ''}" draggable="true" data-post="${p.id}" style="--c:${folderOf(p).color}" title="${esc(p.title)}"><span>${platOf(p).icon}</span><span class="t">${esc(p.title)}</span></div>`).join('')}
+                ${ps.slice(0, 3).map((p) => `<div class="cal-chip ${p.status === 'publicado' ? 'pub' : ''} ${p.approval === 'pending' ? 'pend' : ''}" draggable="true" data-post="${p.id}" style="--c:${folderOf(p).color}" title="${esc(p.title)}"><span>${platOf(p).icon}</span><span class="t">${esc(p.title)}</span></div>`).join('')}
                 ${ps.length > 3 ? `<div class="cal-more">+${ps.length - 3}</div>` : ''}
               </div>`; }).join('')}
             </div>
+            ${S.ui.calView === 'feed' ? feedHTML(month) : ''}
           </div>
+          ${pillarMixHTML(month)}
           <div class="card">
             <div class="card-head"><h3>${esc(fmtLong(sel))}</h3><button class="btn sm secondary" data-new-post-day="${sel}">+ conteúdo neste dia</button></div>
             ${selPosts.length ? `<div class="day-posts">${selPosts.map((p) => postCard(p, { drag: true })).join('')}</div>` : '<div class="empty"><span class="hand">nada programado ♡</span>toque em “+ conteúdo neste dia” ou arraste uma ideia</div>'}
@@ -4417,6 +4587,10 @@
         ${body}`;
     }
     on(el, 'click', '[data-ctab]', (e, b) => { S.ui.contTab = b.dataset.ctab; save(); render(); });
+    on(el, 'click', '[data-plan-new]', () => { if (!inSupa) { toast('O plano do mês funciona no app Bloom.'); return; } planModal(); });
+    on(el, 'click', '[data-calview]', (e, b) => { S.ui.calView = b.dataset.calview; save(); render(); });
+    on(el, 'click', '[data-plan-ok-all]', () => { const n = Plan.approveMonth(month); toast(n === 1 ? 'Post aprovado ✨' : `${n} posts aprovados ✨`); });
+    on(el, 'click', '.feed-tile[data-post]', (e, b) => { const x = B().posts.find((q) => q.id === b.dataset.post); if (x) (x.status === 'publicado' ? postInfo(x) : postModal(x)); });
     Assist.bind(el);
     on(el, 'click', '[data-cf]', (e, b) => { S.ui.contFolder = b.dataset.cf; save(); render(); });
     on(el, 'click', '[data-new-folder]', () => folderModal());
@@ -4645,6 +4819,7 @@
         p.ext = { key, platform: sp.platform, id: sp.ext_id };
         p.status = 'publicado';
         if (!p.link) p.link = sp.permalink || '';
+        if (sp.thumbnail_url && p.thumb !== sp.thumbnail_url) { p.thumb = sp.thumbnail_url; changed = true; }
         if (!p.date) { p.date = date; p.time = time; }
         if (p.example) delete p.example;
         if (JSON.stringify([p.metrics, p.status, p.ext, p.link]) !== before) changed = true;
@@ -4861,7 +5036,7 @@
       toast(x.roteiro ? (VIDEO_FORMATS.includes(fmt) ? 'Guardada com roteiro ✨ Já está na fila de Gravar.' : 'Guardada com o texto pronto ✨') : 'Ideia guardada no banco de ideias 💡');
     });
     bindPostActions(el);
-    return { render };
+    return { render, setMonth: (mo) => { month = mo; sel = mo === today().slice(0, 7) ? today() : `${mo}-01`; } };
   })();
 
   function bizTodayCard() {
@@ -5391,6 +5566,7 @@
   Reminders.tick();
   if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
+  if (location.protocol === 'file:') window.__bloom = { Plan, Assist, S: () => S, rerender: () => rerender() }; // só nos testes locais
   setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });

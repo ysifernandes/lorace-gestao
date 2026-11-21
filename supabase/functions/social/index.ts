@@ -11,6 +11,7 @@
 //   POST /script              { titulo, formato, notas }             (usuária logada: gancho, roteiro e legenda de uma ideia)
 //   POST /assist              { relato, formato, marca, tipo, anterior, ajuste } (usuária logada: plano de gravação a partir de um relato)
 //                             → responde na hora com { job }; o plano fica pronto em segundo plano (tabela ai_jobs) e chega uma notificação
+//   POST /plan                { mes, por_semana, eventos, pilares, marca, datas, historico } (usuária logada: plano do mês, em segundo plano)
 //   POST /disconnect          { platform }                           (usuária logada)
 //   POST /push-tick           header x-cron-secret                   (a cada 5 min: envia lembretes como notificação)
 //   POST /push-test                                                  (usuária logada: notificação de teste)
@@ -619,6 +620,86 @@ async function assistPlan(userId: string, body: any) {
   else await work;
   return { status: 202, body: { ok: true, job: job.id } };
 }
+/* Plano do mês: posts de cada semana com receita, "por quê" e "inspirado em", mais as tarefas para dar conta */
+const PLAN_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['resumo', 'posts', 'tarefas'],
+  properties: {
+    resumo: { type: 'string' },
+    posts: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        required: ['data', 'titulo', 'formato', 'pilar', 'etiqueta', 'gancho', 'receita', 'por_que', 'inspirado_em'],
+        properties: {
+          data: { type: 'string' }, titulo: { type: 'string' },
+          formato: { type: 'string', enum: ['reels', 'carrossel', 'stories', 'post'] },
+          pilar: { type: 'string' }, etiqueta: { type: 'string' }, gancho: { type: 'string' },
+          receita: { type: 'string' }, por_que: { type: 'string' }, inspirado_em: { type: 'string' },
+        },
+      },
+    },
+    tarefas: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: false, required: ['texto', 'ate'], properties: { texto: { type: 'string' }, ate: { type: 'string' } } },
+    },
+  },
+};
+const PLAN_SYSTEM = `Você é a estrategista de conteúdo de uma pequena empreendedora brasileira e monta o plano de Instagram do mês dela.
+
+Regras:
+- Distribua os posts pelo mês respeitando a quantidade por semana pedida, só em datas do mês informado (formato AAAA-MM-DD), sem dois posts no mesmo dia, de preferência nos dias e horários em que os posts dela foram melhor.
+- "pilar": use exatamente um dos nomes de pilares (pastas) que ela enviou. Equilibre os pilares; venda não deve passar de cerca de um terço do mês.
+- Aproveite as datas comerciais e os eventos que ela contar (lançamento, promoção). Não invente eventos, preços, produtos ou números.
+- "etiqueta": uma palavra curta que resume o objetivo (venda, história, dica, bastidores, depoimento, lançamento, engajamento).
+- "gancho": a primeira frase do post.
+- "receita": em 1 a 3 frases, como fazer: formato e duração, o que mostrar, se ela grava ou usa material que já tem, e a capa.
+- "por_que": a justificativa usando o histórico dela quando houver ("seus reels de bastidores tiveram em média X de alcance contra Y dos carrosséis"). Cite apenas números que estão no histórico enviado. Sem histórico, explique a lógica de estratégia em 1 frase, sem inventar números.
+- "inspirado_em": o post antigo dela que serviu de base (título e data, com o número de alcance ou visualizações se houver no histórico). Vazio se não houver um.
+- "tarefas": de 3 a 8 tarefas práticas para o plano sair do papel, cada uma com prazo "ate" (AAAA-MM-DD) dentro do mês, antes do post a que se refere (ex.: "Gravar os 2 reels de bastidores", "Fotografar os produtos da promoção", "Escolher a história de cliente para o post do dia 21").
+- "resumo": 2 a 3 frases sobre a estratégia do mês.
+Escreva em português do Brasil, com tom acolhedor e direto.`;
+async function startJob(userId: string, kind: string, input: unknown, system: string, user: string, schema: unknown, notice: (data: any) => { title: string; body: string }) {
+  const { data: job, error } = await admin.from('ai_jobs').insert({ user_id: userId, kind, status: 'running', input }).select('id').single();
+  if (error || !job) return { status: 500, body: { error: 'db' } };
+  const work = (async () => {
+    const r = await askClaude(system, user, schema);
+    const ok = r.status === 200;
+    await admin.from('ai_jobs').update({ status: ok ? 'done' : 'error', result: ok ? (r.body as any).data : null, error: ok ? null : String((r.body as any).error || 'failed'), done_at: nowIso() }).eq('id', job.id);
+    const n = ok ? notice((r.body as any).data) : { title: '😕 Não consegui terminar o pedido', body: 'Toque para tentar de novo.' };
+    await notifyUser(userId, { title: n.title, body: n.body, url: (APP_URL || '') + '/?job=' + job.id, tag: 'bloom-job-' + job.id });
+  })().catch(async (e) => {
+    console.error('job', e);
+    await admin.from('ai_jobs').update({ status: 'error', error: 'failed', done_at: nowIso() }).eq('id', job.id);
+  });
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(work);
+  else await work;
+  return { status: 202, body: { ok: true, job: job.id } };
+}
+async function monthPlan(userId: string, body: any) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const mes = clip(body?.mes, 7);
+  if (!/^\d{4}-\d{2}$/.test(mes)) return { status: 400, body: { error: 'bad_month' } };
+  const pilares = (Array.isArray(body?.pilares) ? body.pilares : []).slice(0, 12).map((x: unknown) => clip(x, 40)).filter(Boolean);
+  if (!pilares.length) return { status: 400, body: { error: 'no_pillars' } };
+  if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
+  const keys = ['titulo', 'data', 'dia_semana', 'hora', 'formato', 'pilar', 'views', 'reach', 'likes', 'comments', 'saves', 'shares', 'follows', 'nota_0_100'];
+  const historico = (Array.isArray(body?.historico) ? body.historico : []).slice(0, 60).map((p: any) => {
+    const o: Record<string, unknown> = {};
+    for (const k of keys) { const v = p?.[k]; if (typeof v === 'number' && Number.isFinite(v)) o[k] = v; else if (typeof v === 'string' && v.trim()) o[k] = v.slice(0, 120); }
+    return o;
+  });
+  const pedido = {
+    mes, posts_por_semana: Math.min(14, Math.max(1, Number(body?.por_semana) || 3)),
+    eventos_do_mes: clip(body?.eventos, 2000), pilares,
+    marca: { nome: clip(body?.marca?.nome, 80), sobre: clip(body?.marca?.descricao, 1500) },
+    formatos_que_ela_usa: clip(body?.formatos, 1500),
+    datas_comerciais: (Array.isArray(body?.datas) ? body.datas : []).slice(0, 20).map((x: unknown) => clip(x, 80)),
+    historico,
+  };
+  return startJob(userId, 'plan', { mes }, PLAN_SYSTEM, `Pedido (JSON):\n${JSON.stringify(pedido)}`, PLAN_SCHEMA,
+    (d) => ({ title: `🗓️ Seu plano de ${mes.slice(5)}/${mes.slice(0, 4)} está pronto`, body: `${(d?.posts || []).length} posts esperando a sua aprovação. Toque para ver.` }));
+}
 async function analyzePosts(userId: string, raw: unknown) {
   if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
   const posts = cleanPosts(raw);
@@ -745,6 +826,14 @@ Deno.serve(async (req) => {
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { posts } = await req.json().catch(() => ({}));
       const r = await analyzePosts(user.id, posts);
+      return json(r.body, r.status);
+    }
+
+    if (route[0] === 'plan' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await req.json().catch(() => ({}));
+      const r = await monthPlan(user.id, body);
       return json(r.body, r.status);
     }
 
