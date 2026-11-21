@@ -1257,6 +1257,18 @@
   .aff-share:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .aff-prev { display: grid; place-items: center; background: var(--surface-2); border-radius: 16px; padding: 10px; }
   .aff-prev img { max-width: 100%; max-height: 52vh; border-radius: 10px; box-shadow: var(--shadow); }
+  .as-presets { margin: 2px 0 8px; }
+  .as-fmt-note { font-size: 13px; margin: 0 0 10px; }
+  .fp-list { display: flex; flex-direction: column; gap: 8px; max-height: 58vh; overflow-y: auto; padding-right: 2px; }
+  .fp-item { border-radius: 14px; background: var(--accent-soft); padding: 10px 12px; }
+  .fp-item.on { box-shadow: inset 0 0 0 2px var(--brand); }
+  .fp-top { display: flex; align-items: center; gap: 10px; }
+  .fp-e { font-size: 24px; flex: none; width: 32px; text-align: center; }
+  .fp-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .fp-t .muted { font-size: 12.5px; }
+  .fp-more { margin-top: 6px; }
+  .fp-more summary { cursor: pointer; font-size: 12.5px; color: var(--brand); }
+  .fp-more p { margin: 6px 0 0; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -4389,6 +4401,42 @@
   /* CONTEÚDO */
   /* ASSISTENTE DE CONTEÚDO: ela conta a história (falando ou escrevendo) e recebe o plano de gravação */
   const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  // Formatos de vídeo que mais se repetem no Reels e no TikTok. "desc" são as regras que a Claude segue.
+  const FORMAT_PRESETS = [
+    { id: 'cabeca-falante', emoji: '🎙️', name: 'Cabeça falante', tipo: 'reels', quick: 'Você fala direto para a câmera, sem enrolar.',
+      desc: 'Você fala olhando para a câmera, em plano meio corpo ou close, com luz de frente. Estrutura: gancho forte na 1ª frase (promessa ou provocação) → UMA ideia só → exemplo real do seu dia → pergunta ou convite no final. Pouca edição: corte seco para tirar pausas e legenda na tela. De 30 a 45 segundos.' },
+    { id: 'yap', emoji: '🗣️', name: 'Yap (conversa solta)', tipo: 'reels', quick: 'Fala contínua e natural, como contar para uma amiga.',
+      desc: 'Fala contínua, natural e informal, como um desabafo ou conversa com uma amiga, sem roteiro engessado. Uma ideia só. O gancho já entrega a promessa do vídeo no 1º segundo. Pouquíssima edição: sem takes de apoio, só cortes para tirar tropeços. Fecha com uma pergunta que vire conversa nos comentários. De 30 a 60 segundos.' },
+    { id: 'storytime', emoji: '📖', name: 'Storytime (contar uma história)', tipo: 'reels', quick: 'Situação, problema, virada e resultado.',
+      desc: 'Conta uma história real em primeira pessoa. Estrutura: situação (onde e quando) → problema ou tensão → virada → resultado → lição ou convite. Use detalhes concretos (nomes, números, o que deu errado). Gancho que abre a tensão: "Faltavam 2 dias e deu tudo errado". De 40 a 60 segundos, com cortes para ilustrar os momentos-chave.' },
+    { id: 'dia-na-vida', emoji: '🗓️', name: 'Um dia na vida', tipo: 'reels', quick: 'Cenas curtas do seu dia de trabalho, com horários.',
+      desc: 'Sequência de cenas curtas (2 a 4 segundos) do seu dia, com o horário na tela (7h, 10h, 15h…). Mostre o real e o bastidor, não só o bonito. Voz em off curta ou áudio em alta. Gancho: "Um dia na vida de quem [o que você faz]". Termina com o resultado do dia e um convite para acompanhar.' },
+    { id: 'bastidores', emoji: '🧰', name: 'Bastidores / making of', tipo: 'reels', quick: 'Mostra como o produto é feito.',
+      desc: 'Mostra o processo de criar o produto, em cortes rápidos, com close nas mãos trabalhando. Texto na tela marcando cada etapa. Termina com o produto pronto, em plano bonito. Gancho: "Você sabe como isso é feito?". De 15 a 30 segundos, com poucas falas.' },
+    { id: 'embalando', emoji: '📦', name: 'Embalando pedidos', tipo: 'reels', quick: 'Close nas mãos embalando, som do ambiente.',
+      desc: 'Close nas mãos embalando um pedido, vistas de cima, com o som do ambiente (papel, fita, caixa). Cortes rápidos e texto na tela com o número do pedido ou o que vai dentro. Sem fala ou com uma frase só. Final: o pacote fechado, bonito. De 10 a 20 segundos.' },
+    { id: 'antes-depois', emoji: '✨', name: 'Antes e depois', tipo: 'reels', quick: 'Mostra o problema e a transformação.',
+      desc: 'Mostra o antes (o problema), o processo bem rápido e o depois, com uma transição marcante no meio. Gancho visual forte nos 2 primeiros segundos. Texto na tela dizendo o que mudou. De 10 a 20 segundos.' },
+    { id: 'passo-a-passo', emoji: '🪜', name: 'Passo a passo (tutorial)', tipo: 'reels', quick: 'Ensina algo em poucos passos.',
+      desc: 'Ensina algo em passos numerados. O gancho promete o resultado e o número de passos ("Como fazer X em 3 passos"). Cada passo é uma cena curta com o número na tela. No final, resultado pronto e convite para salvar para depois. De 30 a 45 segundos.' },
+    { id: 'erros', emoji: '❌', name: 'Erros comuns ("3 erros que…")', tipo: 'reels', quick: 'Lista de erros e como evitar.',
+      desc: 'Lista numerada de erros que o público comete. Gancho: "Pare de fazer isso se você quer [resultado]". Cada erro é uma cena curta com o número e a frase na tela. Fecha com a solução e um convite para comentar qual erro a pessoa já cometeu. De 30 a 40 segundos.' },
+    { id: 'mito-verdade', emoji: '🤔', name: 'Mito ou verdade', tipo: 'reels', quick: 'Desmonta uma crença comum.',
+      desc: 'Afirma um mito do seu nicho, mostra "MITO" ou "VERDADE" na tela e explica em 1 ou 2 frases com um exemplo real. Pode repetir com 2 ou 3 mitos. Gancho: o mito mais ouvido pelas suas clientes. Fecha com uma pergunta. De 20 a 40 segundos.' },
+    { id: 'respondendo', emoji: '💬', name: 'Respondendo uma pergunta', tipo: 'reels', quick: 'Responde um comentário ou dúvida de cliente.',
+      desc: 'Abre mostrando a pergunta de uma seguidora ou cliente escrita na tela. Você responde direto para a câmera, com exemplo prático. Gera conversa porque a pergunta é real. Termina convidando a mandar a próxima dúvida. De 20 a 40 segundos.' },
+    { id: 'comparacao', emoji: '🆚', name: 'Comparação (A vs B)', tipo: 'reels', quick: 'Compara duas opções lado a lado.',
+      desc: 'Compara duas opções (por exemplo, brinde comum vs. brinde personalizado), lado a lado ou alternando as cenas. Defina 2 ou 3 critérios claros e mostre cada um com imagem. Dê o veredito no final e convide a pessoa a escolher nos comentários. De 20 a 35 segundos.' },
+    { id: 'pov', emoji: '🎯', name: 'POV (ponto de vista)', tipo: 'reels', quick: 'Encenação curta: "POV: você é…".',
+      desc: 'Encenação curta, com texto na tela "POV: você é a cliente que…" ou "POV: você é dona de negócio e…". Uma situação só, com virada engraçada ou emocional no fim. Pode usar áudio em alta. De 7 a 15 segundos.' },
+    { id: 'trend', emoji: '🎵', name: 'Trend com áudio em alta', tipo: 'reels', quick: 'Adapta uma trend ao seu negócio.',
+      desc: 'Adapta uma trend de áudio ao seu negócio. O texto na tela conta a história ou a piada, e as imagens mostram o seu dia ou o seu produto. Escolha o áudio que está em alta no aplicativo na hora de postar (a sugestão não sabe quais estão em alta hoje). De 7 a 15 segundos.' },
+    { id: 'demonstracao', emoji: '🛍️', name: 'Mostrando o produto', tipo: 'reels', quick: 'Demonstra o produto em uso, sem enrolar.',
+      desc: 'Close do produto, uso real e 3 benefícios concretos, um por cena. Fala curta e direta. Termina dizendo como comprar ou fazer o pedido. Gancho: o problema que o produto resolve. De 20 a 30 segundos. Sem preço ou promessa que você não tenha informado.' },
+    { id: 'prova-social', emoji: '💗', name: 'Prova social (depoimento)', tipo: 'reels', quick: 'Mostra o que clientes dizem e a entrega.',
+      desc: 'Mostra mensagens e elogios de clientes (com permissão), fotos da entrega e o resultado. Você agradece olhando para a câmera. Gancho: a frase mais bonita do depoimento. Fecha com um convite a quem quer o mesmo resultado. De 15 a 30 segundos.' },
+  ];
+  const presetOf = (id) => { const k = String(id || '').replace(/^pre:/, ''); return FORMAT_PRESETS.find((x) => x.id === k) || null; };
   const Assist = {
     busy: false, draft: '', adj: '',
     st() {
@@ -4405,16 +4453,18 @@
           <p class="muted" style="margin:0 0 10px">Conte a história ou a ideia do seu jeito, falando ou escrevendo. Eu monto o roteiro, as cenas, o ângulo de cada take e a legenda.</p>
           <div class="as-row">
             <label class="as-f"><span>Marca / perfil</span><div class="as-sel"><select class="input" data-as-brand>${opt(a.brands, a.sel.brand, 'sem marca definida')}</select><button type="button" class="icon-btn" data-as-edit="brand" aria-label="Adicionar ou editar marca">${ICON.edit}</button></div></label>
-            <label class="as-f"><span>Formato do vídeo</span><div class="as-sel"><select class="input" data-as-format>${opt(a.formats, a.sel.format, 'história livre')}</select><button type="button" class="icon-btn" data-as-edit="format" aria-label="Adicionar ou editar formato">${ICON.edit}</button></div></label>
+            <label class="as-f"><span>Formato do vídeo</span><div class="as-sel"><select class="input" data-as-format><option value="">história livre</option>${a.formats.length ? `<optgroup label="Meus formatos">${a.formats.map((x) => `<option value="${x.id}" ${x.id === a.sel.format ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Formatos prontos">${FORMAT_PRESETS.map((x) => `<option value="pre:${x.id}" ${'pre:' + x.id === a.sel.format ? 'selected' : ''}>${x.emoji} ${esc(x.name)}</option>`).join('')}</optgroup></select><button type="button" class="icon-btn" data-as-edit="format" aria-label="Adicionar ou editar formato">${ICON.edit}</button></div></label>
             <label class="as-f"><span>Tipo</span><select class="input" data-as-tipo>${['reels', 'stories', 'carrossel', 'post'].map((k) => `<option value="${k}" ${a.sel.tipo === k ? 'selected' : ''}>${FORMATS[k]}</option>`).join('')}</select></label>
           </div>
+          <button type="button" class="btn sm ghost as-presets" data-as-presets>📚 ver os ${FORMAT_PRESETS.length} formatos prontos</button>
+          ${presetOf(a.sel.format) ? `<p class="muted as-fmt-note">${presetOf(a.sel.format).emoji} <b>${esc(presetOf(a.sel.format).name)}</b>: ${esc(presetOf(a.sel.format).quick)}</p>` : ''}
           <form class="as-talk" data-as-form>
             <textarea class="input" name="relato" rows="5" placeholder="Ex: hoje uma cliente pediu 200 brindes para sexta, o teste de impressão deu errado, eu refiz tudo e consegui entregar…" aria-label="Conte a história ou a ideia">${esc(this.draft)}</textarea>
             <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
           </form>
           <p class="muted qa-hint">🎤 Toque no microfone e conte tudo, com pausas à vontade. Ele só para quando você tocar de novo.</p>
           <button class="btn ai-write as-go" data-as-go ${this.busy ? 'disabled' : ''}>${this.busy ? '✨ enviando…' : '✨ montar meu vídeo'}</button>
-          ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: toque no lápis ao lado de “Formato do vídeo” e explique o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
+          ${a.formats.length ? '' : '<p class="muted" style="font-size:12.5px;margin:10px 0 0">Dica: escolha um dos formatos prontos ou toque no lápis ao lado de “Formato do vídeo” para ensinar o formato que você está estudando. Eu passo a seguir as regras dele em todos os vídeos.</p>'}
         </div>`;
       const jobs = (a.jobs || []).filter((j) => j.kind !== 'plan');
       const wait = jobs.length ? `<div class="card as-wait"><div class="as-spin" aria-hidden="true"></div><div><b>${jobs.length === 1 ? 'Montando o seu vídeo…' : `Montando ${jobs.length} pedidos…`}</b><div class="muted">${esc((jobs[jobs.length - 1].ajuste || jobs[jobs.length - 1].relato || '').slice(0, 80))}…</div><div class="muted" style="font-size:12px;margin-top:4px">Pode sair desta tela ou do app. ${Push.active ? 'Eu te mando uma notificação quando ficar pronto.' : 'Quando voltar, o plano vai estar aqui.'}</div></div></div>` : '';
@@ -4462,7 +4512,7 @@
     },
     payload() {
       const a = this.st();
-      const f = a.formats.find((x) => x.id === a.sel.format), b = a.brands.find((x) => x.id === a.sel.brand);
+      const f = a.formats.find((x) => x.id === a.sel.format) || (presetOf(a.sel.format) && { name: presetOf(a.sel.format).name, desc: presetOf(a.sel.format).desc }), b = a.brands.find((x) => x.id === a.sel.brand);
       return { tipo: a.sel.tipo, formato: f ? { nome: f.name, descricao: f.desc } : { nome: '', descricao: '' }, marca: b ? { nome: b.name, descricao: b.desc } : { nome: '', descricao: '' } };
     },
     async run(relato, prev, ajuste) {
@@ -4537,15 +4587,17 @@
     editList(kind) {
       const a = this.st(), list = kind === 'format' ? a.formats : a.brands, selKey = kind === 'format' ? 'format' : 'brand';
       const it = list.find((x) => x.id === a.sel[selKey]);
+      const pre = !it && kind === 'format' ? presetOf(a.sel.format) : null;
+      const base = it || (pre && { name: pre.name, desc: pre.desc });
       const L = kind === 'format'
         ? { t: it ? 'editar formato' : 'novo formato de vídeo', n: 'Nome do formato', np: 'Ex: o nome do método que você está estudando', d: 'Como esse formato funciona', dp: 'Explique com as suas palavras ou cole as regras: quais são as partes, em que ordem, o que não pode faltar…' }
         : { t: it ? 'editar marca' : 'nova marca / perfil', n: 'Nome', np: 'Ex: nome da loja ou do perfil', d: 'Sobre a marca', dp: 'O que você vende, para quem, o seu jeito de falar, o que não combina com a marca…' };
       modal({
         title: L.t,
-        message: it ? '' : (kind === 'format' ? 'Explique uma vez e eu sigo essas regras em todos os vídeos desse formato.' : 'Assim os roteiros saem com a cara da marca.'),
+        message: it ? '' : pre ? 'Este é um formato pronto. Ao salvar, vira uma cópia sua, que você pode ajustar do seu jeito.' : (kind === 'format' ? 'Explique uma vez e eu sigo essas regras em todos os vídeos desse formato.' : 'Assim os roteiros saem com a cara da marca.'),
         fields: [
-          { name: 'name', label: L.n, value: it ? it.name : '', required: true, full: true, placeholder: L.np },
-          { name: 'desc', label: L.d, type: 'textarea', value: it ? it.desc : '', full: true, rows: 7, placeholder: L.dp },
+          { name: 'name', label: L.n, value: base ? base.name : '', required: true, full: true, placeholder: L.np },
+          { name: 'desc', label: L.d, type: 'textarea', value: base ? base.desc : '', full: true, rows: 7, placeholder: L.dp },
         ],
         extraHTML: it ? '<button type="button" class="btn sm secondary" id="as-add-new" style="margin-bottom:8px">+ criar outro em vez de editar este</button>' : '',
         onOpen: (form) => { const b = $('#as-add-new', form); if (b) b.addEventListener('click', () => { a.sel[selKey] = ''; dlg.close(); setTimeout(() => this.editList(kind), 50); }); },
@@ -4555,6 +4607,23 @@
           save(); rerender(); toast('Salvo. Vou usar nos próximos vídeos ✨');
         },
         onDelete: it ? () => { const i = list.indexOf(it); if (i >= 0) list.splice(i, 1); a.sel[selKey] = ''; save(); rerender(); } : null,
+      });
+    },
+    presets() {
+      const a = this.st();
+      modal({
+        title: 'formatos prontos',
+        message: 'Os estilos de vídeo que mais se repetem no Reels e no TikTok. Escolha um e eu monto o roteiro seguindo as regras dele.',
+        extraHTML: `<div class="fp-list">${FORMAT_PRESETS.map((x) => `<div class="fp-item ${'pre:' + x.id === a.sel.format ? 'on' : ''}">
+            <div class="fp-top"><span class="fp-e" aria-hidden="true">${x.emoji}</span><div class="fp-t"><b>${esc(x.name)}</b><span class="muted">${esc(x.quick)}</span></div><button type="button" class="btn sm ${'pre:' + x.id === a.sel.format ? '' : 'secondary'}" data-fp-use="${x.id}">${'pre:' + x.id === a.sel.format ? '✓ em uso' : 'usar'}</button></div>
+            <details class="fp-more"><summary>como funciona</summary><p>${esc(x.desc)}</p></details>
+          </div>`).join('')}</div>`,
+        cancelLabel: 'Fechar',
+        onOpen: (form) => form.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-fp-use]'); if (!b) return;
+          const x = presetOf(b.dataset.fpUse); if (!x) return;
+          a.sel.format = 'pre:' + x.id; a.sel.tipo = x.tipo; save(); dlg.close(); rerender(); toast(`${x.emoji} ${x.name} escolhido. Agora conte a sua história.`);
+        }),
       });
     },
     history() {
@@ -4577,6 +4646,7 @@
       el.addEventListener('submit', (e) => { if (e.target.closest('[data-as-form], [data-as-adj]')) e.preventDefault(); });
       on(el, 'click', '[data-as-edit]', (e, b) => { keep(); this.editList(b.dataset.asEdit); });
       on(el, 'click', '[data-as-hist]', () => { keep(); this.history(); });
+      on(el, 'click', '[data-as-presets]', () => { keep(); this.presets(); });
       on(el, 'click', '[data-as-go]', () => { keep(); if (this.busy) return; if (this.draft.trim().length < 15) { toast('Conte a história ou a ideia primeiro (pode ser falando 🎤).'); return; } this.run(this.draft.trim()); });
       on(el, 'click', '[data-as-adjgo]', () => { keep(); const c = this.cur(); if (this.busy || !c) return; if (this.adj.trim().length < 3) { toast('Escreva ou fale o que você quer mudar.'); return; } this.run(c.relato, c, this.adj.trim()); });
       on(el, 'click', '[data-as-save]', () => { const c = this.cur(); if (c) this.toPost(c); });
