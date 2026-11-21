@@ -1269,6 +1269,31 @@
   .fp-more { margin-top: 6px; }
   .fp-more summary { cursor: pointer; font-size: 12.5px; color: var(--brand); }
   .fp-more p { margin: 6px 0 0; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  /* ---------- Organizar a tela Hoje ---------- */
+  .org-btn { all: unset; cursor: pointer; display: inline-flex; margin: 8px 0 0 8px; padding: 5px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 600; color: var(--bg-ink-soft); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bg-ink-soft) 50%, transparent); }
+  .org-btn:hover { background: var(--surface); color: var(--ink); }
+  .org-btn:focus-visible { outline: 2px solid var(--brand); }
+  .org-banner { position: sticky; top: 8px; z-index: 30; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 18px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow), inset 0 0 0 2px var(--brand); }
+  .org-banner > div:first-child { display: flex; flex-direction: column; min-width: 0; flex: 1 1 220px; }
+  .org-banner span { font-size: 12.5px; color: var(--ink-soft); }
+  .org-hidden { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink-soft); }
+  .wg { position: relative; }
+  .org .stack { min-height: 90px; border-radius: 20px; outline: 2px dashed color-mix(in srgb, var(--brand) 30%, transparent); outline-offset: 6px; }
+  .org .wg { border-radius: 22px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 35%, transparent); }
+  .org .wg > :not(.wg-bar) { pointer-events: none; user-select: none; }
+  .wg-bar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin: 0 0 8px; border-radius: 99px; background: var(--brand); color: var(--on-brand); position: relative; z-index: 2; }
+  .wg-grip { all: unset; cursor: grab; touch-action: none; padding: 6px 12px; border-radius: 99px; background: rgba(255,255,255,.22); font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .wg-grip:active { cursor: grabbing; }
+  .wg-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wg-b { all: unset; cursor: pointer; padding: 6px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.18); white-space: nowrap; }
+  .wg-b:hover { background: rgba(255,255,255,.34); }
+  .wg-b:focus-visible, .wg-grip:focus-visible { outline: 2px solid #fff; }
+  .wg-drag { z-index: 60; opacity: .92; filter: drop-shadow(0 20px 28px rgba(40,10,20,.35)); pointer-events: none; }
+  .wg-drag > * { pointer-events: none; }
+  .wg-ins-before { box-shadow: 0 -10px 0 -4px var(--brand) !important; }
+  .wg-ins-end { box-shadow: 0 10px 0 -4px var(--brand) !important; }
+  .wg-ins-empty { outline: 3px solid var(--brand) !important; }
+  @media (max-width: 480px) { .wg-b { padding: 6px 8px; } .wg-name { display: none; } .wg-bar { justify-content: space-between; } }
 </style>
 </head>
 <body>
@@ -2840,6 +2865,29 @@
   /* =========================================================
      HOJE
      ========================================================= */
+  /* Organizar a tela Hoje: ordem e colunas dos cartões ficam salvas em S.ui.hojeLayout */
+  const Layout = {
+    NAMES: { notas: 'minhas notas', meudia: 'meu dia', contagem: 'contagem regressiva', negocio: 'meu negócio hoje', afirmacao: 'afirmação do dia', habitos: 'hábitos da semana', metas: 'metas em andamento' },
+    DEFAULT: { left: ['notas', 'meudia', 'contagem', 'negocio'], right: ['afirmacao', 'habitos', 'metas'], hidden: [] },
+    get() {
+      const saved = S.ui.hojeLayout || {}, known = Object.keys(this.NAMES), seen = new Set();
+      const clean = (arr) => (Array.isArray(arr) ? arr : []).filter((id) => known.includes(id) && !seen.has(id) && seen.add(id));
+      const out = { left: clean(saved.left), right: clean(saved.right), hidden: clean(saved.hidden) };
+      known.forEach((id) => { if (!seen.has(id)) (this.DEFAULT.left.includes(id) ? out.left : out.right).push(id); }); // cartão novo entra no fim
+      if (!saved.left && !saved.right) return { left: [...this.DEFAULT.left], right: [...this.DEFAULT.right], hidden: [] };
+      return out;
+    },
+    set(l) { S.ui.hojeLayout = { left: l.left, right: l.right, hidden: l.hidden }; save(); },
+    place(id, col, index) { const l = this.get(); ['left', 'right', 'hidden'].forEach((k) => { l[k] = l[k].filter((x) => x !== id); }); l[col].splice(Math.max(0, Math.min(index, l[col].length)), 0, id); this.set(l); },
+    move(id, d) { // sobe ou desce; na ponta, passa para a outra coluna
+      const l = this.get(), col = l.left.includes(id) ? 'left' : 'right', arr = l[col], i = arr.indexOf(id), j = i + d;
+      if (j >= 0 && j < arr.length) { arr.splice(i, 1); arr.splice(j, 0, id); this.set(l); return; }
+      const other = col === 'left' ? 'right' : 'left';
+      arr.splice(i, 1); if (d < 0 && col === 'right') l.left.push(id); else if (d > 0 && col === 'left') l.right.unshift(id); else if (d < 0) l.right.push(id); else l.left.unshift(id);
+      this.set(l);
+    },
+  };
+  let org = false;
   PAGES.hoje = (() => {
     const el = $('#pg-hoje');
     function render() {
@@ -2859,22 +2907,9 @@
       const week = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
       const goals = S.goals.filter((g) => goalProgress(g) < 100).slice(0, 4);
 
-      el.innerHTML = `
-        ${inClaude ? `<div class="app-banner"><span>🎀 Esta é a versão de teste dentro do Claude. Seus dados de verdade ficam no <b>app Bloom</b>. Para levar o que está aqui: <b>Ajustes → Baixar backup</b> e, no app, <b>Restaurar backup</b>.</span><a class="btn sm" href="https://bloom-planner-nine.vercel.app" target="_blank" rel="noopener">abrir o app Bloom</a></div>` : ''}
-        <div class="hero">
-          <div>
-            <div class="hero-date">${esc(fmtLong(t))}</div>
-            <div class="clock" id="clock">${nowHM()}</div>
-            <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
-            ${Weather.chip()}
-            ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${h.emoji} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
-          </div>
-          <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
-        </div>
-        <div class="grid-2">
-          <div class="stack">
-            ${quickNotesCard()}
-            <div class="card taped t-right">
+      const WG = {
+        notas: () => quickNotesCard(),
+        meudia: () => `            <div class="card taped t-right">
               ${CLIP}
               <div class="card-head"><h3>meu dia</h3><span class="muted">${dayAll.filter((x) => isDoneOn(x, t)).length}/${dayAll.length} feitas</span></div>
               ${timed.map((it) => timedRow(it, t)).join('')}
@@ -2887,35 +2922,91 @@
                 <button class="btn" type="submit">Adicionar</button>
               </form>
               <p class="muted qa-hint">🎤 Dica: fale “amanhã às 15h reunião com a cliente” e o Bloom já marca a data e a hora.</p>
-            </div>
-            ${countdownCard()}
-            ${bizTodayCard()}
-          </div>
-          <div class="stack">
-            <div class="notes-card" aria-label="Afirmação do dia">
+            </div>`,
+        contagem: () => countdownCard(),
+        negocio: () => bizTodayCard(),
+        afirmacao: () => `            <div class="notes-card" aria-label="Afirmação do dia">
               <div class="notes-top"><span aria-hidden="true">‹</span> Notas<span class="sp"></span><button type="button" class="aff-share" data-share-aff aria-label="Compartilhar esta mensagem como imagem" title="Compartilhar">↥</button><i aria-hidden="true">…</i></div>
               <div class="eyebrow">afirmação do dia</div>
               <p><span class="hl"><em>${esc(a1)}</em> ${esc(a2)}</span></p>
-            </div>
-            <div class="card taped t-sage">
+            </div>`,
+        habitos: () => `            <div class="card taped t-sage">
               <div class="card-head"><h3>hábitos da semana</h3><button class="btn sm ghost" data-go="habitos">ver tudo</button></div>
               ${S.habits.length ? `<table class="habits">
                 <thead><tr><th>hábito</th>${week.map((d) => `<th class="${d === t ? 'today' : ''}"><span class="d3">${DOW[dow(d)].slice(0, 3)}</span><span class="d1" aria-hidden="true">${DOW[dow(d)].charAt(0)}</span></th>`).join('')}<th></th></tr></thead>
                 <tbody>${S.habits.map((hb) => `<tr style="--c:${hb.color}"><td><div class="hname"><span class="em" aria-hidden="true">${hb.emoji}</span><span class="nm">${esc(hb.name)}</span><button class="icon-btn" data-habit-edit="${hb.id}" aria-label="Editar ${esc(hb.name)}">${ICON.edit}</button></div></td>${week.map((d) => `<td><button class="hcell ${hb.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${hb.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(hb.name)}, ${DOW_LONG[dow(d)]}" aria-pressed="${!!hb.days[d]}"></button></td>`).join('')}<td class="hcount">${weekCount(hb)}/${hb.goal}</td></tr>`).join('')}</tbody>
               </table>` : '<div class="empty"><span class="hand">crie seus hábitos ♡</span></div>'}
               <button class="btn sm secondary" data-new-habit style="margin-top:12px">+ novo hábito</button>
-            </div>
-            <div class="card">
+            </div>`,
+        metas: () => `            <div class="card">
               <div class="card-head"><h3>metas em andamento</h3><button class="btn sm ghost" data-go="metas">ver todas</button></div>
               ${goals.length ? goals.map((g) => { const a = AREAS[g.area] || AREAS.carreira; const p = goalProgress(g); return `<div class="mini-goal"><div class="row"><span>${esc(g.title)}${isNumGoal(g) ? `<span class="muted" style="font-size:12px;display:block">${fmtGoal(g, g.current)} de ${fmtGoal(g, g.target)}</span>` : ''}</span><strong style="color:${a.color}">${p}%</strong></div><div class="progress" style="--c:${a.color}"><span style="width:${p}%"></span></div></div>`; }).join('') : '<div class="empty"><span class="hand">sonhe grande ♡</span>você ainda não criou metas.<br><button class="btn sm secondary" data-go="metas" style="margin-top:10px">criar minha primeira meta</button></div>'}
-            </div>
+            </div>`,
+      };
+      const lay = Layout.get();
+      const wrap = (id) => WG[id] ? `<div class="wg" data-wg="${id}">${org ? `<div class="wg-bar"><button type="button" class="wg-grip" data-wg-grip aria-label="Arrastar ${Layout.NAMES[id]} para mudar de lugar">⠿ arrastar</button><span class="wg-name">${Layout.NAMES[id]}</span><button type="button" class="wg-b" data-wg-move="${id}:-1" aria-label="Subir">↑</button><button type="button" class="wg-b" data-wg-move="${id}:1" aria-label="Descer">↓</button><button type="button" class="wg-b" data-wg-hide="${id}" aria-label="Esconder ${Layout.NAMES[id]}">esconder</button></div>` : ''}${WG[id]()}</div>` : '';
+      const layoutBanner = () => org ? `<div class="org-banner"><div><b>Organizar a tela</b><span>Arraste pelo ⠿ ou use as setas. Toque em “esconder” para tirar um cartão.</span></div><div class="row"><button type="button" class="btn sm" data-org>✓ pronto</button><button type="button" class="btn sm ghost" data-org-reset>voltar ao padrão</button></div>${lay.hidden.length ? `<div class="org-hidden"><span>Escondidos:</span>${lay.hidden.map((id) => `<button type="button" class="chip" data-wg-show="${id}">+ ${Layout.NAMES[id]}</button>`).join('')}</div>` : ''}</div>` : '';
+      el.innerHTML = `
+        ${inClaude ? `<div class="app-banner"><span>🎀 Esta é a versão de teste dentro do Claude. Seus dados de verdade ficam no <b>app Bloom</b>. Para levar o que está aqui: <b>Ajustes → Baixar backup</b> e, no app, <b>Restaurar backup</b>.</span><a class="btn sm" href="https://bloom-planner-nine.vercel.app" target="_blank" rel="noopener">abrir o app Bloom</a></div>` : ''}
+        <div class="hero">
+          <div>
+            <div class="hero-date">${esc(fmtLong(t))}</div>
+            <div class="clock" id="clock">${nowHM()}</div>
+            <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
+            ${Weather.chip()}
+            ${org ? '' : '<button type="button" class="org-btn" data-org aria-label="Organizar os cartões da tela">⠿ organizar a tela</button>'}
+            ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${h.emoji} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
           </div>
+          <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
+        </div>
+        ${layoutBanner()}
+        <div class="grid-2 ${org ? 'org' : ''}">
+          ${['left', 'right'].map((col) => `<div class="stack" data-col="${col}">${lay[col].map((id) => wrap(id)).join('')}</div>`).join('')}
         </div>`;
     }
     el.addEventListener('input', (e) => { if (e.target.id === 'focus-in') { S.focus[today()] = e.target.value; save(); } });
     on(el, 'click', '[data-mood]', (e, b) => { const t = today(); S.mood[t] = S.mood[t] === b.dataset.mood ? null : b.dataset.mood; save(); render(); });
     on(el, 'click', '[data-go]', (e, b) => go(b.dataset.go));
     on(el, 'click', '[data-wx]', () => Weather.modal());
+    on(el, 'click', '[data-org]', () => { org = !org; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    on(el, 'click', '[data-org-reset]', () => { delete S.ui.hojeLayout; save(); render(); toast('Tela organizada como no início ✨'); });
+    on(el, 'click', '[data-wg-move]', (e, b) => { const [id, d] = b.dataset.wgMove.split(':'); Layout.move(id, Number(d)); render(); const w = el.querySelector(`[data-wg="${id}"]`); if (w) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+    on(el, 'click', '[data-wg-hide]', (e, b) => { Layout.place(b.dataset.wgHide, 'hidden', 0); render(); toast('Cartão escondido. Dá para trazer de volta aqui em cima.'); });
+    on(el, 'click', '[data-wg-show]', (e, b) => { const l = Layout.get(); Layout.place(b.dataset.wgShow, Layout.DEFAULT.left.includes(b.dataset.wgShow) ? 'left' : 'right', 99); render(); });
+    // arrastar pelo ⠿ (mouse e dedo)
+    el.addEventListener('pointerdown', (e) => {
+      const grip = e.target.closest('[data-wg-grip]'); if (!grip || !org) return;
+      e.preventDefault();
+      const w = grip.closest('.wg'), id = w.dataset.wg, startX = e.clientX, startY = e.clientY, scroll0 = window.scrollY;
+      let ly = e.clientY, tgt = null, timer = 0;
+      try { grip.setPointerCapture(e.pointerId); } catch (err) { /* segue sem captura */ }
+      w.classList.add('wg-drag');
+      const cols = () => $$('.stack[data-col]', el);
+      const clear = () => { $$('.wg-ins-before, .wg-ins-end, .wg-ins-empty', el).forEach((x) => x.classList.remove('wg-ins-before', 'wg-ins-end', 'wg-ins-empty')); };
+      const locate = (x, y) => {
+        let best = null, bd = Infinity;
+        cols().forEach((c) => { const r = c.getBoundingClientRect(); const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0, dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; const d = dx + dy; if (d < bd) { bd = d; best = c; } });
+        const items = $$('.wg', best).filter((n) => n !== w);
+        let idx = 0; items.forEach((n) => { const r = n.getBoundingClientRect(); if (y > r.top + r.height / 2) idx++; });
+        return { col: best.dataset.col, node: best, items, idx };
+      };
+      const mark = (t) => { clear(); if (!t.items.length) t.node.classList.add('wg-ins-empty'); else if (t.idx < t.items.length) t.items[t.idx].classList.add('wg-ins-before'); else t.items[t.items.length - 1].classList.add('wg-ins-end'); };
+      const move = (ev) => {
+        ly = ev.clientY;
+        w.style.transform = `translate(${ev.clientX - startX}px, ${ev.clientY - startY + (window.scrollY - scroll0)}px)`;
+        tgt = locate(ev.clientX, ev.clientY); mark(tgt);
+      };
+      timer = setInterval(() => { const dy = ly < 80 ? -16 : ly > window.innerHeight - 80 ? 16 : 0; if (dy) { window.scrollBy(0, dy); w.style.transform = w.style.transform.replace(/, [-0-9.]+px\)/, `, ${ly - startY + (window.scrollY - scroll0)}px)`); } }, 24);
+      const end = (ev) => {
+        clearInterval(timer);
+        grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
+        const t = ev.type === 'pointercancel' ? null : (tgt || locate(ev.clientX, ev.clientY));
+        clear(); w.classList.remove('wg-drag'); w.style.transform = '';
+        if (t) { Layout.place(id, t.col, t.idx); }
+        render();
+      };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+    });
     on(el, 'click', '[data-share-aff]', () => {
       const t = today(), doy = diffDays(`${new Date().getFullYear()}-01-01`, t);
       const [x1, x2] = AFFIRMATIONS[doy % AFFIRMATIONS.length];
