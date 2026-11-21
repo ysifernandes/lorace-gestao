@@ -1204,6 +1204,12 @@
   .mix-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
   .mix-leg span { display: inline-flex; align-items: center; gap: 5px; }
   .mix-leg span > i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+  .goal-num { font-size: 15px; margin-bottom: 4px; }
+  .goal-num b { font-size: 20px; font-family: var(--f-serif); color: var(--c); }
+  .goal-num .muted { font-size: 13px; }
+  .goal-add { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .goal-add .input { flex: 1 1 140px; min-width: 0; }
+  .goal-log { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--f-mono); font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -2123,7 +2129,15 @@
     });
     on(root, 'click', '[data-task-edit]', (e, el) => taskModal(S.tasks.items.find((x) => x.id === el.dataset.taskEdit)));
   }
-  const goalProgress = (g) => g.steps && g.steps.length ? Math.round((g.steps.filter((s) => s.done).length / g.steps.length) * 100) : (g.done ? 100 : 0);
+  // meta com número: o progresso é quanto já foi feito do valor total
+  const isNumGoal = (g) => Number(g.target) > 0;
+  function fmtGoal(g, v) {
+    const n = Number(v) || 0, u = g.unit || '';
+    if (u === 'R$') return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: n % 1 ? 2 : 0 });
+    const t = n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    return u ? `${t} ${u}` : t;
+  }
+  const goalProgress = (g) => isNumGoal(g) ? Math.max(0, Math.min(100, Math.round(((Number(g.current) || 0) / Number(g.target)) * 100))) : g.steps && g.steps.length ? Math.round((g.steps.filter((s) => s.done).length / g.steps.length) * 100) : (g.done ? 100 : 0);
 
   /* Hábitos (compartilhado) */
   function habitStreak(h) {
@@ -2712,13 +2726,6 @@
               <p class="muted qa-hint">🎤 Dica: fale “amanhã às 15h reunião com a cliente” e o Bloom já marca a data e a hora.</p>
             </div>
             ${countdownCard()}
-            <div class="card lined focus-card taped t-left">
-              <div class="eyebrow">meu foco de hoje</div>
-              <input class="focus-input" id="focus-in" placeholder="a coisa mais importante de hoje é…" value="${esc(S.focus[t] || '')}" aria-label="Foco do dia">
-              <div class="moods" role="group" aria-label="Como estou me sentindo">
-                ${MOODS.map(([k, e, l]) => `<button class="mood ${S.mood[t] === k ? 'on' : ''}" data-mood="${k}" aria-pressed="${S.mood[t] === k}"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}
-              </div>
-            </div>
             ${bizTodayCard()}
           </div>
           <div class="stack">
@@ -2737,7 +2744,7 @@
             </div>
             <div class="card">
               <div class="card-head"><h3>metas em andamento</h3><button class="btn sm ghost" data-go="metas">ver todas</button></div>
-              ${goals.length ? goals.map((g) => { const a = AREAS[g.area] || AREAS.carreira; const p = goalProgress(g); return `<div class="mini-goal"><div class="row"><span>${esc(g.title)}</span><strong style="color:${a.color}">${p}%</strong></div><div class="progress" style="--c:${a.color}"><span style="width:${p}%"></span></div></div>`; }).join('') : '<div class="empty"><span class="hand">sonhe grande ♡</span>você ainda não criou metas.<br><button class="btn sm secondary" data-go="metas" style="margin-top:10px">criar minha primeira meta</button></div>'}
+              ${goals.length ? goals.map((g) => { const a = AREAS[g.area] || AREAS.carreira; const p = goalProgress(g); return `<div class="mini-goal"><div class="row"><span>${esc(g.title)}${isNumGoal(g) ? `<span class="muted" style="font-size:12px;display:block">${fmtGoal(g, g.current)} de ${fmtGoal(g, g.target)}</span>` : ''}</span><strong style="color:${a.color}">${p}%</strong></div><div class="progress" style="--c:${a.color}"><span style="width:${p}%"></span></div></div>`; }).join('') : '<div class="empty"><span class="hand">sonhe grande ♡</span>você ainda não criou metas.<br><button class="btn sm secondary" data-go="metas" style="margin-top:10px">criar minha primeira meta</button></div>'}
             </div>
           </div>
         </div>`;
@@ -3015,14 +3022,21 @@
             </div>
             ${g.why ? `<p class="goal-why">“${esc(g.why)}”</p>` : ''}
             <div>
+              ${isNumGoal(g) ? `<div class="goal-num"><b>${fmtGoal(g, g.current)}</b> de ${fmtGoal(g, g.target)}${p < 100 ? `<span class="muted"> · faltam ${fmtGoal(g, Math.max(0, g.target - (Number(g.current) || 0)))}</span>` : ''}</div>` : ''}
               <div class="goal-meta"><span>${p === 100 ? '<span class="won">♥ conquistada!</span>' : `<strong>${p}%</strong> concluído`}</span><span>${g.deadline ? `até ${fmtDate(g.deadline)}${p < 100 ? ` · ${left >= 0 ? `faltam ${left} dias` : 'prazo passou'}` : ''}` : 'sem prazo'}</span></div>
               <div class="progress" style="margin-top:7px"><span style="width:${p}%"></span></div>
             </div>
+            ${isNumGoal(g) ? `<form class="goal-add" data-goal-add="${g.id}">
+              <input class="input" name="v" type="number" inputmode="decimal" step="any" placeholder="${g.unit === 'R$' ? 'guardei agora (ex: 500)' : 'avancei quanto?'}" aria-label="Quanto avançou">
+              <button class="btn sm" type="submit" name="op" value="add">+ somar</button>
+              <button class="btn sm ghost" type="button" data-goal-set="${g.id}">corrigir total</button>
+            </form>
+            ${(g.log || []).length ? `<div class="goal-log">${g.log.slice(-3).reverse().map((l) => `<span>${fmtShort(l.d)}: ${l.v >= 0 ? '+' : ''}${fmtGoal(g, l.v)}</span>`).join('')}</div>` : ''}` : ''}
             <ul class="steps">
               ${(g.steps || []).map((s) => `<li class="${s.done ? 'done' : ''}"><input type="checkbox" class="check" style="--c:${a.color}" data-step="${g.id}:${s.id}" ${s.done ? 'checked' : ''} aria-label="Concluir passo"><span>${esc(s.text)}</span><button class="icon-btn" data-del-step="${g.id}:${s.id}" aria-label="Remover passo">${ICON.x}</button></li>`).join('')}
             </ul>
             <form class="step-add" data-add-step="${g.id}"><input class="input" name="text" placeholder="+ adicionar um passo" aria-label="Novo passo" autocomplete="off"></form>
-            ${!(g.steps || []).length ? `<button class="btn sm ${g.done ? 'ghost' : 'secondary'}" data-toggle-goal="${g.id}">${g.done ? 'desmarcar conquista' : '♥ marcar como conquistada'}</button>` : ''}
+            ${!(g.steps || []).length && !isNumGoal(g) ? `<button class="btn sm ${g.done ? 'ghost' : 'secondary'}" data-toggle-goal="${g.id}">${g.done ? 'desmarcar conquista' : '♥ marcar como conquistada'}</button>` : ''}
           </article>`;
         }).join('')}</div>` : `<div class="card empty"><span class="hand">${S.goals.length ? 'nenhuma meta neste filtro' : 'o que você quer conquistar?'}</span><button class="btn" data-new-goal style="margin-top:12px">+ nova meta</button></div>`}`;
     }
@@ -3036,9 +3050,28 @@
           { name: 'area', label: 'Área da vida', type: 'select', value: g.area, options: Object.entries(AREAS).map(([k, a]) => ({ value: k, label: a.label })) },
           { name: 'deadline', label: 'Prazo', type: 'date', value: g.deadline },
           { name: 'why', label: 'Por que isso é importante para mim?', type: 'textarea', value: g.why, full: true, rows: 2, placeholder: 'Seu motivo te mantém firme nos dias difíceis.' },
+          { name: 'unit', label: 'Acompanhar por número?', type: 'select', value: g.unit || (isNumGoal(g) ? '' : 'none'), options: [{ value: 'none', label: 'Não, por passos' }, { value: 'R$', label: 'Sim, em dinheiro (R$)' }, { value: 'kg', label: 'Sim, em quilos (kg)' }, { value: 'vezes', label: 'Sim, em vezes' }, { value: '', label: 'Sim, outro número' }] },
+          { name: 'target', label: 'Valor total da meta', type: 'number', value: isNumGoal(g) ? g.target : '', placeholder: 'Ex: 30000' },
+          { name: 'current', label: 'Quanto já fez até agora', type: 'number', value: isNumGoal(g) ? (g.current || 0) : '', placeholder: 'Ex: 10000' },
         ],
+        onOpen: (form) => {
+          const sync = () => { const off = form.elements.unit.value === 'none'; ['target', 'current'].forEach((k) => { form.elements[k].closest('.field').style.display = off ? 'none' : ''; }); };
+          form.elements.unit.addEventListener('change', sync); sync();
+          if (isNew) form.elements.title.addEventListener('blur', () => { // "Juntar 30 K…" já sugere o número
+            const m = form.elements.title.value.match(/(\d+(?:[.,]\d+)?)\s*(k|mil)?\b/i);
+            if (m && form.elements.unit.value === 'none' && !form.elements.target.value) {
+              const n = parseFloat(m[1].replace(',', '.')) * (m[2] ? 1000 : 1);
+              if (/r\$|reais|juntar|guardar|economizar|\bk\b|mil/i.test(form.elements.title.value)) { form.elements.unit.value = 'R$'; form.elements.target.value = n; }
+              else if (/kg|quilo|emagrecer|perder/i.test(form.elements.title.value)) { form.elements.unit.value = 'kg'; form.elements.target.value = n; }
+              sync();
+            }
+          });
+        },
         onSave: (v) => {
-          if (isNew) S.goals.push({ id: uid(), steps: [], done: false, createdAt: today(), ...v }); else Object.assign(g, v);
+          const num = v.unit !== 'none' && Number(v.target) > 0;
+          const data = { title: v.title, area: v.area, deadline: v.deadline, why: v.why, unit: num ? v.unit : '', target: num ? Number(v.target) : 0, current: num ? Number(v.current) || 0 : 0 };
+          if (!num && v.unit !== 'none' && !(Number(v.target) > 0)) { toast('Coloque o valor total da meta.'); return false; }
+          if (isNew) S.goals.push({ id: uid(), steps: [], done: false, createdAt: today(), ...data }); else Object.assign(g, data);
           save(); render();
           if (isNew) toast('Meta criada! Agora adicione os primeiros passos.');
         },
@@ -3066,6 +3099,27 @@
       S.goals.find((x) => x.id === gid).steps.push({ id: uid(), text, done: false });
       save(); render();
       setTimeout(() => $(`[data-add-step="${gid}"] input`, el)?.focus(), 0);
+    });
+    const addToGoal = (g, n, set) => {
+      const before = goalProgress(g);
+      const prev = Number(g.current) || 0;
+      g.current = set ? n : prev + n;
+      (g.log = g.log || []).push({ d: today(), v: g.current - prev });
+      g.log = g.log.slice(-30);
+      save(); render();
+      if (before < 100 && goalProgress(g) === 100) { confetti(); toast('Meta conquistada! Você é incrível 💖'); }
+      else toast(`Anotado: ${fmtGoal(g, g.current)} de ${fmtGoal(g, g.target)} ✨`);
+    };
+    on(el, 'submit', '[data-goal-add]', (e, f) => {
+      e.preventDefault();
+      const g = S.goals.find((x) => x.id === f.dataset.goalAdd), n = parseFloat(String(f.elements.v.value).replace(',', '.'));
+      if (!g || !Number.isFinite(n) || !n) { toast('Digite quanto você avançou.'); return; }
+      addToGoal(g, n, false);
+    });
+    on(el, 'click', '[data-goal-set]', (e, b) => {
+      const g = S.goals.find((x) => x.id === b.dataset.goalSet); if (!g) return;
+      modal({ title: 'corrigir o total', message: g.title, fields: [{ name: 'v', label: 'Quanto já fez no total', type: 'number', value: g.current || 0, full: true }],
+        onSave: (v) => { const n = parseFloat(String(v.v).replace(',', '.')); if (!Number.isFinite(n)) return false; addToGoal(g, n, true); } });
     });
     on(el, 'click', '[data-toggle-goal]', (e, b) => {
       const g = S.goals.find((x) => x.id === b.dataset.toggleGoal);
