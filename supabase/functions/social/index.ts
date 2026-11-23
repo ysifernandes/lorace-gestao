@@ -148,6 +148,9 @@ async function syncInstagram(userId: string, tok: any) {
         if (j.access_token) { access = j.access_token; await admin.from('social_tokens').update({ access_token: access, expires_at: new Date(Date.now() + (j.expires_in ?? 5184000) * 1000).toISOString(), updated_at: nowIso() }).eq('user_id', userId).eq('platform', 'instagram'); }
       } catch (e) { console.error('fb refresh', e); }
     }
+    if (tok.alt_token && !tok.fb_user_id) { // o token principal é o do usuário: guarda o ID dele para o pedido de exclusão da Meta
+      try { const m = await fbGet('me?fields=id', access); if (m?.id) await admin.from('social_tokens').update({ fb_user_id: String(m.id) }).eq('user_id', userId).eq('platform', 'instagram'); } catch (e) { console.error('fb id backfill', e); }
+    }
     // se um token falhar, tenta o outro antes de desistir
     try { await fbGet(`${fbIg}?fields=id`, access); }
     catch (e) {
@@ -193,7 +196,7 @@ async function useIgChoice(userId: string, extId: string) {
   const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', userId).eq('platform', 'instagram').maybeSingle();
   if (cur?.refresh_token !== 'fb:' + extId) await admin.from('social_posts').delete().eq('user_id', userId).eq('platform', 'instagram'); // números da conta anterior saem
   // token do usuário primeiro (vale ~60 dias e é renovado sozinho); o da página fica de reserva
-  await admin.from('social_tokens').upsert({ user_id: userId, platform: 'instagram', access_token: ch.user_token || ch.access_token, alt_token: ch.user_token ? ch.access_token : null, refresh_token: 'fb:' + extId, expires_at: ch.user_token ? ch.user_expires_at : null, updated_at: nowIso() });
+  await admin.from('social_tokens').upsert({ user_id: userId, platform: 'instagram', access_token: ch.user_token || ch.access_token, alt_token: ch.user_token ? ch.access_token : null, refresh_token: 'fb:' + extId, expires_at: ch.user_token ? ch.user_expires_at : null, fb_user_id: ch.fb_user_id ?? null, updated_at: nowIso() });
   await admin.from('social_accounts').upsert({ user_id: userId, platform: 'instagram', connected_at: nowIso(), last_error: null, username: ch.username, avatar_url: ch.avatar_url });
   return true;
 }
@@ -708,6 +711,51 @@ async function analyzePosts(userId: string, raw: unknown) {
   return askClaude(AI_SYSTEM, `Resultados dos posts (JSON):\n${JSON.stringify(posts)}`, AI_SCHEMA);
 }
 
+/* ---------------- Exclusão de dados pedida pela Meta ---------------- */
+const b64u = (x: string) => x.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (x.length % 4)) % 4);
+// confere que o pedido veio mesmo da Meta (assinatura HMAC-SHA256 com a chave secreta do app)
+async function parseSignedRequest(sr: string, secret: string) {
+  const [sig, payload] = String(sr || '').split('.');
+  if (!sig || !payload || !secret) return null;
+  try {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify('HMAC', key, Uint8Array.from(atob(b64u(sig)), (c) => c.charCodeAt(0)), new TextEncoder().encode(payload));
+    if (!ok) return null;
+    const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64u(payload)), (c) => c.charCodeAt(0))));
+    return data && data.user_id ? data : null;
+  } catch { return null; }
+}
+// tira do documento do negócio o que veio do Instagram (posts só importados saem; os que ela planejou ficam, sem os números)
+function stripInstagramFromBiz(doc: any) {
+  const biz = doc?.biz;
+  if (!biz || !Array.isArray(biz.posts)) return { doc, changed: false, removed: 0 };
+  let removed = 0, changed = false;
+  biz.posts = biz.posts.filter((p: any) => {
+    if (!p?.ext || p.ext.platform !== 'instagram') return true;
+    changed = true;
+    const own = p.hook || p.script || p.scene || p.look || p.folderId || (p.notes && String(p.notes).trim());
+    if (!own) { removed++; return false; }
+    delete p.ext; delete p.metrics; delete p.thumb; delete p.link;
+    return true;
+  });
+  return { doc, changed, removed };
+}
+async function eraseFacebookUser(fbUserId: string, code: string) {
+  const { data: rows } = await admin.from('social_tokens').select('user_id').eq('platform', 'instagram').eq('fb_user_id', fbUserId);
+  let n = 0;
+  for (const r of rows ?? []) {
+    const uid = r.user_id as string;
+    for (const t of ['social_posts', 'social_accounts', 'social_choices', 'social_tokens']) await admin.from(t).delete().eq('user_id', uid).eq('platform', 'instagram');
+    try {
+      const { data: d } = await admin.from('planner_docs').select('json').eq('user_id', uid).eq('name', 'biz').maybeSingle();
+      if (d?.json) { const x = stripInstagramFromBiz(JSON.parse(d.json)); if (x.changed) await admin.from('planner_docs').update({ json: JSON.stringify(x.doc), updated_at: nowIso() }).eq('user_id', uid).eq('name', 'biz'); }
+    } catch (e) { console.error('erase biz', e); }
+    n++;
+  }
+  await admin.from('deletion_requests').insert({ code, status: 'done', found: n, done_at: nowIso() });
+  return n;
+}
+
 /* ---------------- Rotas ---------------- */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -756,6 +804,8 @@ Deno.serve(async (req) => {
             if (j2.access_token) userTok = j2.access_token;
           } catch (e) { console.error('fb long-lived', e); }
           // a conta profissional do Instagram fica ligada a uma página do Facebook
+          let fbUserId: string | null = null;
+          try { fbUserId = String((await fbGet('me?fields=id', userTok)).id || '') || null; } catch (e) { console.error('fb me', e); }
           let userExp: string | null = null;
           try {
             const dbg = await fetch(`${FB}/debug_token?` + new URLSearchParams({ input_token: userTok, access_token: `${META_APP_ID}|${META_APP_SECRET}` }));
@@ -772,7 +822,7 @@ Deno.serve(async (req) => {
           if (!found.length) return backTo(st.return_to, { social: 'error', platform, reason: 'no_page' });
           // guarda todas as contas liberadas, para a usuária escolher (e poder trocar depois)
           await admin.from('social_choices').delete().eq('user_id', st.user_id).eq('platform', platform);
-          await admin.from('social_choices').insert(found.map((x: any) => ({ user_id: st.user_id, platform, ext_id: x.instagram_business_account.id, username: x.instagram_business_account.username ?? null, page_name: x.name ?? null, avatar_url: x.instagram_business_account.profile_picture_url ?? null, access_token: x.access_token || userTok, user_token: userTok, user_expires_at: userExp })));
+          await admin.from('social_choices').insert(found.map((x: any) => ({ user_id: st.user_id, platform, ext_id: x.instagram_business_account.id, username: x.instagram_business_account.username ?? null, page_name: x.name ?? null, avatar_url: x.instagram_business_account.profile_picture_url ?? null, access_token: x.access_token || userTok, user_token: userTok, user_expires_at: userExp, fb_user_id: fbUserId })));
           // reconectando: se a conta que ela já usava continua liberada, segue com ela sem perguntar
           const { data: cur } = await admin.from('social_tokens').select('refresh_token').eq('user_id', st.user_id).eq('platform', 'instagram').maybeSingle();
           const keep = found.find((x: any) => cur?.refresh_token === 'fb:' + x.instagram_business_account.id);
@@ -906,9 +956,20 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    if (route[0] === 'data-deletion' && req.method === 'POST') {
-      const code = crypto.randomUUID().slice(0, 8);
+    // a Meta chama estes dois endereços quando a pessoa remove o app (assinatura obrigatória)
+    if ((route[0] === 'data-deletion' || route[0] === 'deauthorize') && req.method === 'POST') {
+      let sr = '';
+      try { sr = (req.headers.get('content-type') || '').includes('json') ? String((await req.json()).signed_request ?? '') : String(new URLSearchParams(await req.text()).get('signed_request') ?? ''); } catch { /* vazio */ }
+      const data = await parseSignedRequest(sr, META_APP_SECRET);
+      if (!data) return json({ error: 'invalid_signature' }, 400);
+      const code = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      await eraseFacebookUser(String(data.user_id), code);
       return json({ url: `${APP_URL}/exclusao-de-dados.html?pedido=${code}`, confirmation_code: code });
+    }
+    if (route[0] === 'data-deletion-status' && req.method === 'GET') {
+      const code = (url.searchParams.get('code') ?? '').replace(/[^a-z0-9]/gi, '').slice(0, 20);
+      const { data } = code ? await admin.from('deletion_requests').select('status, done_at').eq('code', code).maybeSingle() : { data: null };
+      return data ? json({ status: data.status, done_at: data.done_at }) : json({ status: 'unknown' }, 404);
     }
 
     return json({ error: 'not_found' }, 404);

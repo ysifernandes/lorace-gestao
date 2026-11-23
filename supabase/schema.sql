@@ -146,3 +146,16 @@ create index if not exists ai_jobs_user on public.ai_jobs (user_id, created_at d
 alter table public.ai_jobs enable row level security;
 drop policy if exists "ai_jobs_select_own" on public.ai_jobs;
 create policy "ai_jobs_select_own" on public.ai_jobs for select using (auth.uid() = user_id);
+
+-- Pedidos de exclusão de dados vindos da Meta (e ID do Facebook de cada conexão, para achar a conta certa)
+alter table public.social_tokens add column if not exists fb_user_id text;
+alter table public.social_choices add column if not exists fb_user_id text;
+create index if not exists social_tokens_fb_user on public.social_tokens (fb_user_id);
+create table if not exists public.deletion_requests (
+  code text primary key,
+  status text not null default 'done',
+  found int not null default 0,
+  created_at timestamptz not null default now(),
+  done_at timestamptz
+);
+alter table public.deletion_requests enable row level security;

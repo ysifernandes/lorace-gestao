@@ -1284,6 +1284,8 @@
   .wg-ins-end { box-shadow: 0 10px 0 -4px var(--brand) !important; }
   .wg-ins-empty { outline: 3px solid var(--brand) !important; }
   @media (max-width: 480px) { .wg-b { padding: 6px 8px; } .wg-name { display: none; } .wg-bar { justify-content: space-between; } }
+  .legal-links { margin: 14px 0 0; font-size: 12px; text-align: center; color: var(--ink-soft); line-height: 1.7; }
+  .legal-links a { color: var(--brand); text-underline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -1371,6 +1373,8 @@
   const fmtLong = (s) => { const d = parseISO(s); return `${DOW_LONG[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`; };
   const inClaude = !!(window.claude && typeof window.claude.use === 'function');
   const CFG = window.BLOOM_CONFIG || null;
+  const LEGAL_BASE = typeof location !== 'undefined' && /^https?:/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? '' : 'https://bloom-planner-yasmin17.vercel.app/';
+  const LEGAL_LINKS = `<a href="${LEGAL_BASE}privacidade.html" target="_blank" rel="noopener">Política de privacidade</a> · <a href="${LEGAL_BASE}termos.html" target="_blank" rel="noopener">Termos de uso</a> · <a href="${LEGAL_BASE}exclusao-de-dados.html" target="_blank" rel="noopener">Exclusão de dados</a>`;
   const inSupa = !inClaude && !!(CFG && CFG.supabaseUrl && CFG.anonKey);
   // link de confirmação/recuperação do e-mail chega com #access_token=… ou #error=…
   let AUTH_HASH = inSupa && /access_token=|error_description=|error_code=/.test(location.hash) ? location.hash : '';
@@ -1773,6 +1777,7 @@
           <p class="auth-msg" id="au-msg" role="alert"></p>
           <button type="button" class="btn ghost" id="au-toggle" style="width:100%">Ainda não tenho conta: criar conta</button>
           <button type="button" class="btn ghost" id="au-forgot" style="width:100%;font-size:12.5px">Esqueci minha senha</button>
+          <p class="legal-links">${LEGAL_LINKS}</p>
         </form>`;
       document.body.appendChild(box);
       const setMode = (m) => {
@@ -5868,6 +5873,7 @@
         <p>${Cloud.on ? 'Seus dados estão salvos na nuvem, com a sua conta. O backup é uma cópia extra para guardar.' : 'Seus dados ficam salvos só neste navegador. Faça um backup de vez em quando, e use-o para levar tudo para outro aparelho.'}</p>
         <div class="row"><button type="button" class="btn sm secondary" id="bk-export">Baixar backup</button><button type="button" class="btn sm ghost" id="bk-import">Restaurar backup</button></div>
       </div>
+      <div class="settings-block"><div class="eyebrow" style="margin-bottom:6px">privacidade</div><p class="legal-links" style="text-align:left;margin:0">${LEGAL_LINKS}</p></div>
       ${inSupa && Auth.user ? `<div class="settings-block"><p>Conta: <b>${esc(Auth.user.email || '')}</b></p><div class="row"><button type="button" class="btn sm ghost" id="au-out">Sair da conta</button><button type="button" class="btn sm danger-ghost" id="au-del">Excluir minha conta</button></div></div>` : ''}`,
       onOpen: (form) => {
         $('#bk-export', form).addEventListener('click', () => saveFile(`bloom-backup-${today()}.json`, new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), 'Backup salvo.'));
