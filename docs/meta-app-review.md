@@ -13,7 +13,7 @@ Este arquivo tem tudo o que será colado ou gravado no painel da Meta (developer
 Bloom does **not** publish content, send messages, comment, follow, run ads or share data with other users. Each user only sees her own data.
 
 - Website / app: https://bloom-planner-yasmin17.vercel.app
-- Privacy policy: https://bloom-planner-yasmin17.vercel.app/privacidade.html
+- Privacy policy: https://bloom-planner-yasmin17.vercel.app/privacidade.html (contact: usebloomplanner@gmail.com)
 - Terms of service: https://bloom-planner-yasmin17.vercel.app/termos.html
 - Data deletion instructions: https://bloom-planner-yasmin17.vercel.app/exclusao-de-dados.html
 - Data deletion callback / deauthorize callback: `https://zeatslwacibkodkjbswg.supabase.co/functions/v1/social/data-deletion` (it verifies the signed request and deletes the user's Instagram data)
@@ -84,7 +84,7 @@ Grave **um vídeo por permissão** (ou um só, mostrando tudo, se a Meta aceitar
 | 10 | Tocar em **desconectar** e confirmar | "The user can disconnect at any time; the token and imported data are deleted." |
 | 11 | **Ajustes → Excluir minha conta** (só mostrar a janela de confirmação, sem confirmar) e abrir a página **Exclusão de dados** | "The user can delete her account and data at any time." |
 
-**[FAZER antes de gravar]** o botão "desconectar" apaga a conexão e os dados importados do nosso banco, mas os posts que já foram copiados para o planner da usuária continuam lá. Os textos acima dizem "imported data is deleted"; para ficar 100% exato, vou mudar o "desconectar" para perguntar "Remover também os posts importados?" antes da gravação.
+O botão "desconectar" apaga a conexão, o token e os dados importados do nosso banco e pergunta se os posts já copiados para o planner da usuária também saem (o padrão é remover). Mostre essa janela no passo 10 do vídeo.
 
 ---
 
@@ -116,7 +116,7 @@ Grave **um vídeo por permissão** (ou um só, mostrando tudo, se a Meta aceitar
 - [ ] Verificação da empresa concluída (nome do portfólio igual ao do certificado do CNPJ).
 - [ ] Cadastro como **Provedor de Tecnologia** concluído.
 - [ ] Ícone do app (1024×1024), categoria, e-mail de contato e as três URLs (privacidade, termos, exclusão) preenchidos. Já estão.
-- [ ] Política de privacidade atualizada, com o login pelo Facebook, a Anthropic e o contato. **[FAZER: depende do e-mail da Bloom]**
+- [x] Política de privacidade atualizada (login pelo Facebook, Anthropic, contato usebloomplanner@gmail.com, empresa e CNPJ).
 - [ ] Callback de exclusão e de remoção do app apontando para `.../social/data-deletion`. Já está.
 - [ ] Só as permissões da tabela da seção 2 no pedido.
 - [ ] Vídeo(s) enviado(s) e textos colados.

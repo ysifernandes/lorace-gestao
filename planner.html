@@ -5096,7 +5096,7 @@
         if (!p.ext || !keys.has(p.ext.key)) return true;
         const own = p.hook || p.script || p.scene || p.look || p.folderId || (p.notes && String(p.notes).trim());
         if (!own) { n++; return false; } // veio só da importação: sai
-        delete p.ext; delete p.metrics; return true; // post planejado por ela: fica, sem os números da outra conta
+        delete p.ext; delete p.metrics; delete p.thumb; return true; // post planejado por ela: fica, sem os números da outra conta
       });
       save(); return n;
     },
@@ -5128,10 +5128,18 @@
       });
     },
     disconnect(platform) {
-      confirmBox(`desconectar o ${PLATFORMS[platform].label}?`, 'Os números param de atualizar. Os posts e os números que já estão no Bloom continuam.', async () => {
-        try { await this.call('disconnect', { platform }); toast('Desconectado.'); } catch (e) { toast('Não consegui desconectar agora.'); }
-        this.refresh(false);
-      }, 'Desconectar');
+      modal({
+        title: `desconectar o ${PLATFORMS[platform].label}?`,
+        message: 'Os números param de atualizar e a conexão e o token são apagados do nosso banco de dados.',
+        fields: [{ name: 'keep', label: 'Posts já copiados para o seu planner', type: 'select', value: 'remove', full: true, options: [{ value: 'remove', label: 'Remover também (recomendado)' }, { value: 'keep', label: 'Manter no meu planner' }] }],
+        saveLabel: 'Desconectar', danger: true,
+        onSave: async (v) => {
+          const keys = new Set(B().posts.filter((x) => x.ext && x.ext.platform === platform).map((x) => x.ext.key));
+          try { await this.call('disconnect', { platform }); } catch (e) { toast('Não consegui desconectar agora.'); return false; }
+          if (v.keep === 'remove') { const n = this.forgetImported(keys); toast(n ? `Desconectado. ${n} posts importados saíram do planner.` : 'Desconectado.'); } else toast('Desconectado. Os posts continuam no seu planner.');
+          this.refresh(false); rerender();
+        },
+      });
     },
     async apply() {
       const { data, error } = await Auth.sb.from('social_posts').select('*').order('posted_at', { ascending: false }).limit(300);
@@ -5927,7 +5935,7 @@
   Reminders.tick();
   if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
-  if (location.protocol === 'file:') window.__bloom = { Plan, Assist, S: () => S, rerender: () => rerender() }; // só nos testes locais
+  if (location.protocol === 'file:') window.__bloom = { Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
   setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });
