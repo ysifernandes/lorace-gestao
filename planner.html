@@ -1296,6 +1296,7 @@
   .pv-tags { font-size: 13px; color: var(--brand); margin: 8px 0 0; overflow-wrap: anywhere; }
   .pv-actions { margin-top: 16px; }
   .pv .as-scene:last-of-type { border-bottom: 0; }
+  .pv-approve { padding: 10px 12px; margin: 0 0 12px; border-radius: 12px; background: var(--accent-soft); }
 </style>
 </head>
 <body>
@@ -4251,6 +4252,7 @@
             <div class="pv-pills"><span class="tagpill" style="--c:${st.color}">${st.label}</span>${p.approval === 'ok' ? '<span class="pv-ok">✓ aprovado</span>' : p.approval === 'pending' ? '<span class="pv-wait">⏳ esperando aprovação</span>' : ''}${meta.map((x) => `<span class="pc-pill">${x}</span>`).join('')}</div>
             <button type="button" class="btn sm secondary pv-edit" id="pv-edit" aria-label="Editar este conteúdo">✏️ editar</button>
           </div>
+          ${p.approval === 'pending' ? '<div class="plan-pend pv-approve"><span>⏳ Este post do plano espera a sua aprovação.</span><button type="button" class="btn sm" id="pv-approve">✓ aprovar</button></div>' : ''}
           ${p.hook ? `<div class="as-hook"><span class="eyebrow">gancho</span>“${esc(p.hook)}”</div>` : ''}
           ${p.plan && (p.plan.receita || p.plan.por_que || p.plan.inspirado_em) ? `<div class="plan-info">${p.plan.receita ? `<div class="plan-l"><b>Receita:</b> ${esc(p.plan.receita)}</div>` : ''}${p.plan.por_que ? `<div class="plan-l plan-why"><b>Por quê:</b> ${esc(p.plan.por_que)}</div>` : ''}${p.plan.inspirado_em ? `<div class="plan-l plan-insp"><b>Inspirado em:</b> ${esc(p.plan.inspirado_em)}</div>` : ''}</div>` : ''}
           ${sc.length ? `<div class="eyebrow" style="margin:14px 0 6px">${sc.some((x) => x.kind === 'SLIDE') ? 'slides, na ordem' : 'cenas, na ordem'}</div>
@@ -4268,6 +4270,8 @@
           <div class="row pv-actions">${isVideo && (falas || p.script) ? '<button type="button" class="btn" id="pv-tele">🎬 teleprompter</button>' : ''}<button type="button" class="btn sm secondary" id="pv-metrics">📊 resultados</button></div>
         </div>`,
       onOpen: (form) => {
+        const ap = $('#pv-approve', form);
+        if (ap) ap.addEventListener('click', () => { Plan.approve(p); const box = ap.closest('.pv-approve'); if (box) box.outerHTML = '<div class="plan-okd">✓ aprovado</div>'; const pill = $('.pv-wait', form); if (pill) { pill.className = 'pv-ok'; pill.textContent = '✓ aprovado'; } rerender(); toast('Aprovado ✨'); });
         $('#pv-edit', form).addEventListener('click', () => { dlg.close(); setTimeout(() => postModal(p, {}, { back: true }), 60); });
         const t = $('#pv-tele', form); if (t) t.addEventListener('click', () => { dlg.close(); teleprompter(p); });
         $('#pv-metrics', form).addEventListener('click', () => { dlg.close(); metricsModal(p); });
