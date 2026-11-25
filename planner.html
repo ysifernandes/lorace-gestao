@@ -1286,6 +1286,16 @@
   @media (max-width: 480px) { .wg-b { padding: 6px 8px; } .wg-name { display: none; } .wg-bar { justify-content: space-between; } }
   .legal-links { margin: 14px 0 0; font-size: 12px; text-align: center; color: var(--ink-soft); line-height: 1.7; }
   .legal-links a { color: var(--brand); text-underline-offset: 2px; }
+  dialog.modal.modal-wide { width: min(780px, calc(100vw - 32px)); }
+  .pv-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .pv-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .pv-ok { font-size: 12px; font-weight: 600; color: #5f8a52; }
+  .pv-wait { font-size: 12px; font-weight: 600; color: var(--brand); }
+  .pv-edit { flex: none; }
+  .pv-raw { white-space: pre-wrap; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+  .pv-tags { font-size: 13px; color: var(--brand); margin: 8px 0 0; overflow-wrap: anywhere; }
+  .pv-actions { margin-top: 16px; }
+  .pv .as-scene:last-of-type { border-bottom: 0; }
 </style>
 </head>
 <body>
@@ -1952,7 +1962,8 @@
     else input = `<input id="${id}" type="${f.type || 'text'}" name="${f.name}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'url' ? 'inputmode="url"' : ''}>`;
     return `<div class="field ${f.full ? 'full' : ''}"><label for="${id}">${esc(f.label)}</label>${input}</div>`;
   }
-  function modal({ title, message, fields = [], saveLabel = 'Salvar', danger = false, onSave, onDelete, extraHTML = '', onOpen, cancelLabel = 'Cancelar' }) {
+  function modal({ title, message, fields = [], saveLabel = 'Salvar', danger = false, onSave, onDelete, extraHTML = '', onOpen, cancelLabel = 'Cancelar', wide = false }) {
+    dlg.classList.toggle('modal-wide', !!wide);
     const twoCol = fields.length > 2;
     dlg.innerHTML = `<form class="md" novalidate>
       <button type="button" class="md-x" data-act="cancel" aria-label="Fechar">✕</button>
@@ -4197,7 +4208,76 @@
     const tags = String(legenda || '').match(/#[\p{L}\p{N}_]+/gu) || [];
     return { caption: String(legenda || '').replace(/(\s*#[\p{L}\p{N}_]+)+\s*$/u, '').trim(), hashtags: tags.join(' ') };
   }
-  function postModal(p, defaults = {}) {
+  // Entende os dois jeitos de roteiro do Bloom: "CENA 1 (o que mostra): fala" e o do assistente ("CENA 1 · ..." com 📐 🗣️ 🔤)
+  function parseScript(txt) {
+    const lines = String(txt || '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const scenes = []; let cur = null, m;
+    const flush = () => { if (cur) scenes.push(cur); cur = null; };
+    for (const l of lines) {
+      if ((m = l.match(/^(CENA|SLIDE)\s*(\d+)\s*\(([^)]*)\)\s*[:\-–]\s*(.*)$/i))) { flush(); cur = { kind: m[1].toUpperCase(), n: Number(m[2]), what: m[3].trim(), fala: m[4].trim(), camera: '', tela: '' }; }
+      else if ((m = l.match(/^(CENA|SLIDE)\s*(\d+)\s*[·•:\-–]\s*(.*)$/i))) { flush(); cur = { kind: m[1].toUpperCase(), n: Number(m[2]), what: m[3].trim(), fala: '', camera: '', tela: '' }; }
+      else if ((m = l.match(/^CTA\s*:\s*(.*)$/i))) { flush(); cur = { kind: 'CTA', n: 0, what: 'Chamada para ação', fala: m[1].trim(), camera: '', tela: '' }; }
+      else if (cur && (m = l.match(/^📐\s*(.*)$/))) cur.camera = m[1];
+      else if (cur && (m = l.match(/^🗣️?\s*(.*)$/u))) cur.fala = m[1];
+      else if (cur && (m = l.match(/^🔤\s*(.*)$/))) cur.tela = m[1];
+      else if (cur) cur.what += ' ' + l; // linha solta continua a anterior
+    }
+    flush();
+    return scenes;
+  }
+  // só o que ela fala, uma frase por bloco (para o teleprompter e para copiar para o CapCut)
+  function scriptFalas(p) {
+    const sc = parseScript(p.script).filter((x) => x.kind !== 'SLIDE');
+    const falas = sc.map((x) => String(x.fala || '').replace(/^["“”]+|["“”]+$/g, '').trim()).filter(Boolean);
+    if (falas.length) return falas.join('\n\n');
+    return p.falas || '';
+  }
+  const hasContent = (p) => !!(p.script || p.hook || p.caption || p.plan);
+  function openPost(p) { if (!p) return; (hasContent(p) ? postView(p) : postModal(p)); }
+  const cap1 = (t) => { t = String(t || '').trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
+  // visualização de leitura de um conteúdo (o editar fica no botão)
+  function postView(p) {
+    const f = folderOf(p), st = stOf(p), sc = parseScript(p.script), falas = scriptFalas(p), link = safeLink(p.link);
+    const isVideo = VIDEO_FORMATS.includes(p.format);
+    const total = sc.reduce((n, x) => n + 0, 0);
+    const meta = [`${f.emoji} ${esc(f.name)}`, FORMATS[p.format] ? esc(FORMATS[p.format]) : '', p.date ? `📅 ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}` : '', p.duration ? `⏱ ${esc(p.duration)}` : ''].filter(Boolean);
+    const tags = String(p.hashtags || '').trim();
+    modal({
+      title: p.title,
+      wide: true,
+      cancelLabel: 'Fechar',
+      extraHTML: `<div class="pv">
+          <div class="pv-top">
+            <div class="pv-pills"><span class="tagpill" style="--c:${st.color}">${st.label}</span>${p.approval === 'ok' ? '<span class="pv-ok">✓ aprovado</span>' : p.approval === 'pending' ? '<span class="pv-wait">⏳ esperando aprovação</span>' : ''}${meta.map((x) => `<span class="pc-pill">${x}</span>`).join('')}</div>
+            <button type="button" class="btn sm secondary pv-edit" id="pv-edit" aria-label="Editar este conteúdo">✏️ editar</button>
+          </div>
+          ${p.hook ? `<div class="as-hook"><span class="eyebrow">gancho</span>“${esc(p.hook)}”</div>` : ''}
+          ${p.plan && (p.plan.receita || p.plan.por_que || p.plan.inspirado_em) ? `<div class="plan-info">${p.plan.receita ? `<div class="plan-l"><b>Receita:</b> ${esc(p.plan.receita)}</div>` : ''}${p.plan.por_que ? `<div class="plan-l plan-why"><b>Por quê:</b> ${esc(p.plan.por_que)}</div>` : ''}${p.plan.inspirado_em ? `<div class="plan-l plan-insp"><b>Inspirado em:</b> ${esc(p.plan.inspirado_em)}</div>` : ''}</div>` : ''}
+          ${sc.length ? `<div class="eyebrow" style="margin:14px 0 6px">${sc.some((x) => x.kind === 'SLIDE') ? 'slides, na ordem' : 'cenas, na ordem'}</div>
+            ${sc.map((x, i) => `<div class="as-scene"><div class="as-n">${x.kind === 'CTA' ? '★' : (x.n || i + 1)}</div><div class="as-sb">
+              ${x.what ? `<div class="as-what">${esc(cap1(x.what))}</div>` : ''}
+              ${x.camera ? `<div class="as-line"><span aria-hidden="true">📐</span><span><b>Como gravar:</b> ${esc(x.camera)}</span></div>` : ''}
+              ${x.fala ? `<div class="as-line as-say"><span aria-hidden="true">🗣️</span><span>“${esc(x.fala.replace(/^["“”]+|["“”]+$/g, ''))}”</span></div>` : ''}
+              ${x.tela ? `<div class="as-line"><span aria-hidden="true">🔤</span><span><b>Na tela:</b> ${esc(x.tela)}</span></div>` : ''}
+            </div></div>`).join('')}`
+        : p.script ? `<div class="eyebrow" style="margin:14px 0 6px">roteiro</div><div class="pv-raw">${esc(p.script)}</div>` : ''}
+          ${isVideo && falas ? `<div class="as-tele"><div class="as-tele-h"><span class="eyebrow">📜 só as falas · para o teleprompter</span><button type="button" class="btn sm" id="pv-copy-falas">copiar</button></div><div class="as-tele-t">${esc(falas)}</div></div>` : ''}
+          ${p.notes && String(p.notes).trim() ? `<details class="as-box" open><summary>anotações</summary><p style="white-space:pre-wrap">${esc(p.notes)}</p></details>` : ''}
+          ${p.caption ? `<details class="as-box" open><summary>legenda</summary><p style="white-space:pre-wrap">${esc(p.caption)}</p>${tags ? `<p class="pv-tags">${esc(tags)}</p>` : ''}<button type="button" class="btn sm secondary" id="pv-copy-cap" style="margin-top:8px">copiar legenda${tags ? ' e hashtags' : ''}</button></details>` : ''}
+          ${link ? `<p style="margin:10px 0 0"><a class="btn sm secondary" href="${esc(link)}" target="_blank" rel="noopener">abrir o post ↗</a></p>` : ''}
+          <div class="row pv-actions">${isVideo && (falas || p.script) ? '<button type="button" class="btn" id="pv-tele">🎬 teleprompter</button>' : ''}<button type="button" class="btn sm secondary" id="pv-metrics">📊 resultados</button></div>
+        </div>`,
+      onOpen: (form) => {
+        $('#pv-edit', form).addEventListener('click', () => { dlg.close(); setTimeout(() => postModal(p, {}, { back: true }), 60); });
+        const t = $('#pv-tele', form); if (t) t.addEventListener('click', () => { dlg.close(); teleprompter(p); });
+        $('#pv-metrics', form).addEventListener('click', () => { dlg.close(); metricsModal(p); });
+        const cf = $('#pv-copy-falas', form); if (cf) cf.addEventListener('click', async () => { if (await copyText(falas)) { cf.textContent = '✓ copiado'; setTimeout(() => { cf.textContent = 'copiar'; }, 1600); toast('Falas copiadas ✨ Cole no teleprompter do CapCut.'); } else toast('Não consegui copiar. Toque e segure no texto para copiar.'); });
+        const cc = $('#pv-copy-cap', form); if (cc) cc.addEventListener('click', async () => { if (await copyText([p.caption, tags].filter(Boolean).join('\n\n'))) { cc.textContent = '✓ copiado'; setTimeout(() => { cc.textContent = `copiar legenda${tags ? ' e hashtags' : ''}`; }, 1600); toast('Legenda copiada ✨'); } else toast('Não consegui copiar. Toque e segure no texto para copiar.'); });
+      },
+    });
+  }
+
+  function postModal(p, defaults = {}, opts = {}) {
     const isNew = !p;
     p = p || Object.assign({ title: '', folderId: S.ui.contFolder && S.ui.contFolder !== 'all' ? S.ui.contFolder : (B().folders[0]?.id || ''), platform: 'instagram', format: 'reels', status: 'ideia', date: '', time: '', hook: '', script: '', caption: '', hashtags: '', scene: '', look: '', duration: '', link: '', notes: '' }, defaults);
     const linked = isNew ? [] : S.tasks.items.filter((t) => t.postId === p.id);
@@ -4286,6 +4366,7 @@
         }
         save(); rerender();
         toast(isNew ? 'Conteúdo criado ♥' : 'Conteúdo atualizado.');
+        if (opts.back && !isNew) setTimeout(() => postView(p), 80);
       },
       onDelete: isNew ? null : () => confirmBox('excluir conteúdo?', `“${p.title}” será removido.`, () => {
         if (p.ext) B().ignoredExt = [...(B().ignoredExt || []), p.ext.key];
@@ -4391,7 +4472,7 @@
     let speed = 1, playing = false, raf = 0, last = 0;
     modal({
       title: 'teleprompter',
-      extraHTML: `<div class="tele" id="tele">${p.falas ? esc(p.falas) : `${p.hook ? esc(p.hook) + '\n\n' : ''}${esc(p.script || 'Sem roteiro ainda.')}`}</div>
+      extraHTML: `<div class="tele" id="tele">${(() => { const t = scriptFalas(p); return esc(t || `${p.hook ? p.hook + '\n\n' : ''}${p.script || 'Sem roteiro ainda.'}`); })()}</div>
         <div class="row"><button type="button" class="btn" id="tl-play">▶ começar</button><button type="button" class="btn sm secondary" id="tl-slow">− devagar</button><button type="button" class="btn sm secondary" id="tl-fast">+ rápido</button><span class="muted mono" id="tl-sp" style="font-family:var(--f-mono);font-size:12px">velocidade 1x</span></div>`,
       cancelLabel: 'Fechar',
       onOpen: (form) => {
@@ -4421,12 +4502,12 @@
       if (mv && root.contains(mv)) { const [id, d] = mv.dataset.pmove.split(':'); movePost(id, Number(d)); return; }
       if (e.target.closest('button, a, input, select, textarea')) return;
       const card = e.target.closest('[data-post]');
-      if (card && root.contains(card)) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) postModal(p); }
+      if (card && root.contains(card)) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) openPost(p); }
     });
     root.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       const card = e.target.closest('.pcard[data-post]');
-      if (card && e.target === card) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) postModal(p); }
+      if (card && e.target === card) { const p = B().posts.find((x) => x.id === card.dataset.post); if (p) openPost(p); }
     });
     root.addEventListener('dragstart', (e) => {
       const d = e.target.closest('[data-post][draggable]');
@@ -4949,7 +5030,7 @@
     on(el, 'click', '[data-plan-new]', () => { if (!inSupa) { toast('O plano do mês funciona no app Bloom.'); return; } planModal(); });
     on(el, 'click', '[data-calview]', (e, b) => { S.ui.calView = b.dataset.calview; save(); render(); });
     on(el, 'click', '[data-plan-ok-all]', () => { const n = Plan.approveMonth(month); toast(n === 1 ? 'Post aprovado ✨' : `${n} posts aprovados ✨`); });
-    on(el, 'click', '.feed-tile[data-post]', (e, b) => { const x = B().posts.find((q) => q.id === b.dataset.post); if (x) (x.status === 'publicado' ? postInfo(x) : postModal(x)); });
+    on(el, 'click', '.feed-tile[data-post]', (e, b) => { const x = B().posts.find((q) => q.id === b.dataset.post); if (x) (x.status === 'publicado' ? postInfo(x) : openPost(x)); });
     Assist.bind(el);
     on(el, 'click', '[data-cf]', (e, b) => { S.ui.contFolder = b.dataset.cf; save(); render(); });
     on(el, 'click', '[data-new-folder]', () => folderModal());
