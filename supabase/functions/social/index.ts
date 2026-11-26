@@ -60,11 +60,32 @@ const TT = 'https://open.tiktokapis.com/v2';
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
+// só o site do Bloom pode chamar esta função pelo navegador (a origem é conferida em cada resposta, mais abaixo)
+const ALLOWED_ORIGINS = new Set([
+  ...(APP_URL ? [new URL(APP_URL).origin] : []),
+  'https://bloom-planner-nine.vercel.app',
+  'https://bloom-planner-yasmin17.vercel.app',
+]);
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
+// comparação de segredos em tempo constante (não vaza, pelo tempo de resposta, quantos caracteres estão certos)
+function safeEq(a: string, b: string) {
+  const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return d === 0;
+}
+const cronOk = (req: Request) => !!CRON_SECRET && safeEq(req.headers.get('x-cron-secret') ?? '', CRON_SECRET);
+// lê o corpo JSON com limite de tamanho (evita pedidos gigantes)
+async function readJson(req: Request, max = 200_000): Promise<any> {
+  try {
+    if (Number(req.headers.get('content-length') ?? 0) > max) return {};
+    const t = await req.text();
+    return t.length > max ? {} : JSON.parse(t || '{}');
+  } catch { return {}; }
+}
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
@@ -392,7 +413,12 @@ async function notifyUser(userId: string, payload: Record<string, string>) {
   const { data: subs } = await admin.from('push_subscriptions').select('*').eq('user_id', userId);
   for (const sub of subs ?? []) await sendTo(sub, payload);
 }
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)notify\.windows\.com$/];
+function pushEndpointOk(u: unknown) {
+  try { const x = new URL(String(u)); return x.protocol === 'https:' && !x.port && !x.username && PUSH_HOSTS.some((r) => r.test(x.hostname)); } catch { return false; }
+}
 async function sendTo(sub: any, payload: Record<string, string>) {
+  if (!pushEndpointOk(sub.endpoint)) { await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); console.error('push endpoint recusado'); return false; }
   try {
     await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 3600 });
     return true;
@@ -500,10 +526,12 @@ const SCRIPT_SCHEMA = {
   properties: { gancho: { type: 'string' }, roteiro: { type: 'string' }, legenda: { type: 'string' } },
 };
 async function aiAllowed(userId: string) {
+  // registra o uso primeiro e confere depois: pedidos simultâneos não passam do limite
   const since = new Date(Date.now() - 864e5).toISOString();
-  const { count } = await admin.from('ai_usage').select('user_id', { count: 'exact', head: true }).eq('user_id', userId).gte('at', since);
-  if ((count ?? 0) >= AI_PER_DAY) return false;
-  await admin.from('ai_usage').insert({ user_id: userId });
+  const { data: row, error } = await admin.from('ai_usage').insert({ user_id: userId }).select('id').single();
+  if (error || !row) return false;
+  const { count } = await admin.from('ai_usage').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('at', since);
+  if ((count ?? 0) > AI_PER_DAY) { await admin.from('ai_usage').delete().eq('id', row.id); return false; }
   return true;
 }
 // uma chamada à Claude com saída em JSON no formato pedido
@@ -765,7 +793,7 @@ async function eraseFacebookUser(fbUserId: string, code: string) {
 }
 
 /* ---------------- Rotas ---------------- */
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   const url = new URL(req.url);
   const parts = url.pathname.split('/').filter(Boolean);
@@ -775,14 +803,14 @@ Deno.serve(async (req) => {
     if (route[0] === 'start' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const { platform, return_to } = await req.json().catch(() => ({}));
+      const { platform, return_to } = await readJson(req);
       if (!isPlatform(platform)) return json({ error: 'bad_platform' }, 400);
       if (platform === 'instagram' && !igConfigured()) return json({ error: 'not_configured' }, 400);
       if (platform === 'tiktok' && (!TT_KEY || !TT_SECRET)) return json({ error: 'not_configured' }, 400);
       await admin.from('oauth_states').delete().lt('created_at', new Date(Date.now() - 3600e3).toISOString());
       const state = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
       const { error } = await admin.from('oauth_states').insert({ state, user_id: user.id, platform, return_to: safeReturn(return_to) });
-      if (error) return json({ error: 'db', detail: error.message }, 500);
+      if (error) { console.error('oauth_states', error.message); return json({ error: 'db' }, 500); }
       const authUrl = platform === 'instagram' && fbMode()
         ? `https://www.facebook.com/v21.0/dialog/oauth?` + new URLSearchParams({ client_id: META_APP_ID, redirect_uri: REDIRECT.instagram, response_type: 'code', state, auth_type: 'rerequest', ...(META_CONFIG_ID ? { config_id: META_CONFIG_ID } : { scope: 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management' }) })
         : platform === 'instagram'
@@ -865,7 +893,7 @@ Deno.serve(async (req) => {
     }
 
     if (route[0] === 'sync' && req.method === 'POST') {
-      if (CRON_SECRET && req.headers.get('x-cron-secret') === CRON_SECRET) {
+      if (cronOk(req)) {
         const { data: accounts } = await admin.from('social_accounts').select('user_id, platform');
         const results = [];
         for (const a of accounts ?? []) results.push(await syncAccount(a.user_id, a.platform as Platform));
@@ -873,7 +901,9 @@ Deno.serve(async (req) => {
       }
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const { data: accounts } = await admin.from('social_accounts').select('platform').eq('user_id', user.id);
+      const { data: accounts } = await admin.from('social_accounts').select('platform,last_sync').eq('user_id', user.id);
+      // no máximo uma atualização por minuto por pessoa (cada uma faz dezenas de chamadas à Meta)
+      if ((accounts ?? []).some((a: any) => a.last_sync && Date.now() - new Date(a.last_sync).getTime() < 60_000)) return json({ ok: true, throttled: true, results: [] });
       const results = [];
       for (const a of accounts ?? []) results.push(await syncAccount(user.id, a.platform as Platform));
       return json({ ok: true, results });
@@ -882,7 +912,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'analyze' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const { posts } = await req.json().catch(() => ({}));
+      const { posts } = await readJson(req);
       const r = await analyzePosts(user.id, posts);
       return json(r.body, r.status);
     }
@@ -890,7 +920,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'plan' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const body = await req.json().catch(() => ({}));
+      const body = await readJson(req);
       const r = await monthPlan(user.id, body);
       return json(r.body, r.status);
     }
@@ -898,7 +928,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'assist' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const body = await req.json().catch(() => ({}));
+      const body = await readJson(req);
       const r = await assistPlan(user.id, body);
       return json(r.body, r.status);
     }
@@ -906,7 +936,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'script' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const body = await req.json().catch(() => ({}));
+      const body = await readJson(req);
       const r = await writeScript(user.id, body);
       return json(r.body, r.status);
     }
@@ -922,7 +952,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'choose' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const { ext_id } = await req.json().catch(() => ({}));
+      const { ext_id } = await readJson(req);
       if (!ext_id || !(await useIgChoice(user.id, String(ext_id)))) return json({ error: 'not_found' }, 404);
       const r = await syncAccount(user.id, 'instagram');
       return json({ ok: true, sync: r });
@@ -931,7 +961,7 @@ Deno.serve(async (req) => {
     if (route[0] === 'disconnect' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
-      const { platform } = await req.json().catch(() => ({}));
+      const { platform } = await readJson(req);
       if (!isPlatform(platform)) return json({ error: 'bad_platform' }, 400);
       await admin.from('social_tokens').delete().eq('user_id', user.id).eq('platform', platform);
       await admin.from('social_choices').delete().eq('user_id', user.id).eq('platform', platform);
@@ -941,7 +971,7 @@ Deno.serve(async (req) => {
     }
 
     if (route[0] === 'push-tick' && req.method === 'POST') {
-      if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (!cronOk(req)) return json({ error: 'unauthorized' }, 401);
       if (!VAPID_PRIVATE) return json({ error: 'not_configured' }, 400);
       return json({ ok: true, ...(await pushTick()) });
     }
@@ -949,6 +979,9 @@ Deno.serve(async (req) => {
     if (route[0] === 'push-test' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
+      const { data: last } = await admin.from('push_sent').select('sent_at').eq('user_id', user.id).eq('key', 'push-test').maybeSingle();
+      if (last && Date.now() - new Date(last.sent_at).getTime() < 30_000) return json({ error: 'too_fast' }, 429);
+      await admin.from('push_sent').upsert({ user_id: user.id, key: 'push-test', sent_at: nowIso() });
       const { data: list } = await admin.from('push_subscriptions').select('*').eq('user_id', user.id);
       if (!list?.length) return json({ error: 'no_subscription' }, 400);
       let ok = 0;
@@ -985,4 +1018,14 @@ Deno.serve(async (req) => {
     console.error('social', e);
     return json({ error: 'server_error' }, 500);
   }
+}
+
+Deno.serve(async (req) => {
+  const res = await handle(req);
+  const h = new Headers(res.headers);
+  const origin = req.headers.get('origin');
+  if (origin && ALLOWED_ORIGINS.has(origin)) { h.set('Access-Control-Allow-Origin', origin); h.set('Vary', 'Origin'); }
+  h.set('X-Content-Type-Options', 'nosniff');
+  h.set('Referrer-Policy', 'no-referrer');
+  return new Response(res.body, { status: res.status, headers: h });
 });

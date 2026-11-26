@@ -1622,6 +1622,23 @@
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
     return null;
   }
+  // Tudo o que entra no app (nuvem, aparelho, backup importado) passa por aqui: valores que vão para atributos HTML ou CSS
+  // (cores, ids, emojis) ficam num formato seguro, e chaves perigosas de objeto são removidas. O texto livre é escapado na tela (esc).
+  const SAFE_COLOR = /^(#[0-9a-f]{3,8}|[a-z]{3,20}|(rgb|hsl)a?\([\d\s.,%/-]{3,40}\)|var\(--[\w-]{1,30}\))$/i;
+  const SAFE_ID = /[^\w:.\-]/g;
+  function sanitizeState(o, depth = 0) {
+    if (!o || typeof o !== 'object' || depth > 40) return o;
+    for (const k of Object.keys(o)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') { delete o[k]; continue; }
+      const v = o[k];
+      if (typeof v === 'string') {
+        if (/color$/i.test(k) && v && !SAFE_COLOR.test(v.trim())) o[k] = '#c2185b';
+        else if ((k === 'id' || /Id$/.test(k)) && SAFE_ID.test(v)) o[k] = v.replace(SAFE_ID, '').slice(0, 80);
+        else if ((k === 'emoji' || k === 'icon') && v.length > 16) o[k] = v.slice(0, 16);
+      } else if (v && typeof v === 'object') sanitizeState(v, depth + 1);
+    }
+    return o;
+  }
   function migrate(s) {
     const base = seed();
     if (!s || typeof s !== 'object') return base;
@@ -1659,7 +1676,7 @@
     if (!s.biz || typeof s.biz !== 'object') s.biz = bizSeed();
     s.biz.folders = s.biz.folders || []; s.biz.posts = s.biz.posts || []; s.biz.goals = s.biz.goals || [];
     if (!s.tasks.lists.find((l) => l.id === 'l-negocio')) s.tasks.lists.splice(1, 0, { id: 'l-negocio', name: 'Negócio', color: '#c2185b' });
-    return s;
+    return sanitizeState(s);
   }
 
   let S = migrate(loadState());
@@ -1752,11 +1769,16 @@
   };
 
   /* Login e nuvem próprios (Supabase), quando o Bloom roda no endereço próprio */
+  // imagens que não carregam somem (antes era um atributo onerror em linha, que a política de segurança do site não permite)
+  document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.hasAttribute('data-rm')) t.remove(); }, true);
+
   const Auth = {
     sb: null, user: null, mode: 'login',
     async client() {
       if (!this.sb) {
-        const m = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+        // biblioteca do Supabase hospedada junto com o app (versão fixa, conferida por hash): nenhum script de terceiros roda aqui
+        if (!window.supabase) await new Promise((ok, bad) => { const el = document.createElement('script'); el.src = 'supabase-js.2.45.4.umd.js'; el.integrity = 'sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o'; el.crossOrigin = 'anonymous'; el.onload = ok; el.onerror = () => bad(new Error('supabase-js')); document.head.appendChild(el); });
+        const m = window.supabase;
         this.sb = m.createClient(CFG.supabaseUrl, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       }
       return this.sb;
@@ -2317,7 +2339,7 @@
       const d = b.dataset.date;
       if (hb.days[d]) delete hb.days[d]; else hb.days[d] = true;
       save(); rerender();
-      if (hb.days[d] && d >= weekStart(today()) && weekCount(hb) === hb.goal) { confetti(); toast(`Meta da semana batida: ${hb.name} ${hb.emoji}`); }
+      if (hb.days[d] && d >= weekStart(today()) && weekCount(hb) === hb.goal) { confetti(); toast(`Meta da semana batida: ${hb.name} ${esc(hb.emoji)}`); }
     });
     on(root, 'click', '[data-habit-edit]', (e, b) => habitModal(S.habits.find((x) => x.id === b.dataset.habitEdit)));
     on(root, 'click', '[data-new-habit]', () => habitModal());
@@ -2623,7 +2645,7 @@
     return `<div class="card cd-card">
       <div class="card-head"><h3>contagem regressiva</h3><button class="btn sm ghost" data-sp-new>+ data especial</button></div>
       ${list.map((c) => `<button type="button" class="cd-row ${c.left === 0 ? 'is-today' : ''}" ${c.sp ? `data-sp="${c.sp}"` : c.task ? `data-cd-task="${c.task}"` : 'data-cd-xmas'}>
-        <span class="cd-emo" aria-hidden="true">${c.emoji}</span>
+        <span class="cd-emo" aria-hidden="true">${esc(c.emoji)}</span>
         <span class="cd-txt"><b>${esc(c.name)}</b><span class="muted">${DOW[dow(c.date)]} ${fmtShort(c.date)}${Number(c.date.slice(0, 4)) !== Number(t.slice(0, 4)) ? '/' + c.date.slice(2, 4) : ''}${c.sub ? ' · ' + esc(c.sub) : ''}</span></span>
         <span class="cd-num">${cdLeft(c.left)}</span>
       </button>`).join('')}
@@ -2971,7 +2993,7 @@
               <div class="card-head"><h3>hábitos da semana</h3><button class="btn sm ghost" data-go="habitos">ver tudo</button></div>
               ${S.habits.length ? `<table class="habits">
                 <thead><tr><th>hábito</th>${week.map((d) => `<th class="${d === t ? 'today' : ''}"><span class="d3">${DOW[dow(d)].slice(0, 3)}</span><span class="d1" aria-hidden="true">${DOW[dow(d)].charAt(0)}</span></th>`).join('')}<th></th></tr></thead>
-                <tbody>${S.habits.map((hb) => `<tr style="--c:${hb.color}"><td><div class="hname"><span class="em" aria-hidden="true">${hb.emoji}</span><span class="nm">${esc(hb.name)}</span><button class="icon-btn" data-habit-edit="${hb.id}" aria-label="Editar ${esc(hb.name)}">${ICON.edit}</button></div></td>${week.map((d) => `<td><button class="hcell ${hb.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${hb.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(hb.name)}, ${DOW_LONG[dow(d)]}" aria-pressed="${!!hb.days[d]}"></button></td>`).join('')}<td class="hcount">${weekCount(hb)}/${hb.goal}</td></tr>`).join('')}</tbody>
+                <tbody>${S.habits.map((hb) => `<tr style="--c:${hb.color}"><td><div class="hname"><span class="em" aria-hidden="true">${esc(hb.emoji)}</span><span class="nm">${esc(hb.name)}</span><button class="icon-btn" data-habit-edit="${hb.id}" aria-label="Editar ${esc(hb.name)}">${ICON.edit}</button></div></td>${week.map((d) => `<td><button class="hcell ${hb.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${hb.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(hb.name)}, ${DOW_LONG[dow(d)]}" aria-pressed="${!!hb.days[d]}"></button></td>`).join('')}<td class="hcount">${weekCount(hb)}/${hb.goal}</td></tr>`).join('')}</tbody>
               </table>` : '<div class="empty"><span class="hand">crie seus hábitos ♡</span></div>'}
               <button class="btn sm secondary" data-new-habit style="margin-top:12px">+ novo hábito</button>
             </div>`,
@@ -2992,7 +3014,7 @@
             <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
             ${Weather.chip()}
             ${org ? '' : '<button type="button" class="org-btn" data-org aria-label="Organizar e escolher os cartões da tela">⠿ organizar e escolher cartões</button>'}
-            ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${h.emoji} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
+            ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${esc(h.emoji)} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
           </div>
           <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
         </div>
@@ -3108,8 +3130,8 @@
             </div>
             <div class="card notebook">
               <div class="card-head"><h3 class="day-title"><em>${sel === t ? 'hoje' : DOW_LONG[dow(sel)]}</em>${parseISO(sel).getDate()} de ${MONTHS[sd.getMonth()]}</h3><button class="btn sm secondary" data-new-ev>+ adicionar</button></div>
-              ${specialsOn(sel).map((x) => `<button type="button" class="hol-line t-imp" ${x.id ? `data-sp="${x.id}"` : 'data-cd-xmas'}><span aria-hidden="true">${x.emoji}</span><b>${esc(x.name)}</b><span class="muted">${x.sub ? esc(x.sub) + ' · ' : ''}data especial ★</span></button>`).join('')}
-              ${holidaysOn(sel).map((h) => `<div class="hol-line t-${h.type}"><span aria-hidden="true">${h.emoji}</span><b>${esc(h.name)}</b><span class="muted">${holLabel(h)}</span></div>`).join('')}
+              ${specialsOn(sel).map((x) => `<button type="button" class="hol-line t-imp" ${x.id ? `data-sp="${x.id}"` : 'data-cd-xmas'}><span aria-hidden="true">${esc(x.emoji)}</span><b>${esc(x.name)}</b><span class="muted">${x.sub ? esc(x.sub) + ' · ' : ''}data especial ★</span></button>`).join('')}
+              ${holidaysOn(sel).map((h) => `<div class="hol-line t-${h.type}"><span aria-hidden="true">${esc(h.emoji)}</span><b>${esc(h.name)}</b><span class="muted">${holLabel(h)}</span></div>`).join('')}
               ${evs.length ? evs.map((ev) => dayRow(ev, sel)).join('') : '<div class="empty"><span class="hand">nada marcado ♡</span>dia livre para o que você quiser</div>'}
             </div>
           </div>
@@ -3126,7 +3148,7 @@
             </div>
             <div class="card">
               <div class="card-head"><h3>datas importantes</h3><button class="btn sm secondary" data-sp-new data-sp-date="${sel}">+ ★ data especial</button><button class="btn sm ghost" data-toggle-com>${showCommercial() ? 'esconder datas comerciais' : 'mostrar datas comerciais'}</button></div>
-              ${(() => { const nd = nextDates(t, 75).slice(0, 6); return nd.length ? nd.map(([d, h]) => { const left = diffDays(t, d); return `<div class="task hol-row t-${h.type}"><span aria-hidden="true" style="font-size:18px">${h.emoji}</span><div class="task-text">${esc(h.name)}<div class="muted" style="font-size:12px">${holLabel(h)}</div></div><div class="task-meta">${DOW[dow(d)]} ${fmtShort(d)} · ${left === 0 ? 'hoje' : left === 1 ? 'amanhã' : 'em ' + left + ' dias'}</div></div>`; }).join('') : '<div class="empty">nenhuma data nos próximos meses.</div>'; })()}
+              ${(() => { const nd = nextDates(t, 75).slice(0, 6); return nd.length ? nd.map(([d, h]) => { const left = diffDays(t, d); return `<div class="task hol-row t-${h.type}"><span aria-hidden="true" style="font-size:18px">${esc(h.emoji)}</span><div class="task-text">${esc(h.name)}<div class="muted" style="font-size:12px">${holLabel(h)}</div></div><div class="task-meta">${DOW[dow(d)]} ${fmtShort(d)} · ${left === 0 ? 'hoje' : left === 1 ? 'amanhã' : 'em ' + left + ' dias'}</div></div>`; }).join('') : '<div class="empty">nenhuma data nos próximos meses.</div>'; })()}
             </div>
             <div class="card">
               <div class="card-head"><h3>próximos dias</h3></div>
@@ -3253,7 +3275,7 @@
         ${S.habits.length ? `<div class="hb-week">${S.habits.map((h, i) => {
           const wc = weekCount(h);
           return `<div class="card hb-card ${i % 2 ? 'tilt-r' : 'tilt-l'}" style="--c:${h.color}">
-            <div class="top"><span class="em" aria-hidden="true">${h.emoji}</span><div style="min-width:0"><div class="nm">${esc(h.name)}</div><div class="goal-t">${h.goal === 7 ? 'todos os dias' : h.goal + 'x por semana'}</div></div>
+            <div class="top"><span class="em" aria-hidden="true">${esc(h.emoji)}</span><div style="min-width:0"><div class="nm">${esc(h.name)}</div><div class="goal-t">${h.goal === 7 ? 'todos os dias' : h.goal + 'x por semana'}</div></div>
               <div class="acts"><button class="icon-btn" data-move="${h.id}:-1" aria-label="Mover para cima" ${i === 0 ? 'disabled' : ''}>${ICON.up}</button><button class="icon-btn" data-move="${h.id}:1" aria-label="Mover para baixo" ${i === S.habits.length - 1 ? 'disabled' : ''}>${ICON.down}</button><button class="icon-btn" data-habit-edit="${h.id}" aria-label="Editar ${esc(h.name)}">${ICON.edit}</button></div></div>
             <div class="progress" style="--c:${h.color}"><span style="width:${Math.min(100, Math.round((wc / h.goal) * 100))}%"></span></div>
             <div class="stats"><span>esta semana ${wc}/${h.goal}</span><span>🔥 ${habitStreak(h)} ${habitStreak(h) === 1 ? 'dia' : 'dias'}</span></div>
@@ -3267,7 +3289,7 @@
           <div class="hb-scroll">
             <table class="hb-month">
               <thead><tr><th></th>${days.map((d) => `<th class="${d === t ? 'today' : ''}">${DOW[dow(d)].charAt(0)}<br>${Number(d.slice(8))}</th>`).join('')}<th>total</th></tr></thead>
-              <tbody>${S.habits.map((h) => `<tr style="--c:${h.color}"><td>${h.emoji} ${esc(h.name)}</td>${days.map((d) => `<td><button class="hcell ${h.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${h.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(h.name)}, dia ${Number(d.slice(8))}" aria-pressed="${!!h.days[d]}"></button></td>`).join('')}<td class="hcount">${days.filter((d) => h.days[d]).length}</td></tr>`).join('')}</tbody>
+              <tbody>${S.habits.map((h) => `<tr style="--c:${h.color}"><td>${esc(h.emoji)} ${esc(h.name)}</td>${days.map((d) => `<td><button class="hcell ${h.days[d] ? 'on' : ''} ${d === t ? 'today' : ''}" data-habit="${h.id}" data-date="${d}" ${d > t ? 'disabled' : ''} aria-label="${esc(h.name)}, dia ${Number(d.slice(8))}" aria-pressed="${!!h.days[d]}"></button></td>`).join('')}<td class="hcount">${days.filter((d) => h.days[d]).length}</td></tr>`).join('')}</tbody>
             </table>
           </div>
         </div>` : '<div class="card empty"><span class="hand">que rituais você quer cultivar?</span>crie seu primeiro hábito<br><button class="btn" data-new-habit style="margin-top:12px">+ novo hábito</button></div>'}`;
@@ -4217,12 +4239,12 @@
       <div class="pc-top"><span class="pc-plat" title="${platOf(p).label}" aria-label="${platOf(p).label}">${platOf(p).icon}</span><span class="tagpill" style="--c:${st.color}">${st.label}</span>${p.example ? '<span class="pc-ex">exemplo</span>' : ''}</div>
       ${p.approval === 'pending' ? '<div class="pc-pend">⏳ esperando aprovação</div>' : ''}
       <div class="pc-title">${p.plan && p.plan.etiqueta ? `<span class="pc-tag">${esc(p.plan.etiqueta)}</span>` : ''}${esc(p.title)}</div>
-      <div class="pc-pills"><span class="pc-pill">${f.emoji} ${esc(f.name)}</span>${FORMATS[p.format] ? `<span class="pc-pill">${esc(FORMATS[p.format])}</span>` : ''}${p.date ? `<span class="pc-pill">📅 ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}</span>` : ''}</div>
+      <div class="pc-pills"><span class="pc-pill">${esc(f.emoji)} ${esc(f.name)}</span>${FORMATS[p.format] ? `<span class="pc-pill">${esc(FORMATS[p.format])}</span>` : ''}${p.date ? `<span class="pc-pill">📅 ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}</span>` : ''}</div>
       ${bd ? `<div class="pc-score" style="--c:${bd.c}"><b>${s}</b> ${bd.t}</div>` : ''}
       ${opts.move ? `<div class="pc-move"><button class="icon-btn" data-pmove="${p.id}:-1" aria-label="Voltar uma etapa" ${i <= 0 ? 'disabled' : ''}>${ICON.left}</button><button class="icon-btn" data-pmove="${p.id}:1" aria-label="Avançar uma etapa" ${i >= ST_ORDER.length - 1 ? 'disabled' : ''}>${ICON.right}</button></div>` : ''}
     </div>`;
   }
-  const folderOptions = () => [{ value: '', label: '🗂️ Sem pasta' }, ...B().folders.map((f) => ({ value: f.id, label: `${f.emoji} ${f.name}` }))];
+  const folderOptions = () => [{ value: '', label: '🗂️ Sem pasta' }, ...B().folders.map((f) => ({ value: f.id, label: `${esc(f.emoji)} ${f.name}` }))];
 
   const AI_ERRORS = {
     not_configured: 'A Claude ainda não foi ativada no servidor do Bloom (falta a chave da API).',
@@ -4272,7 +4294,7 @@
     const f = folderOf(p), st = stOf(p), sc = parseScript(p.script), falas = scriptFalas(p), link = safeLink(p.link);
     const isVideo = VIDEO_FORMATS.includes(p.format);
     const total = sc.reduce((n, x) => n + 0, 0);
-    const meta = [`${f.emoji} ${esc(f.name)}`, FORMATS[p.format] ? esc(FORMATS[p.format]) : '', p.date ? `📅 ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}` : '', p.duration ? `⏱ ${esc(p.duration)}` : ''].filter(Boolean);
+    const meta = [`${esc(f.emoji)} ${esc(f.name)}`, FORMATS[p.format] ? esc(FORMATS[p.format]) : '', p.date ? `📅 ${fmtShort(p.date)}${p.time ? ' ' + p.time : ''}` : '', p.duration ? `⏱ ${esc(p.duration)}` : ''].filter(Boolean);
     const tags = String(p.hashtags || '').trim();
     modal({
       title: p.title,
@@ -4655,11 +4677,11 @@
           <p class="muted" style="margin:0 0 10px">Conte a história ou a ideia do seu jeito, falando ou escrevendo. Eu monto o roteiro, as cenas, o ângulo de cada take e a legenda.</p>
           <div class="as-row">
             <label class="as-f"><span>Marca / perfil</span><div class="as-sel"><select class="input" data-as-brand>${opt(a.brands, a.sel.brand, 'sem marca definida')}</select><button type="button" class="icon-btn" data-as-edit="brand" aria-label="Adicionar ou editar marca">${ICON.edit}</button></div></label>
-            <label class="as-f"><span>Formato do vídeo</span><div class="as-sel"><select class="input" data-as-format><option value="">história livre</option>${a.formats.length ? `<optgroup label="Meus formatos">${a.formats.map((x) => `<option value="${x.id}" ${x.id === a.sel.format ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Formatos prontos">${FORMAT_PRESETS.map((x) => `<option value="pre:${x.id}" ${'pre:' + x.id === a.sel.format ? 'selected' : ''}>${x.emoji} ${esc(x.name)}</option>`).join('')}</optgroup></select><button type="button" class="icon-btn" data-as-edit="format" aria-label="Adicionar ou editar formato">${ICON.edit}</button></div></label>
+            <label class="as-f"><span>Formato do vídeo</span><div class="as-sel"><select class="input" data-as-format><option value="">história livre</option>${a.formats.length ? `<optgroup label="Meus formatos">${a.formats.map((x) => `<option value="${x.id}" ${x.id === a.sel.format ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Formatos prontos">${FORMAT_PRESETS.map((x) => `<option value="pre:${x.id}" ${'pre:' + x.id === a.sel.format ? 'selected' : ''}>${esc(x.emoji)} ${esc(x.name)}</option>`).join('')}</optgroup></select><button type="button" class="icon-btn" data-as-edit="format" aria-label="Adicionar ou editar formato">${ICON.edit}</button></div></label>
             <label class="as-f"><span>Tipo</span><select class="input" data-as-tipo>${['reels', 'stories', 'carrossel', 'post'].map((k) => `<option value="${k}" ${a.sel.tipo === k ? 'selected' : ''}>${FORMATS[k]}</option>`).join('')}</select></label>
           </div>
           <button type="button" class="btn sm ghost as-presets" data-as-presets>📚 ver os ${FORMAT_PRESETS.length} formatos prontos</button>
-          ${presetOf(a.sel.format) ? `<p class="muted as-fmt-note">${presetOf(a.sel.format).emoji} <b>${esc(presetOf(a.sel.format).name)}</b>: ${esc(presetOf(a.sel.format).quick)}</p>` : ''}
+          ${presetOf(a.sel.format) ? `<p class="muted as-fmt-note">${esc(presetOf(a.sel.format).emoji)} <b>${esc(presetOf(a.sel.format).name)}</b>: ${esc(presetOf(a.sel.format).quick)}</p>` : ''}
           <form class="as-talk" data-as-form>
             <textarea class="input" name="relato" rows="5" placeholder="Ex: hoje uma cliente pediu 200 brindes para sexta, o teste de impressão deu errado, eu refiz tudo e consegui entregar…" aria-label="Conte a história ou a ideia">${esc(this.draft)}</textarea>
             <button type="button" class="mic-btn mic-solo" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button>
@@ -4817,14 +4839,14 @@
         title: 'formatos prontos',
         message: 'Os estilos de vídeo que mais se repetem no Reels e no TikTok. Escolha um e eu monto o roteiro seguindo as regras dele.',
         extraHTML: `<div class="fp-list">${FORMAT_PRESETS.map((x) => `<div class="fp-item ${'pre:' + x.id === a.sel.format ? 'on' : ''}">
-            <div class="fp-top"><span class="fp-e" aria-hidden="true">${x.emoji}</span><div class="fp-t"><b>${esc(x.name)}</b><span class="muted">${esc(x.quick)}</span></div><button type="button" class="btn sm ${'pre:' + x.id === a.sel.format ? '' : 'secondary'}" data-fp-use="${x.id}">${'pre:' + x.id === a.sel.format ? '✓ em uso' : 'usar'}</button></div>
+            <div class="fp-top"><span class="fp-e" aria-hidden="true">${esc(x.emoji)}</span><div class="fp-t"><b>${esc(x.name)}</b><span class="muted">${esc(x.quick)}</span></div><button type="button" class="btn sm ${'pre:' + x.id === a.sel.format ? '' : 'secondary'}" data-fp-use="${x.id}">${'pre:' + x.id === a.sel.format ? '✓ em uso' : 'usar'}</button></div>
             <details class="fp-more"><summary>como funciona</summary><p>${esc(x.desc)}</p></details>
           </div>`).join('')}</div>`,
         cancelLabel: 'Fechar',
         onOpen: (form) => form.addEventListener('click', (e) => {
           const b = e.target.closest('[data-fp-use]'); if (!b) return;
           const x = presetOf(b.dataset.fpUse); if (!x) return;
-          a.sel.format = 'pre:' + x.id; a.sel.tipo = x.tipo; save(); dlg.close(); rerender(); toast(`${x.emoji} ${x.name} escolhido. Agora conte a sua história.`);
+          a.sel.format = 'pre:' + x.id; a.sel.tipo = x.tipo; save(); dlg.close(); rerender(); toast(`${esc(x.emoji)} ${x.name} escolhido. Agora conte a sua história.`);
         }),
       });
     },
@@ -4929,7 +4951,7 @@
       return `<div class="feed">
           <div class="feed-head">${acc && acc.avatar_url ? `<img src="${esc(acc.avatar_url)}" alt="" referrerpolicy="no-referrer">` : '<span class="feed-av">🎀</span>'}<div><b>@${esc((acc && acc.username) || 'seu_perfil')}</b><span class="muted">${acc && acc.followers != null ? fmtNum(acc.followers) + ' seguidores · ' : ''}prévia com os posts planejados</span></div></div>
           <div class="feed-grid">${list.map((x) => { const plan = x.status !== 'publicado'; return `<button type="button" class="feed-tile ${plan ? 'plan' : ''} ${x.approval === 'pending' ? 'pend' : ''}" data-post="${x.id}" style="--c:${folderOf(x).color}">
-              ${x.thumb ? `<img src="${esc(x.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
+              ${x.thumb ? `<img src="${esc(x.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-rm>` : ''}
               <span class="ft-t">${esc(x.title)}</span>
               ${VIDEO_FORMATS.includes(x.format) ? '<span class="ft-ic" aria-hidden="true">▶</span>' : x.format === 'carrossel' ? '<span class="ft-ic" aria-hidden="true">❐</span>' : ''}
               ${plan ? `<span class="ft-d">${fmtShort(x.date)}</span>` : ''}
@@ -4946,7 +4968,7 @@
       const rows = Object.values(g).sort((a, b) => b.n - a.n);
       return `<div class="card mix"><div class="card-head"><h3>mix de pilares</h3><span class="muted">${mp.length} posts no mês</span></div>
           <div class="mix-bar">${rows.map((r) => `<i style="flex:${r.n};--c:${r.f.color}" title="${esc(r.f.name)}: ${r.n}"></i>`).join('')}</div>
-          <div class="mix-leg">${rows.map((r) => `<span><i style="--c:${r.f.color}"></i>${r.f.emoji} ${esc(r.f.name)} <b>${Math.round((r.n / mp.length) * 100)}%</b></span>`).join('')}</div>
+          <div class="mix-leg">${rows.map((r) => `<span><i style="--c:${r.f.color}"></i>${esc(r.f.emoji)} ${esc(r.f.name)} <b>${Math.round((r.n / mp.length) * 100)}%</b></span>`).join('')}</div>
         </div>`;
     }
     function planModal() {
@@ -4960,7 +4982,7 @@
           { name: 'brand', label: 'Marca / perfil', type: 'select', value: a.sel.brand || '', options: [{ value: '', label: 'sem marca definida' }, ...a.brands.map((b) => ({ value: b.id, label: b.name }))] },
           { name: 'eventos', label: 'O que vai acontecer no mês?', type: 'textarea', value: (S.ui.planEvents || {})[month] || '', full: true, rows: 4, placeholder: 'Ex: lançamento da coleção de Natal dia 10, promoção na Black Friday, quero mostrar mais bastidores…' },
         ],
-        extraHTML: `<p class="muted" style="font-size:12.5px;margin:0">Pilares: ${B().folders.map((f) => `${f.emoji} ${esc(f.name)}`).join(' · ')}. Para mudar, edite as pastas.</p>${hasPlanned ? '<p class="muted" style="font-size:12.5px;margin:6px 0 0">Os posts do plano anterior que ainda não foram aprovados serão trocados pelos novos.</p>' : ''}`,
+        extraHTML: `<p class="muted" style="font-size:12.5px;margin:0">Pilares: ${B().folders.map((f) => `${esc(f.emoji)} ${esc(f.name)}`).join(' · ')}. Para mudar, edite as pastas.</p>${hasPlanned ? '<p class="muted" style="font-size:12.5px;margin:6px 0 0">Os posts do plano anterior que ainda não foram aprovados serão trocados pelos novos.</p>' : ''}`,
         saveLabel: '✨ montar o plano',
         onSave: (v) => {
           S.ui.planPerWeek = Number(v.por_semana); S.ui.planEvents = Object.assign({}, S.ui.planEvents, { [month]: v.eventos });
@@ -5004,7 +5026,7 @@
               ${['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'].map((d) => `<div class="cal-h">${d}</div>`).join('')}
               ${cells.map((d) => { const ps = byDay(d); return `<div class="cal-cell ${parseISO(d).getMonth() !== m - 1 ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-day="${d}" role="button" tabindex="0" aria-label="${fmtLong(d)}, ${ps.length} conteúdo(s)">
                 <div class="cal-dn ${isHoliday(d) ? 'hol' : ''}"><span class="n">${parseISO(d).getDate()}</span>${isImportant(d) ? '<span class="cal-imp" title="dia importante">★</span>' : ''}</div>
-                ${holidaysOn(d).slice(0, 1).map((h) => `<div class="hol-chip t-${h.type}" title="${esc(h.name)} · ${holLabel(h)}"><span>${h.emoji}</span><span class="t">${esc(h.name)}</span></div>`).join('')}
+                ${holidaysOn(d).slice(0, 1).map((h) => `<div class="hol-chip t-${h.type}" title="${esc(h.name)} · ${holLabel(h)}"><span>${esc(h.emoji)}</span><span class="t">${esc(h.name)}</span></div>`).join('')}
                 ${ps.slice(0, 3).map((p) => `<div class="cal-chip ${p.status === 'publicado' ? 'pub' : ''} ${p.approval === 'pending' ? 'pend' : ''}" draggable="true" data-post="${p.id}" style="--c:${folderOf(p).color}" title="${esc(p.title)}"><span>${platOf(p).icon}</span><span class="t">${esc(p.title)}</span></div>`).join('')}
                 ${ps.length > 3 ? `<div class="cal-more">+${ps.length - 3}</div>` : ''}
               </div>`; }).join('')}
@@ -5056,7 +5078,7 @@
         </div>
         <div class="chips scroll" style="margin-bottom:20px;${tab === 'assist' ? 'display:none' : ''}">
           <button class="chip ${f === 'all' ? 'on' : ''}" data-cf="all">Todas as pastas</button>
-          ${B().folders.map((x) => `<button class="chip ${f === x.id ? 'on' : ''}" data-cf="${x.id}"><span aria-hidden="true">${x.emoji}</span>${esc(x.name)} <span class="count">${count(x.id)}</span></button>`).join('')}
+          ${B().folders.map((x) => `<button class="chip ${f === x.id ? 'on' : ''}" data-cf="${x.id}"><span aria-hidden="true">${esc(x.emoji)}</span>${esc(x.name)} <span class="count">${count(x.id)}</span></button>`).join('')}
           <button class="chip" data-new-folder>+ nova pasta</button>
         </div>
         ${body}`;
@@ -5138,7 +5160,7 @@
             <div class="pc-top"><span class="pc-plat">${platOf(p).icon}</span><span class="tagpill" style="--c:${stOf(p).color}">${stOf(p).label}</span><span class="pc-meta" style="margin:0 0 0 auto">${p.date ? fmtShort(p.date) : 'sem data'}</span></div>
             <div class="ttl">${esc(p.title)}</div>
             ${p.hook ? `<div class="hook">“${esc(p.hook)}”</div>` : ''}
-            <div class="det">${p.scene ? `<span>📍 ${esc(p.scene)}</span>` : ''}${p.look ? `<span>👗 ${esc(p.look)}</span>` : ''}${p.duration ? `<span>⏱ ${esc(p.duration)}</span>` : ''}<span>${f.emoji} ${esc(f.name)}</span></div>
+            <div class="det">${p.scene ? `<span>📍 ${esc(p.scene)}</span>` : ''}${p.look ? `<span>👗 ${esc(p.look)}</span>` : ''}${p.duration ? `<span>⏱ ${esc(p.duration)}</span>` : ''}<span>${esc(f.emoji)} ${esc(f.name)}</span></div>
             ${p.script ? `<details><summary>ver roteiro</summary><p>${esc(p.script)}</p></details>` : ''}
             ${p.notes ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">🎒 ${esc(p.notes)}</p>` : ''}
             <div class="acts"><button class="btn sm" data-recorded="${p.id}">✓ gravado</button>${p.script || p.hook ? `<button class="btn sm secondary" data-tele="${p.id}">🎬 teleprompter</button>` : ''}<button class="btn sm ghost" data-edit-post="${p.id}">editar</button></div>
@@ -5415,7 +5437,7 @@
             <div class="card bars">
               <div class="card-head"><h3>o que funciona melhor</h3></div>
               ${scored.length ? `<h4>por formato</h4>${bars(groupAvg(scored, (p) => p.format, (k) => FORMATS[k] || k))}
-                <h4>por pasta</h4>${bars(groupAvg(scored, (p) => p.folderId || '', (k) => { const f = B().folders.find((x) => x.id === k); return f ? `${f.emoji} ${f.name}` : 'Sem pasta'; }))}
+                <h4>por pasta</h4>${bars(groupAvg(scored, (p) => p.folderId || '', (k) => { const f = B().folders.find((x) => x.id === k); return f ? `${esc(f.emoji)} ${f.name}` : 'Sem pasta'; }))}
                 <h4>por rede</h4>${bars(groupAvg(scored, (p) => p.platform, (k) => (PLATFORMS[k] || PLATFORMS.instagram).label))}
                 <h4>por dia da semana</h4>${bars(groupAvg(scored.filter((p) => p.date), (p) => String(dow(p.date)), (k) => DOW_LONG[Number(k)]))}
                 <h4>por horário</h4>${bars(groupAvg(scored, band, (k) => k))}` : '<div class="empty">anote os números de alguns posts para ver o que funciona melhor</div>'}
@@ -5597,7 +5619,7 @@
     if (!m) {
       const src = type === 'folder' ? S.biz.folders.find((f) => f.id === id) : S.goals.find((g) => g.id === id);
       if (!src) return;
-      const name = type === 'folder' ? `${src.emoji} ${src.name}` : src.title;
+      const name = type === 'folder' ? `${esc(src.emoji)} ${src.name}` : src.title;
       const color = type === 'folder' ? src.color : (AREAS[src.area] || AREAS.carreira).color;
       const rootId = uid();
       m = { id: uid(), name, nodes: [{ id: rootId, parent: null, x: 0, y: 0, text: name, color }], view: null, link: { type, id } };
