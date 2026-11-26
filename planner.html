@@ -1297,6 +1297,23 @@
   .pv-actions { margin-top: 16px; }
   .pv .as-scene:last-of-type { border-bottom: 0; }
   .pv-approve { padding: 10px 12px; margin: 0 0 12px; border-radius: 12px; background: var(--accent-soft); }
+  /* ---------- Cartão de resultados na tela inicial ---------- */
+  .rs-card { background: color-mix(in srgb, var(--brand-2) 22%, var(--surface)); }
+  .rs-say { margin: 2px 0 12px; font-size: 14.5px; line-height: 1.5; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--brand) 14%, var(--surface)); overflow-wrap: anywhere; }
+  .rs-invite .rs-say { margin-bottom: 12px; }
+  .rs-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+  .rs-n { display: flex; flex-direction: column; gap: 1px; padding: 10px 11px; border-radius: 14px; background: var(--surface); min-width: 0; }
+  .rs-n0 { background: color-mix(in srgb, #f4a9c8 38%, var(--surface)); }
+  .rs-n1 { background: color-mix(in srgb, var(--butter) 75%, var(--surface)); }
+  .rs-n2 { background: color-mix(in srgb, #b9d39f 45%, var(--surface)); }
+  .rs-n3 { background: color-mix(in srgb, #c9b2ec 40%, var(--surface)); }
+  .rs-n b { font-family: var(--f-serif); font-size: 28px; line-height: 1.05; font-weight: 400; }
+  .rs-n span { font-size: 11.5px; color: var(--ink-soft); }
+  .rs-d { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
+  .rs-d.up { color: #4f7a43; } .rs-d.down { color: #b0412f; }
+  .rs-cons { margin-top: 12px; font-size: 13px; }
+  .rs-cons .row { justify-content: space-between; margin-bottom: 4px; }
+  .org-hidden .chip.on { background: var(--brand); color: var(--on-brand); }
 </style>
 </head>
 <body>
@@ -2874,12 +2891,14 @@
      ========================================================= */
   /* Organizar a tela Hoje: ordem e colunas dos cartões ficam salvas em S.ui.hojeLayout */
   const Layout = {
-    NAMES: { notas: 'minhas notas', meudia: 'meu dia', contagem: 'contagem regressiva', negocio: 'meu negócio hoje', afirmacao: 'afirmação do dia', habitos: 'hábitos da semana', metas: 'metas em andamento' },
-    DEFAULT: { left: ['notas', 'meudia', 'contagem', 'negocio'], right: ['afirmacao', 'habitos', 'metas'], hidden: [] },
+    NAMES: { resultados: 'resultados', notas: 'minhas notas', meudia: 'meu dia', contagem: 'contagem regressiva', negocio: 'meu negócio hoje', afirmacao: 'afirmação do dia', habitos: 'hábitos da semana', metas: 'metas em andamento' },
+    NEW_ON_TOP: ['resultados'],
+    DEFAULT: { left: ['resultados', 'notas', 'meudia', 'contagem', 'negocio'], right: ['afirmacao', 'habitos', 'metas'], hidden: [] },
     get() {
       const saved = S.ui.hojeLayout || {}, known = Object.keys(this.NAMES), seen = new Set();
       const clean = (arr) => (Array.isArray(arr) ? arr : []).filter((id) => known.includes(id) && !seen.has(id) && seen.add(id));
       const out = { left: clean(saved.left), right: clean(saved.right), hidden: clean(saved.hidden) };
+      this.NEW_ON_TOP.forEach((id) => { if (!seen.has(id)) { out.left.unshift(id); seen.add(id); } }); // cartão novo entra no começo
       known.forEach((id) => { if (!seen.has(id)) (this.DEFAULT.left.includes(id) ? out.left : out.right).push(id); }); // cartão novo entra no fim
       if (!saved.left && !saved.right) return { left: [...this.DEFAULT.left], right: [...this.DEFAULT.right], hidden: [] };
       return out;
@@ -2915,6 +2934,7 @@
       const goals = S.goals.filter((g) => goalProgress(g) < 100).slice(0, 4);
 
       const WG = {
+        resultados: () => resultsCard(),
         notas: () => quickNotesCard(),
         meudia: () => `            <div class="card taped t-right">
               ${CLIP}
@@ -2952,7 +2972,7 @@
       };
       const lay = Layout.get();
       const wrap = (id) => WG[id] ? `<div class="wg" data-wg="${id}">${org ? `<div class="wg-bar"><button type="button" class="wg-grip" data-wg-grip aria-label="Arrastar ${Layout.NAMES[id]} para mudar de lugar">⠿ arrastar</button><span class="wg-name">${Layout.NAMES[id]}</span><button type="button" class="wg-b" data-wg-move="${id}:-1" aria-label="Subir">↑</button><button type="button" class="wg-b" data-wg-move="${id}:1" aria-label="Descer">↓</button><button type="button" class="wg-b" data-wg-hide="${id}" aria-label="Esconder ${Layout.NAMES[id]}">esconder</button></div>` : ''}${WG[id]()}</div>` : '';
-      const layoutBanner = () => org ? `<div class="org-banner"><div><b>Organizar a tela</b><span>Arraste pelo ⠿ ou use as setas. Toque em “esconder” para tirar um cartão.</span></div><div class="row"><button type="button" class="btn sm" data-org>✓ pronto</button><button type="button" class="btn sm ghost" data-org-reset>voltar ao padrão</button></div>${lay.hidden.length ? `<div class="org-hidden"><span>Escondidos:</span>${lay.hidden.map((id) => `<button type="button" class="chip" data-wg-show="${id}">+ ${Layout.NAMES[id]}</button>`).join('')}</div>` : ''}</div>` : '';
+      const layoutBanner = () => org ? `<div class="org-banner"><div><b>Organizar a tela</b><span>Arraste pelo ⠿ ou use as setas. Escolha abaixo quais cartões aparecem.</span></div><div class="row"><button type="button" class="btn sm" data-org>✓ pronto</button><button type="button" class="btn sm ghost" data-org-reset>voltar ao padrão</button></div><div class="org-hidden"><span>Cartões na tela (toque para ligar ou desligar):</span>${Object.keys(Layout.NAMES).map((id) => `<button type="button" class="chip ${lay.hidden.includes(id) ? '' : 'on'}" data-wg-toggle="${id}" aria-pressed="${!lay.hidden.includes(id)}">${lay.hidden.includes(id) ? '+' : '✓'} ${Layout.NAMES[id]}</button>`).join('')}</div></div>` : '';
       el.innerHTML = `
         ${inClaude ? `<div class="app-banner"><span>🎀 Esta é a versão de teste dentro do Claude. Seus dados de verdade ficam no <b>app Bloom</b>. Para levar o que está aqui: <b>Ajustes → Baixar backup</b> e, no app, <b>Restaurar backup</b>.</span><a class="btn sm" href="https://bloom-planner-nine.vercel.app" target="_blank" rel="noopener">abrir o app Bloom</a></div>` : ''}
         <div class="hero">
@@ -2961,7 +2981,7 @@
             <div class="clock" id="clock">${nowHM()}</div>
             <div class="greet">${saud}${esc(nome)}${document.documentElement.dataset.style === 'clean' ? '' : ' ♡'}</div>
             ${Weather.chip()}
-            ${org ? '' : '<button type="button" class="org-btn" data-org aria-label="Organizar os cartões da tela">⠿ organizar a tela</button>'}
+            ${org ? '' : '<button type="button" class="org-btn" data-org aria-label="Organizar e escolher os cartões da tela">⠿ organizar e escolher cartões</button>'}
             ${holidaysOn(t).map((h) => `<div class="hol-today t-${h.type}">${h.emoji} ${h.type === 'feriado' ? 'Hoje é feriado' : h.type === 'facultativo' ? 'Hoje é ponto facultativo' : 'Hoje é'}: <b>${esc(h.name)}</b></div>`).join('')}
           </div>
           <div class="scallop" aria-label="${daysLeft} dias para ${nextYear}">${scallopSVG('#d61f45')}<div class="in"><strong>${daysLeft}</strong><span>dias para<br>${nextYear}</span></div></div>
@@ -2979,6 +2999,7 @@
     on(el, 'click', '[data-org-reset]', () => { delete S.ui.hojeLayout; save(); render(); toast('Tela organizada como no início ✨'); });
     on(el, 'click', '[data-wg-move]', (e, b) => { const [id, d] = b.dataset.wgMove.split(':'); Layout.move(id, Number(d)); render(); const w = el.querySelector(`[data-wg="${id}"]`); if (w) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
     on(el, 'click', '[data-wg-hide]', (e, b) => { Layout.place(b.dataset.wgHide, 'hidden', 0); render(); toast('Cartão escondido. Dá para trazer de volta aqui em cima.'); });
+    on(el, 'click', '[data-wg-toggle]', (e, b) => { const id = b.dataset.wgToggle, hidden = Layout.get().hidden.includes(id); if (hidden) Layout.place(id, Layout.DEFAULT.left.includes(id) ? 'left' : 'right', id === 'resultados' ? 0 : 99); else Layout.place(id, 'hidden', 0); render(); });
     on(el, 'click', '[data-wg-show]', (e, b) => { const l = Layout.get(); Layout.place(b.dataset.wgShow, Layout.DEFAULT.left.includes(b.dataset.wgShow) ? 'left' : 'right', 99); render(); });
     // arrastar pelo ⠿ (mouse e dedo)
     el.addEventListener('pointerdown', (e) => {
@@ -5132,7 +5153,7 @@
 
   /* REDES SOCIAIS (conexão automática no endereço próprio) */
   const Social = {
-    accounts: {}, busy: false,
+    accounts: {}, daily: [], busy: false,
     async call(path, body) {
       const sb = await Auth.client();
       const { data } = await sb.auth.getSession();
@@ -5150,6 +5171,7 @@
       const { data } = await Auth.sb.from('social_accounts').select('*');
       this.accounts = {};
       (data || []).forEach((a) => { this.accounts[a.platform] = a; });
+      try { const { data: dl } = await Auth.sb.from('social_daily').select('platform,day,followers').order('day', { ascending: false }).limit(90); this.daily = dl || []; } catch (e) { this.daily = this.daily || []; }
       if (apply) await this.apply();
       if (current === 'insights') rerender();
     },
@@ -5491,6 +5513,59 @@
     bindPostActions(el);
     return { render, setMonth: (mo) => { month = mo; sel = mo === today().slice(0, 7) ? today() : `${mo}-01`; } };
   })();
+
+  // Resumo dos resultados para a tela inicial (últimos 7 dias contra os 7 anteriores). Tudo calculado dos números dela, sem IA.
+  function pulseData() {
+    const t = today(), a = addDays(t, -6), pa = addDays(t, -13), pb = addDays(t, -7);
+    const pubs = B().posts.filter((x) => x.status === 'publicado' && x.date && !x.example);
+    const inR = (x, d1, d2) => x.date >= d1 && x.date <= d2;
+    const cur = pubs.filter((x) => inR(x, a, t)), prev = pubs.filter((x) => inR(x, pa, pb));
+    const views = (arr) => arr.reduce((n, x) => n + num(x.metrics && (x.metrics.views ?? x.metrics.reach)), 0);
+    const inter = (x) => num(x.metrics.likes) + num(x.metrics.comments) + num(x.metrics.saves) + num(x.metrics.shares);
+    const eng = (arr) => { const w = arr.filter((x) => x.metrics && num(x.metrics.reach) > 0); const r = w.reduce((n, x) => n + num(x.metrics.reach), 0); return r ? (w.reduce((n, x) => n + inter(x), 0) / r) * 100 : null; };
+    const pct = (c, p0) => (p0 > 0 ? Math.round(((c - p0) / p0) * 100) : null);
+    const v = views(cur), pv = views(prev), e = eng(cur), pe = eng(prev);
+    // melhor formato nos últimos 30 dias
+    const g = {}; pubs.filter((x) => x.metrics && inR(x, addDays(t, -29), t)).forEach((x) => { (g[x.format] = g[x.format] || []).push(num(x.metrics.views ?? x.metrics.reach)); });
+    const avg = (arr) => arr.reduce((n, y) => n + y, 0) / arr.length;
+    const fm = Object.entries(g).filter(([, arr]) => arr.length >= 2).map(([k, arr]) => ({ k, v: avg(arr), n: arr.length })).sort((x, y) => y.v - x.v);
+    let best = null;
+    if (fm.length >= 2 && fm[fm.length - 1].v > 0 && fm[0].v / fm[fm.length - 1].v >= 1.3) best = { top: fm[0].k, low: fm[fm.length - 1].k, x: Math.round((fm[0].v / fm[fm.length - 1].v) * 10) / 10 };
+    // seguidores ganhos
+    const dl = (Social.daily || []).filter((x) => x.platform === 'instagram'); let fol = null;
+    if (dl.length >= 2) { const last = dl[0]; const old = dl.filter((x) => diffDays(x.day, last.day) <= 7).pop(); if (old && old.day !== last.day) fol = { n: last.followers - old.followers, since: old.day }; }
+    const month = t.slice(0, 7), mp = B().posts.filter((x) => (x.date || '').startsWith(month) && !x.example);
+    const connected = !!(inSupa && Social.accounts && Social.accounts.instagram);
+    const hasData = pubs.some((x) => x.metrics);
+    return { n: cur.length, v, dv: pct(v, pv), e, de: e != null && pe ? Math.round((e - pe) * 10) / 10 : null, best, fol, month: { done: mp.filter((x) => x.status === 'publicado').length, total: mp.length }, connected, hasData, upcoming: B().posts.filter((x) => x.date && x.date > t && x.date <= addDays(t, 7) && x.status !== 'publicado').length };
+  }
+  function resultsCard() {
+    const d = pulseData();
+    if (!d.connected && !d.hasData) {
+      return `<div class="card rs-card rs-invite"><div class="card-head"><h3>resultados</h3></div>
+        <p class="rs-say">${inSupa ? 'Conecte o seu Instagram e veja aqui o que está funcionando nos seus posts.' : 'Anote os números dos seus posts e veja aqui o que está funcionando.'}</p>
+        <div class="row"><button class="btn sm" data-go="insights">${inSupa ? 'conectar o Instagram' : 'ver os insights'}</button>${inSupa ? '<button class="btn sm ghost" data-go="insights">ou anotar à mão</button>' : ''}</div></div>`;
+    }
+    const delta = (x, unit = '%') => { if (x == null) return ''; const n = parseFloat(String(x).replace(',', '.')); return `<i class="rs-d ${n > 0 ? 'up' : n < 0 ? 'down' : ''}">${n > 0 ? '▲' : n < 0 ? '▼' : '•'} ${String(Math.abs(n)).replace('.', ',')}${unit}</i>`; };
+    let say;
+    if (!d.n) say = d.upcoming ? `Nenhum post nos últimos 7 dias. Você tem ${d.upcoming} planejado${d.upcoming > 1 ? 's' : ''} para a semana: bora gravar?` : 'Nenhum post nos últimos 7 dias. Que tal gravar um conteúdo hoje?';
+    else {
+      say = `Nos últimos 7 dias: ${d.n} ${d.n === 1 ? 'post' : 'posts'} e ${fmtNum(d.v)} visualizações${d.dv != null ? (d.dv > 0 ? `, ${d.dv}% a mais que na semana anterior` : d.dv < 0 ? `, ${Math.abs(d.dv)}% a menos que na semana anterior` : ', igual à semana anterior') : ''}.`;
+      if (d.best) { const PL = { reels: 'reels', curto: 'vídeos curtos', stories: 'stories', carrossel: 'carrosséis', post: 'posts de foto', live: 'lives', video: 'vídeos longos', texto: 'textos' }; say += ` Seus ${PL[d.best.top] || d.best.top} têm ${String(d.best.x).replace('.', ',')}x mais visualizações que seus ${PL[d.best.low] || d.best.low}.`; }
+    }
+    const tiles = [
+      ['visualizações', fmtNum(d.v), delta(d.dv)],
+      ['posts publicados', String(d.n), ''],
+      ['engajamento', d.e != null ? `${(Math.round(d.e * 10) / 10).toString().replace('.', ',')}%` : '—', delta(d.de == null ? null : String(d.de).replace('.', ','), ' pt')],
+    ];
+    if (d.fol) tiles.push(['seguidores', `${d.fol.n >= 0 ? '+' : ''}${fmtNum(d.fol.n)}`, `<i class="rs-d">desde ${fmtShort(d.fol.since)}</i>`]);
+    return `<div class="card rs-card">
+      <div class="card-head"><h3>resultados</h3><button class="btn sm ghost" data-go="insights">ver tudo</button></div>
+      <p class="rs-say">${esc(say)}</p>
+      <div class="rs-nums">${tiles.map(([l, big, dd], i) => `<div class="rs-n rs-n${i}"><b>${big}</b><span>${l}</span>${dd}</div>`).join('')}</div>
+      ${d.month.total >= 2 ? `<div class="rs-cons"><div class="row"><span>Posts do mês</span><b>${d.month.done} de ${d.month.total}</b></div><div class="progress"><span style="width:${Math.round((d.month.done / d.month.total) * 100)}%"></span></div></div>` : ''}
+    </div>`;
+  }
 
   function bizTodayCard() {
     const t = today();

@@ -159,3 +159,15 @@ create table if not exists public.deletion_requests (
   done_at timestamptz
 );
 alter table public.deletion_requests enable row level security;
+
+-- Total de seguidores de cada dia (para mostrar quantos a pessoa ganhou). Cada pessoa lê só os dela.
+create table if not exists public.social_daily (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  platform text not null,
+  day date not null,
+  followers integer not null,
+  primary key (user_id, platform, day)
+);
+alter table public.social_daily enable row level security;
+drop policy if exists "social_daily_read_own" on public.social_daily;
+create policy "social_daily_read_own" on public.social_daily for select using (auth.uid() = user_id);

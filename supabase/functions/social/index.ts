@@ -134,6 +134,12 @@ async function igInsights(mediaId: string, token: string, get = igGet) {
   const f = await follows; if (f) read(f);
   return out;
 }
+// guarda o total de seguidores de cada dia (para mostrar quantos ganhou)
+async function saveFollowers(userId: string, platform: Platform, n: unknown) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return;
+  const day = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // dia no horário de Brasília
+  await admin.from('social_daily').upsert({ user_id: userId, platform, day, followers: n });
+}
 async function syncInstagram(userId: string, tok: any) {
   let access = tok.access_token as string;
   // Login do Facebook para Empresas: token da página (não expira) + id da conta profissional do Instagram
@@ -183,6 +189,7 @@ async function syncInstagram(userId: string, tok: any) {
     const { error } = await admin.from('social_posts').upsert(rows);
     if (error) throw new Error('db: ' + error.message);
   }
+  await saveFollowers(userId, 'instagram', me.followers_count);
   await admin.from('social_accounts').update({
     ext_user_id: String(me.user_id ?? me.id ?? ''), username: me.username ?? null, avatar_url: me.profile_picture_url ?? null,
     followers: me.followers_count ?? null, last_sync: nowIso(), last_error: null,
@@ -254,6 +261,7 @@ async function syncTikTok(userId: string, tok: any) {
     const { error } = await admin.from('social_posts').upsert(rows);
     if (error) throw new Error('db: ' + error.message);
   }
+  await saveFollowers(userId, 'tiktok', user.follower_count);
   await admin.from('social_accounts').update({
     ext_user_id: user.open_id ?? null, username: user.display_name ?? null, avatar_url: user.avatar_url ?? null,
     followers: user.follower_count ?? null, last_sync: nowIso(), last_error: null,
