@@ -64,6 +64,15 @@ await page.goto(URL + '#/login'); await page.getByRole('button', { name: 'Aluno 
 const empty = await page.locator('.ax-dash').innerText(); ok(!/\d+%/.test(empty), 'aluno sem evidências: nenhuma porcentagem exibida'); ok(/Faça o diagnóstico/.test(empty) && /0\s*pontos/.test(empty.replace(/\n/g, ' ')), 'aluno novo: pontos 0 e convite ao diagnóstico'); await page.screenshot({ path: `${OUT}/dash-aluno-novo-1440.png` });
 await page.goto(URL + '#/login'); await page.getByRole('button', { name: 'Aluna Luna (9 anos)' }).click(); await page.waitForTimeout(900); const pop = await page.locator('.ax-dash').innerText(); ok(/\d+%/.test(pop) && /estimativa/i.test(pop), 'aluna com diagnóstico: porcentagens rotuladas como estimativa');
 
+console.log('4b) Sair e trocar de perfil em tela estreita (regressão: botão Sair escondido)');
+for (const [w, h] of [[390, 844], [768, 1024], [1440, 900]] as const) for (const label of ['Professora', 'Responsável', 'Gestora', 'Administrador', 'Aluno Davi (13)']) {
+  await page.setViewportSize({ width: w, height: h }); await page.goto(URL + '#/login'); await page.getByRole('button', { name: label }).click(); await page.waitForTimeout(500);
+  const stu = label.startsWith('Aluno'); if (stu) await page.getByRole('button', { name: 'Menu do aluno' }).filter({ visible: true }).first().click();
+  const btn = stu ? page.getByRole('menuitem', { name: /Sair/ }) : page.getByRole('button', { name: 'Sair' }).filter({ visible: true }).first();
+  const visible = await btn.isVisible().catch(() => false); ok(visible, `${w}px · ${label}: botão Sair visível`); if (visible) { await btn.click(); await page.waitForTimeout(300); ok(page.url().includes('login') || (await page.getByRole('button', { name: 'Entrar' }).count()) > 0, `${w}px · ${label}: sair leva ao login`); }
+}
+await page.goto(URL + '#/login'); await page.getByRole('button', { name: 'Professora' }).click(); await page.waitForTimeout(400); await page.goto(URL + '#/login'); await page.waitForTimeout(300);
+ok(await page.getByText(/Você está conectado como/).count() === 1, 'tela de login avisa quando já há alguém conectado (continuar/sair)'); await page.getByRole('button', { name: 'Sair' }).first().click();
 console.log('5) Acessibilidade (axe-core) e contraste');
 for (const [w, h] of [[1440, 900], [390, 844]] as const) {
   await page.setViewportSize({ width: w, height: h }); await page.goto(URL + '#/s'); await page.waitForTimeout(800); await page.addScriptTag({ content: axeSrc });

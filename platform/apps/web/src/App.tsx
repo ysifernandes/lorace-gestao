@@ -24,7 +24,7 @@ const NAV: Record<string, [string, string][]> = {
 function AdultShell({ role }: { role: string }) {
   const u = currentUser(useDB())!; const label = { guardian: 'Responsável', teacher: 'Professor(a)', school_manager: 'Gestão escolar', super_admin: 'Administração' }[role];
   return <div className="shell" data-theme="adulto"><aside className="side" aria-label="Menu"><div className="row brand" style={{ marginBottom: 14 }}><Logo size={34} /><b>{brand.name}</b></div>{NAV[role]!.map(([to, l]) => <NavLink key={to} end to={to} className={({ isActive }) => (isActive ? 'on' : '')}>{l}</NavLink>)}
-    <div className="foot" style={{ marginTop: 'auto' }}>{brand.provisional && <Badge tone="warn">nome provisório</Badge>}<p className="sm" style={{ color: '#d9d3ff' }}>{label}: {u.name}</p><Btn variant="light sm" onClick={logout}>Sair</Btn></div></aside><main className="main"><Outlet /></main></div>;
+    <div className="foot" style={{ marginTop: 'auto' }}>{brand.provisional && <Badge tone="warn">nome provisório</Badge>}<p className="sm" style={{ color: '#d9d3ff' }}>{label}: {u.name}</p><Btn variant="light sm" onClick={logout}>Sair</Btn></div></aside><main className="main"><div className="topbar"><Logo size={30} /><b className="grow">{brand.name}</b><span className="sm">{u.name}</span><Btn variant="sm" onClick={logout}>Sair</Btn></div><Outlet /></main></div>;
 }
 function Root() { const u = currentUser(useDB()); return <Navigate to={u ? HOME[u.role] : '/login'} replace />; }
 

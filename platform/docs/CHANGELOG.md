@@ -25,3 +25,8 @@
 - `packages/tutor`: moderação infantil, escada de dicas sem vazar gabarito, provedor indisponível explícito.
 - Testes: +16 (tutor, painel, mascote); suíte visual `pnpm e2e:visual` (7 resoluções, axe-core, desempenho, comparação lado a lado); E2E de jornada atualizado.
 - Achados corrigidos: pensativo com boca de "tristeza" (violava a regra do mascote); mascote sobrepondo o título do banner; ícones do desktop sobrescrevendo o mobile; guarda de vazamento do tutor falhava por normalização; `aria-label` sem papel no mapa.
+
+## 0.3.1 — correção: "Sair" inacessível em tela estreita
+- **Defeito** (reportado ao testar o preview): no celular o botão Sair ficava escondido — no shell adulto o rodapé do menu lateral é ocultado abaixo de 820 px e, no aluno, o menu do avatar fica na área que some abaixo de 1024 px. O usuário não conseguia trocar de perfil.
+- **Correção**: barra superior com nome e **Sair** nos perfis adultos; menu do aluno também no topo mobile; a tela de login agora avisa "Você está conectado como…" com Continuar/Sair.
+- **Teste de regressão** em `pnpm e2e:visual` (seção 4b): Sair visível e funcional em 390/768/1440 px para professor, responsável, gestor, administrador e aluno.

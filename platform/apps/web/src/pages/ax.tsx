@@ -28,17 +28,21 @@ const buildBand = (s: Student) => bandOf(s);
 
 function useOutside(close: () => void) { const r = useRef<HTMLDivElement>(null); useEffect(() => { const h = (e: MouseEvent) => { if (r.current && !r.current.contains(e.target as Node)) close(); }; const k = (e: KeyboardEvent) => e.key === 'Escape' && close(); document.addEventListener('mousedown', h); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', h); document.removeEventListener('keydown', k); }; }, [close]); return r; }
 
+function UserMenu({ onEdit, cls = '' }: { onEdit: () => void; cls?: string }) {
+  const nav = useNavigate(); const [menu, setMenu] = useState(false); const rm = useOutside(() => setMenu(false));
+  return <div className={`ax-pop-wrap ${cls}`} ref={rm}><button className="ax-round sm" aria-label="Menu do aluno" aria-expanded={menu} onClick={() => setMenu(!menu)}><IChevron size={22} /></button>{menu && <div className="ax-pop menu" role="menu"><button role="menuitem" onClick={() => { setMenu(false); onEdit(); }}>🎨 Personalizar avatar</button><button role="menuitem" onClick={() => nav('/s/familia')}>👨‍👩‍👧 Área da Família</button><button role="menuitem" onClick={() => nav('/s/tutor')}>🤖 Tutor IA</button><button role="menuitem" onClick={logout}>↩ Sair</button></div>}</div>;
+}
 function Header({ vm, s }: { vm: DashVM; s: Student }) {
-  const nav = useNavigate(); const [bell, setBell] = useState(false); const [menu, setMenu] = useState(false); const [edit, setEdit] = useState(false);
-  const rb = useOutside(() => setBell(false)); const rm = useOutside(() => setMenu(false));
+  const [bell, setBell] = useState(false); const [edit, setEdit] = useState(false);
+  const rb = useOutside(() => setBell(false));
   return <header className="ax-head">
-    <div className="ax-mtop"><Wordmark size={34} /><span className="grow" /><div className="ax-pop-wrap" ref={rb}><button className="ax-round" aria-label={`Notificações${vm.notifications.length ? `: ${vm.notifications.length}` : ''}`} aria-expanded={bell} onClick={() => setBell(!bell)}><IBell size={26} />{vm.notifications.length > 0 && <i className="ax-dot-red" />}</button>{bell && <Notifs vm={vm} />}</div></div>
+    <div className="ax-mtop"><Wordmark size={34} /><span className="grow" /><div className="ax-pop-wrap" ref={rb}><button className="ax-round" aria-label={`Notificações${vm.notifications.length ? `: ${vm.notifications.length}` : ''}`} aria-expanded={bell} onClick={() => setBell(!bell)}><IBell size={26} />{vm.notifications.length > 0 && <i className="ax-dot-red" />}</button>{bell && <Notifs vm={vm} />}</div><UserMenu onEdit={() => setEdit(true)} cls="ax-mmenu" /></div>
     <div className="ax-who"><button className="ax-avatar" aria-label="Personalizar avatar" onClick={() => setEdit(true)}><AvatarFace a={vm.avatar} size={120} name={vm.name} /></button>
       <div className="ax-hello"><h1>Olá, {vm.name}! <span aria-hidden>👋</span></h1><p>{vm.band === 'estrategistas' ? 'Seu foco de hoje está pronto.' : vm.band === 'exploradores' ? 'Vamos brincar de aprender?' : 'Pronto para mais uma missão de aprendizado?'}</p></div></div>
     <div className="ax-pills"><div className="ax-pill pts"><IStar size={38} /><span><b>{vm.xp.toLocaleString('pt-BR')}</b> pontos</span></div>
       <div className="ax-pill time"><IPhone size={34} /><span><b>{fmtMinutes(vm.minutes)}</b><small>de uso liberado</small></span></div></div>
     <div className="ax-tools"><div className="ax-pop-wrap ax-desk" ref={rb}><button className="ax-round" aria-label={`Notificações${vm.notifications.length ? `: ${vm.notifications.length}` : ''}`} aria-expanded={bell} onClick={() => setBell(!bell)}><IBell size={26} />{vm.notifications.length > 0 && <i className="ax-dot-red" />}</button>{bell && <Notifs vm={vm} />}</div>
-      <div className="ax-pop-wrap" ref={rm}><button className="ax-round sm" aria-label="Menu do aluno" aria-expanded={menu} onClick={() => setMenu(!menu)}><IChevron size={22} /></button>{menu && <div className="ax-pop menu" role="menu"><button role="menuitem" onClick={() => { setMenu(false); setEdit(true); }}>🎨 Personalizar avatar</button><button role="menuitem" onClick={() => nav('/s/familia')}>👨‍👩‍👧 Área da Família</button><button role="menuitem" onClick={() => nav('/s/tutor')}>🤖 Tutor IA</button><button role="menuitem" onClick={logout}>↩ Sair</button></div>}</div></div>
+      <UserMenu onEdit={() => setEdit(true)} /></div>
     {edit && <AvatarEditor s={s} onClose={() => setEdit(false)} />}</header>;
 }
 function Notifs({ vm }: { vm: DashVM }) { const nav = useNavigate(); return <div className="ax-pop" role="dialog" aria-label="Notificações"><b>Notificações</b>{vm.notifications.length ? vm.notifications.map((n) => <button key={n.id} onClick={() => nav(n.route)}>{n.text}</button>) : <p className="ax-muted">Tudo em dia por aqui.</p>}</div>; }
