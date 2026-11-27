@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Exclusão de dados · Bloom</title>
+<style>
+  :root { --bg:#fdf6f9; --ink:#33191e; --soft:#7a5b60; --brand:#9c3a64; --line:#ecdcdf; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1b1214; --ink:#f6e9ec; --soft:#c4a5ab; --brand:#f4a9c8; --line:#3d2a2f; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg:#1b1214; --ink:#f6e9ec; --soft:#c4a5ab; --brand:#f4a9c8; --line:#3d2a2f; color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 'DM Sans', system-ui, -apple-system, sans-serif; }
+  main { max-width: 68ch; margin: 0 auto; padding: 40px max(18px, env(safe-area-inset-right)) 60px max(18px, env(safe-area-inset-left)); }
+  h1 { font: 400 42px/1.1 'Instrument Serif', Georgia, serif; color: var(--brand); margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 18px; margin: 28px 0 6px; }
+  p, li { color: var(--ink); } .muted { color: var(--soft); font-size: 14px; }
+  a { color: var(--brand); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=DM+Sans:wght@400;600&display=swap">
+</head>
+<body>
+<main>
+<h1>Exclusão de dados</h1>
+<p class="muted">Bloom Planner</p>
+<p>Você pode apagar seus dados do Bloom quando quiser, de três formas:</p>
+<h2>Desconectar só uma rede social</h2>
+<p>No Bloom, abra <b>Insights</b> e toque em <b>desconectar</b> no cartão do Instagram ou do TikTok. A conexão, o token e os dados recebidos dessa rede são apagados do nosso banco de dados na hora, e você escolhe se os posts já copiados para o seu planner também saem.</p>
+<h2>Apagar a conta inteira</h2>
+<p>No Bloom, abra <b>Ajustes</b> e toque em <b>Excluir minha conta</b>. Sua conta, todos os dados do planner e as conexões com as redes sociais são apagados para sempre.</p>
+<h2>Remover o Bloom pelo Facebook, Instagram ou TikTok</h2>
+<p>No Facebook ou no Instagram, abra <b>Configurações → Integrações comerciais</b> (ou <b>Apps e sites</b>) e remova o Bloom Planner. Quando você faz isso, a Meta nos avisa e <b>apagamos automaticamente</b> os dados do Instagram ligados à sua conta: conexão, token, posts e números importados, inclusive as cópias dentro do seu planner. Você recebe um código do pedido e pode acompanhar o status mais abaixo, nesta página. No TikTok, use <b>Configurações → Segurança → Apps com permissão</b>.</p>
+<h2>Pedir por e-mail</h2>
+<p>Se preferir, escreva para <a href="mailto:usebloomplanner@gmail.com">usebloomplanner@gmail.com</a> pedindo a exclusão, usando o mesmo e-mail da sua conta no Bloom. Respondemos em até 15 dias.</p>
+<h2>Acompanhar um pedido</h2>
+<p id="status" class="muted">Se você pediu a exclusão pelo Facebook ou pelo Instagram, o código do pedido aparece no endereço desta página.</p>
+<hr><p class="muted">Loracê · CNPJ 60.373.389/0001-42 · <a href="mailto:usebloomplanner@gmail.com">usebloomplanner@gmail.com</a><br><a href="privacidade.html">Política de privacidade</a> · <a href="termos.html">Termos de uso</a> · <a href="./">Voltar para o Bloom</a></p></main>
+<script src="exclusao.js"></script>
+</body>
+</html>

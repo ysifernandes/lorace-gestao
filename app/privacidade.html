@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Política de privacidade · Bloom</title>
+<style>
+  :root { --bg:#fdf6f9; --ink:#33191e; --soft:#7a5b60; --brand:#9c3a64; --line:#ecdcdf; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1b1214; --ink:#f6e9ec; --soft:#c4a5ab; --brand:#f4a9c8; --line:#3d2a2f; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg:#1b1214; --ink:#f6e9ec; --soft:#c4a5ab; --brand:#f4a9c8; --line:#3d2a2f; color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 'DM Sans', system-ui, -apple-system, sans-serif; }
+  main { max-width: 68ch; margin: 0 auto; padding: 40px max(18px, env(safe-area-inset-right)) 60px max(18px, env(safe-area-inset-left)); }
+  h1 { font: 400 42px/1.1 'Instrument Serif', Georgia, serif; color: var(--brand); margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 18px; margin: 28px 0 6px; }
+  p, li { color: var(--ink); } .muted { color: var(--soft); font-size: 14px; }
+  a { color: var(--brand); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=DM+Sans:wght@400;600&display=swap">
+</head>
+<body>
+<main>
+<h1>Política de privacidade</h1>
+<p class="muted">Bloom Planner · atualizada em 25 de novembro de 2026</p>
+<p>O Bloom é um planner para empreendedoras organizarem conteúdo, rotina, hábitos e metas. Esta página explica, de forma simples, quais dados usamos, para quê, com quem eles passam e como você pode apagá-los.</p>
+
+<h2>Quem é responsável pelos seus dados</h2>
+<p>O Bloom Planner é um produto da <b>Loracê</b>, nome comercial de 60.373.389 Yasmin Fernandes Silva (nome comercial: Loracê), CNPJ 60.373.389/0001-42, Osasco/SP.<br>
+Contato para qualquer assunto de privacidade: <a href="mailto:usebloomplanner@gmail.com">usebloomplanner@gmail.com</a>.</p>
+
+<h2>Dados que você cria</h2>
+<p>E-mail de login, tarefas, compromissos, metas, hábitos, ideias e roteiros de conteúdo, fotos do mural e anotações que você escreve no app. Eles ficam guardados na sua conta e só você tem acesso.</p>
+
+<h2>Dados do Instagram</h2>
+<p>O Bloom se conecta ao Instagram pelo <b>Login do Facebook</b>, com a sua autorização, e só funciona com conta profissional. Para isso ele acessa:</p>
+<ul>
+<li><b>a lista das suas páginas do Facebook</b>, apenas para encontrar a conta profissional do Instagram ligada a elas (permissões <i>pages_show_list</i> e <i>pages_read_engagement</i>). Não lemos publicações, comentários nem seguidores da página;</li>
+<li><b>da sua conta do Instagram</b>: nome de usuário, foto de perfil, número de seguidores e a lista dos seus posts com legenda, link, data, curtidas e comentários (<i>instagram_basic</i>);</li>
+<li><b>os números de cada post</b>: visualizações, alcance, salvamentos, compartilhamentos, interações e seguidores ganhos (<i>instagram_manage_insights</i>).</li>
+</ul>
+<p>Guardamos também o código de acesso (token) que o Instagram nos dá, para atualizar os números todos os dias. Usamos esses dados <b>apenas para mostrar os resultados dos seus posts dentro do Bloom</b>: a nota de cada post, o painel de insights e as sugestões. O Bloom <b>não publica nada</b> nas suas redes, não envia mensagens, não comenta, não segue ninguém, não faz anúncios, não vende os seus dados e não os usa para publicidade.</p>
+
+<h2>Dados do TikTok</h2>
+<p>Se você conectar o TikTok, o Bloom recebe nome de exibição, foto, número de seguidores e a lista dos seus vídeos com descrição, link, data e números (visualizações, curtidas, comentários e compartilhamentos), com o mesmo uso e as mesmas garantias acima.</p>
+
+<h2>Inteligência artificial (Claude, da Anthropic)</h2>
+<p>Algumas funções usam a Claude, da <b>Anthropic</b>, para escrever sugestões: <i>analisar</i> os resultados, o <i>assistente de conteúdo</i>, o <i>plano do mês</i>, <i>escrever roteiro</i> e o <i>assistente de voz</i> (que responde sobre a sua agenda e muda datas). Isso <b>só acontece quando você toca no botão</b>. Nesses casos enviamos:</p>
+<ul>
+<li>na análise e no plano do mês: uma lista dos seus posts com título (a primeira linha da legenda), rede, formato, pasta, data e hora, gancho, as suas anotações e os números de desempenho;</li>
+<li>no assistente e no roteiro: o texto que você escreveu ou falou, o formato e a descrição da marca que você cadastrou.</li>
+<li>no assistente de voz: o que você falou ou escreveu (a fala vira texto no seu aparelho) e, para responder, um resumo da sua agenda: tarefas e compromissos próximos, conteúdos e ideias, números dos posts recentes, hábitos, metas e as suas últimas notas rápidas. A voz que lê a resposta é a do próprio aparelho.</li>
+</ul>
+<p><b>Não enviamos</b> o seu nome de usuário, foto, e-mail, token nem os identificadores das suas contas. A Anthropic trata os dados conforme os termos dela para a API (<a href="https://www.anthropic.com/legal" rel="noopener">anthropic.com/legal</a>). Nós não usamos os seus dados para treinar modelos de IA.</p>
+
+<h2>Com quem os dados passam</h2>
+<ul>
+<li><b>Supabase</b>: banco de dados e login (servidores nos EUA).</li>
+<li><b>Vercel</b>: hospedagem do site (servidores nos EUA).</li>
+<li><b>Anthropic</b>: apenas nas funções de IA acima.</li>
+<li><b>Open-Meteo</b>: previsão do tempo, se você ativar. Ela recebe só a sua localização aproximada, que fica guardada no seu aparelho e não na nossa conta.</li>
+<li><b>Apple, Google e Mozilla</b>: entregam as notificações do aparelho.</li>
+<li><b>Google Fonts</b>: as letras do site são carregadas dele.</li>
+</ul>
+<p>Como alguns desses serviços ficam fora do Brasil, os seus dados podem ser tratados em outros países (LGPD, art. 33). Não vendemos nem compartilhamos dados com terceiros para outros fins.</p>
+
+<h2>Por quanto tempo guardamos</h2>
+<p>Enquanto a sua conta existir. Quando você <b>desconecta</b> uma rede em Insights, apagamos do nosso banco a conexão, o token e os dados que vieram dela, e você escolhe se os posts já copiados para o seu planner ficam ou saem. Quando você <b>exclui a conta</b>, apagamos tudo. Quando você remove o Bloom pelo Facebook, apagamos os dados do Instagram ligados àquela conta (veja <a href="exclusao-de-dados.html">Exclusão de dados</a>).</p>
+
+<h2>Armazenamento no seu aparelho</h2>
+<p>O Bloom guarda no seu navegador as suas preferências e uma cópia dos seus dados para funcionar offline. Não usamos cookies de rastreamento nem de publicidade.</p>
+
+<h2>Seus direitos (LGPD)</h2>
+<p>Você pode, a qualquer momento: confirmar que tratamos seus dados, ver, corrigir, exportar (Ajustes → Baixar backup), apagar, pedir informações sobre com quem compartilhamos e retirar a sua autorização. A maioria dessas ações você faz direto no app; para as demais, escreva para <a href="mailto:usebloomplanner@gmail.com">usebloomplanner@gmail.com</a> e respondemos em até 15 dias.</p>
+
+<h2>Crianças</h2>
+<p>O Bloom é feito para adultas e não é direcionado a menores de 18 anos.</p>
+
+<h2>Mudanças nesta política</h2>
+<p>Se mudarmos algo importante, avisamos no app. A data de atualização fica no topo desta página.</p>
+<hr><p class="muted">Loracê · CNPJ 60.373.389/0001-42 · <a href="mailto:usebloomplanner@gmail.com">usebloomplanner@gmail.com</a><br><a href="termos.html">Termos de uso</a> · <a href="exclusao-de-dados.html">Exclusão de dados</a> · <a href="./">Voltar para o Bloom</a></p>
+</main>
+</body>
+</html>
