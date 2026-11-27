@@ -4,10 +4,10 @@ import { levelTitle } from '@edu/gamification';
 import { MATH_WORLDS, PERFORMANCE_GROUPS, ALL_SKILLS, MISCONCEPTIONS } from '@edu/content-math';
 import type { MasteryState } from '@edu/types';
 import type { AgeBand } from '@edu/types';
-import { balances, bandOf, levelInfo, reportFor, skillName, type DB, type Student } from './db';
+import { ageOf, balances, bandOf, levelInfo, reportFor, skillName, type DB, type Student } from './db';
 import { DEFAULT_AVATAR, type AvatarSpec, type MedalKind } from '../ui/art';
 import type { MascotState } from '../ui/axolotl';
-import { gameForSkill, GAMES } from '../games/registry';
+import { gameForSkill, gamesForBand } from '../games/registry';
 
 export type Tone = 'ok' | 'warn' | 'bad' | 'none';
 export const toneOf = (p: number | null): Tone => (p === null ? 'none' : p >= 0.8 ? 'ok' : p >= 0.5 ? 'warn' : 'bad');
@@ -30,11 +30,12 @@ export function buildDashboard(d: DB, s: Student): DashVM {
   const unseen = Object.values(s.learner.hypotheses).filter((h) => h.status === 'confirmed' && !s.shownExplanations.includes(h.id));
   const needs = rep.filter((r) => r.state === 'needs_support').sort((a, c) => a.probability - c.probability);
   const focus = needs[0]; const reassess = s.practiceRounds > s.reassessRounds;
-  const mission: Mission = !s.diagDone ? { title: 'Nova Missão!', text: 'Vamos descobrir o que você já sabe em Matemática, no seu ritmo?', cta: 'Começar agora', route: '/s/session?kind=diagnostic', mascot: 'apresentando', pie: false }
-    : unseen.length ? { title: 'Nova Missão!', text: `Descobri um jeito de te ajudar com ${skillName(MISCONCEPTIONS[unseen[0]!.id]?.skillId ?? '')}. Vamos ver?`, cta: 'Ver explicação', route: '/s/explain', mascot: 'explicando', pie: false }
-    : reassess ? { title: 'Hora de mostrar!', text: 'Vamos ver o quanto você evoluiu desde o começo?', cta: 'Começar agora', route: '/s/session?kind=reassessment', mascot: 'comemorando', pie: false }
-    : focus ? { title: 'Nova Missão!', text: `Vamos fortalecer seu conhecimento em ${focus.name} de um jeito divertido?`, cta: 'Começar agora', route: '/s/session?kind=practice', mascot: 'apresentando', pie: focus.skillId.startsWith('frac') }
-    : { title: 'Nova Missão!', text: 'Vamos continuar avançando e revisando o que você já sabe?', cta: 'Começar agora', route: '/s/session?kind=practice', mascot: 'apresentando', pie: false };
+  const bandNow = bandOf(s); const teen = bandNow === 'desafiadores' || bandNow === 'estrategistas'; const T = (kid: string, older: string) => (teen ? older : kid);
+  const mission: Mission = !s.diagDone ? { title: T('Nova Missão!', 'Diagnóstico inicial'), text: T('Vamos descobrir o que você já sabe em Matemática, no seu ritmo?', 'Mapeie o que você já domina em Matemática. Leva poucos minutos e define o seu plano.'), cta: T('Começar agora', 'Iniciar diagnóstico'), route: '/s/session?kind=diagnostic', mascot: 'apresentando', pie: false }
+    : unseen.length ? { title: 'Nova Missão!', text: T(`Descobri um jeito de te ajudar com ${skillName(MISCONCEPTIONS[unseen[0]!.id]?.skillId ?? '')}. Vamos ver?`, `Identificamos um padrão de erro em ${skillName(MISCONCEPTIONS[unseen[0]!.id]?.skillId ?? '')}. Veja a explicação antes de praticar.`), cta: T('Ver explicação', 'Ver explicação'), route: '/s/explain', mascot: 'explicando', pie: false }
+    : reassess ? { title: T('Hora de mostrar!', 'Reavaliação'), text: T('Vamos ver o quanto você evoluiu desde o começo?', 'Meça sua evolução desde o diagnóstico inicial.'), cta: T('Começar agora', 'Iniciar reavaliação'), route: '/s/session?kind=reassessment', mascot: 'comemorando', pie: false }
+    : focus ? { title: T('Nova Missão!', 'Foco de hoje'), text: T(`Vamos fortalecer seu conhecimento em ${focus.name} de um jeito divertido?`, `Prioridade do seu plano: ${focus.name}.`), cta: T('Começar agora', 'Treinar agora'), route: '/s/session?kind=practice', mascot: 'apresentando', pie: focus.skillId.startsWith('frac') }
+    : { title: T('Nova Missão!', 'Foco de hoje'), text: T('Vamos continuar avançando e revisando o que você já sabe?', 'Avance no seu plano e revise o que já domina.'), cta: T('Começar agora', 'Treinar agora'), route: '/s/session?kind=practice', mascot: 'apresentando', pie: false };
 
   const assessed = rep.filter((r) => r.evidenceCount > 0);
   const mean = (xs: typeof rep) => (xs.length ? xs.reduce((a, r) => a + r.probability, 0) / xs.length : null);
@@ -52,7 +53,7 @@ export function buildDashboard(d: DB, s: Student): DashVM {
   if (!s.diagDone) planItems.push({ id: 'diag', art: 'compass', title: 'Diagnóstico inicial: descobrir o que você já sabe', min: 20, done: false });
   else {
     if (unseen.length || s.shownExplanations.length) planItems.push({ id: 'explain', art: 'video', title: `Entender: ${MISCONCEPTIONS[(unseen[0]?.id ?? s.shownExplanations.at(-1))!]?.label ?? 'explicação'}`, min: 15, done: unseen.length === 0 });
-    const g = (focus && gameForSkill(focus.skillId)) || GAMES[0]!;
+    const band = bandOf(s); const g = (focus && gameForSkill(focus.skillId, band)) || gamesForBand(band).main[0]!;
     planItems.push({ id: 'game', art: 'game', title: `Jogar: ${g.name}${focus ? ` (treina ${focus.name})` : ''}`, min: 10, done: (s.games?.[g.id]?.plays ?? 0) > 0, route: `/s/jogos/${g.id}` });
     planItems.push({ id: 'practice', art: 'game', title: focus ? `Praticando ${focus.name} (atividades)` : 'Praticando com revisão leve', min: 16, done: false, route: '/s/session?kind=practice' });
     planItems.push({ id: 'reassess', art: 'target', title: 'Reavaliar e ver a evolução', min: 10, done: s.reassessRounds > 0 && !reassess });
@@ -62,7 +63,9 @@ export function buildDashboard(d: DB, s: Student): DashVM {
 
   // mundo atual e fases desbloqueadas por EVIDÊNCIA (não por pontos)
   const worldOfFocus = focus ? MATH_WORLDS.find((w) => w.skillIds.includes(focus.skillId)) : undefined;
-  const world = worldOfFocus ?? MATH_WORLDS.find((w) => w.skillIds.some((id) => byId.get(id)!.state !== 'consolidated')) ?? MATH_WORLDS[0]!;
+  const elig = (w: (typeof MATH_WORLDS)[number]) => w.skillIds.some((id) => (ALL_SKILLS.find((k) => k.id === id)?.ageMin ?? 0) <= ageOf(s) + 1);
+  const open = (w: (typeof MATH_WORLDS)[number], needEvidence: boolean) => w.skillIds.some((id) => { const r = byId.get(id)!; return r.state !== 'consolidated' && (!needEvidence || r.evidenceCount > 0); });
+  const world = worldOfFocus ?? MATH_WORLDS.find((w) => elig(w) && open(w, true)) ?? MATH_WORLDS.find((w) => elig(w) && open(w, false)) ?? MATH_WORLDS[0]!;
   const prereq = new Map(ALL_SKILLS.map((k) => [k.id, k.prerequisites]));
   const nodes: MapNode[] = world.skillIds.map((id) => {
     const r = byId.get(id)!; const blocker = (prereq.get(id) ?? []).find((p) => byId.get(p)?.state === 'needs_support');

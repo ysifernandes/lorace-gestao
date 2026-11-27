@@ -23,6 +23,12 @@ export const MATH_SKILLS: Skill[] = [
   S('prob.interpret', 'matematica', 'Resolução de problemas', 'Interpretar problemas', 'Relacionar a situação descrita à operação adequada.', ['add.facts', 'sub.facts'], 6, 10, 'Números — resolução de problemas'),
   S('prob.multi', 'matematica', 'Resolução de problemas', 'Problemas de duas etapas', 'Resolver problemas que exigem duas operações em sequência.', ['prob.interpret', 'mul.facts', 'div.facts'], 8, 12, 'Números — resolução de problemas'),
   S('prob.frac', 'matematica', 'Resolução de problemas', 'Frações em situações reais', 'Usar frações em situações do cotidiano (parte de todo, fração de quantidade).', ['prob.interpret', 'frac.id'], 9, 12, 'Números — frações em problemas'),
+  S('perc.of', 'matematica', 'Porcentagem e proporção', 'Porcentagem de um valor', 'Calcular quanto é uma porcentagem de uma quantidade (10%, 25%, 50%…).', ['frac.id', 'mul.facts', 'div.facts'], 10, 15, 'Números — porcentagem'),
+  S('perc.change', 'matematica', 'Porcentagem e proporção', 'Desconto e acréscimo', 'Calcular preço final com desconto ou acréscimo percentual.', ['perc.of', 'sub.borrow'], 11, 16, 'Números — porcentagem em situações de compra'),
+  S('ratio.prop', 'matematica', 'Porcentagem e proporção', 'Razão e proporção', 'Resolver situações proporcionais (regra de três simples e divisão em partes).', ['frac.equiv', 'mul.facts', 'div.facts'], 11, 16, 'Números — grandezas proporcionais'),
+  S('alg.eq1', 'matematica', 'Álgebra', 'Equação do 1º grau', 'Resolver equações do tipo ax ± b = c.', ['sub.borrow', 'div.facts'], 12, 17, 'Álgebra — equações do 1º grau'),
+  S('data.mean', 'matematica', 'Estatística', 'Média aritmética', 'Calcular e interpretar a média de um conjunto de dados.', ['add.carry', 'div.facts'], 11, 16, 'Probabilidade e estatística — medidas de tendência central'),
+  S('fin.interest', 'matematica', 'Educação financeira', 'Juros simples', 'Calcular juros simples e distinguir juros de montante.', ['perc.of', 'mul.multi'], 13, 17, 'Números — educação financeira'),
 ];
 
 export const PT_SKILLS: Skill[] = [

@@ -37,6 +37,9 @@ export const MATH_WORLDS: World[] = [
   { id: 'laboratorio', name: 'Laboratório da Multiplicação', theme: 'Multiplicação e divisão', skillIds: ['mul.facts', 'mul.multi', 'div.facts', 'div.algorithm', 'factors'] },
   { id: 'pizzaria', name: 'Pizzaria das Frações', theme: 'Frações', skillIds: ['frac.id', 'frac.visual', 'frac.compare', 'frac.equiv', 'frac.simplify', 'frac.add.same', 'frac.add.diff'] },
   { id: 'vila-problemas', name: 'Vila dos Problemas', theme: 'Resolução de problemas', skillIds: ['prob.interpret', 'prob.multi', 'prob.frac'] },
+  { id: 'financas', name: 'Cidade das Finanças', theme: 'Porcentagem e juros', skillIds: ['perc.of', 'perc.change', 'fin.interest'] },
+  { id: 'algebra', name: 'Laboratório de Álgebra', theme: 'Proporção e equações', skillIds: ['ratio.prop', 'alg.eq1'] },
+  { id: 'dados', name: 'Estádio de Dados', theme: 'Estatística', skillIds: ['data.mean'] },
 ];
 /** Agrupamento usado no card "Meu Desempenho". */
 export const PERFORMANCE_GROUPS: { id: string; name: string; match: (skillId: string) => boolean }[] = [
@@ -44,5 +47,6 @@ export const PERFORMANCE_GROUPS: { id: string; name: string; match: (skillId: st
   { id: 'muldiv', name: 'Multiplicação e divisão', match: (s) => s.startsWith('mul.') || s.startsWith('div.') || s === 'factors' },
   { id: 'frac', name: 'Frações', match: (s) => s.startsWith('frac.') },
   { id: 'prob', name: 'Problemas matemáticos', match: (s) => s.startsWith('prob.') },
+  { id: 'avancado', name: 'Porcentagem, álgebra e dados', match: (s) => s.startsWith('perc.') || s.startsWith('ratio.') || s.startsWith('alg.') || s.startsWith('data.') || s.startsWith('fin.') },
   { id: 'texto', name: 'Interpretação de texto', match: (s) => s.startsWith('pt.read.') },
 ];

@@ -15,12 +15,13 @@ export const MATH_IDS = MATH_SKILLS.map((s) => s.id);
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
 const DAY = 86_400_000;
 
+export type Maturity = 'tranquilo' | 'padrao' | 'desafiador';
 export interface User { id: string; role: Role; name: string; email: string; salt: string; hash: string; studentId?: string; schoolId?: string; familyId?: string }
 export interface Session { kind: 'diagnostic' | 'practice' | 'reassessment'; itemIds: string[]; idx: number; results: boolean[]; startedAt: number }
 export interface Student {
   id: string; familyId: string; userId?: string; name: string; birthYear: number; bandOverride?: AgeBand; avatar: { color: string; face: string; spec?: import('../ui/art').AvatarSpec }; interests: string[];
   learner: LearnerState; diagDone: boolean; practiceRounds: number; reassessRounds: number; session?: Session; shownExplanations: string[];
-  rewards: { xpPerMinute: number; dailyCapMinutes: number }; ledger: Tx[]; schoolCode: string; games?: Record<string, { plays: number; bestStars: number }>;
+  rewards: { xpPerMinute: number; dailyCapMinutes: number }; ledger: Tx[]; schoolCode: string; games?: Record<string, { plays: number; bestStars: number }>; maturity?: Maturity; onboarded?: boolean;
 }
 export interface Device { id: string; familyId: string; studentId: string; name: string; platform: 'android' | 'ios'; online: boolean; permissionOk: boolean; lastHeartbeat: number | null; apps: { id: string; label: string; essential?: boolean }[]; rules: Rules }
 export interface Cmd { id: string; deviceId: string; type: 'block_app' | 'unblock_app' | 'grant_time'; appId: string; minutes?: number; status: CommandStatus; history: { status: CommandStatus; at: number; detail?: string }[]; createdAt: number; expiresAt: number }
@@ -87,7 +88,19 @@ export const logout = () => update((d) => { d.sessionUserId = undefined; });
 export const currentUser = (d: DB) => d.users.find((u) => u.id === d.sessionUserId);
 
 // ---------- escopo de dados (permissões) ----------
-export const bandOf = (s: Student): AgeBand => s.bandOverride ?? ageBandFor(new Date().getFullYear() - s.birthYear) ?? 'aventureiros';
+const BANDS: AgeBand[] = ['exploradores', 'aventureiros', 'desafiadores', 'estrategistas'];
+export const ageOf = (s: Student) => new Date().getFullYear() - s.birthYear;
+/** Faixa por idade (definida pelo RESPONSÁVEL via ano de nascimento; atualiza sozinha a cada ano). */
+export const ageBandOf = (s: Student): AgeBand => s.bandOverride ?? ageBandFor(ageOf(s)) ?? 'aventureiros';
+/** Faixa EFETIVA: idade + ajuste de maturidade (±1 faixa). Trava de segurança: a faixa 14–17 exige ≥ 13 anos; a 5–7 só desce a partir de 8. */
+export function bandOf(s: Student): AgeBand {
+  const base = ageBandOf(s); const i = BANDS.indexOf(base) + (s.maturity === 'desafiador' ? 1 : s.maturity === 'tranquilo' ? -1 : 0);
+  let b = BANDS[Math.max(0, Math.min(3, i))]!; if (b === 'estrategistas' && ageOf(s) < 13) b = 'desafiadores'; if (b === 'exploradores' && ageOf(s) > 9) b = 'aventureiros'; return b;
+}
+export const INTERESTS = [['futebol', 'Futebol', '⚽'], ['jogos', 'Videogames', '🎮'], ['musica', 'Música', '🎵'], ['espaco', 'Espaço', '🚀'], ['animais', 'Animais', '🐾'], ['culinaria', 'Culinária', '🍳'], ['tecnologia', 'Tecnologia', '💻'], ['desenho', 'Desenho e arte', '🎨'], ['dinossauros', 'Dinossauros', '🦖'], ['esportes', 'Outros esportes', '🏀']] as const;
+/** Habilidades-alvo do diagnóstico/prática: só o que cabe na idade (+1 ano de margem); o adaptativo desce aos pré-requisitos quando precisa. */
+export const targetIds = (s: Student) => MATH_SKILLS.filter((k) => k.ageMin <= ageOf(s) + 1).map((k) => k.id);
+export function setProfile(studentId: string, p: { interests?: string[]; maturity?: Maturity; onboarded?: boolean }) { update((d) => { const s = d.students.find((x) => x.id === studentId)!; if (p.interests) s.interests = p.interests.slice(0, 3); if (p.maturity) s.maturity = p.maturity; if (p.onboarded !== undefined) s.onboarded = p.onboarded; log(d, studentId, 'profile', JSON.stringify({ m: p.maturity, n: p.interests?.length })); }); }
 export const hasConsent = (d: DB, studentId: string) => d.consents.some((c) => c.studentId === studentId && c.purpose === 'share_progress_with_school' && !c.revokedAt);
 export function visibleStudents(d: DB, u: User): { visible: Student[]; hiddenNoConsent: number } {
   if (u.role === 'guardian') return { visible: d.students.filter((s) => s.familyId === u.familyId), hiddenNoConsent: 0 };
@@ -115,7 +128,7 @@ export const levelInfo = (xp: number) => { let lv = 1; while (xp >= 50 * (lv + 1
 
 export function addStudent(familyId: string, o: { name: string; birthYear: number; interests: string[] }): Student {
   const s: Student = { id: uid(), familyId, name: o.name.trim(), birthYear: o.birthYear, avatar: { color: '#6d3df2', face: '🙂' }, interests: o.interests, learner: newLearner(''), diagDone: false, practiceRounds: 0, reassessRounds: 0,
-    shownExplanations: [], rewards: { xpPerMinute: 1, dailyCapMinutes: 60 }, ledger: [], schoolCode: Math.random().toString(36).slice(2, 8).toUpperCase() };
+    shownExplanations: [], onboarded: false, rewards: { xpPerMinute: 1, dailyCapMinutes: 60 }, ledger: [], schoolCode: Math.random().toString(36).slice(2, 8).toUpperCase() };
   s.learner.studentId = s.id; update((d) => { d.students.push(s); log(d, familyId, 'add_student', s.id); }); return s;
 }
 export function setConsent(studentId: string, actorId: string, grant: boolean) {
@@ -126,7 +139,7 @@ export function startSession(studentId: string, kind: Session['kind']) {
   const s = studentOf(studentId); const sc = scope(); const now = Date.now();
   update(() => {
     if (kind === 'diagnostic') s.session = { kind, itemIds: [], idx: 0, results: [], startedAt: now };
-    else if (kind === 'practice') s.session = { kind, itemIds: planPractice(s.learner, sc, MATH_IDS, 8, now).map((p) => p.item.id), idx: 0, results: [], startedAt: now };
+    else if (kind === 'practice') s.session = { kind, itemIds: planPractice(s.learner, sc, targetIds(s), 8, now).map((p) => p.item.id), idx: 0, results: [], startedAt: now };
     else { const rep = buildReport(s.learner, sc, MATH_IDS, now); const weak = rep.filter((r) => r.state === 'needs_support' || (r.evidenceCount >= 2 && r.probability < 0.6) || r.causes.some((c) => c.kind === 'misconception' && c.status === 'confirmada')).map((r) => r.skillId).slice(0, 4);
       s.session = { kind, itemIds: reassessmentItems(s.learner, sc, weak.length ? weak : MATH_IDS.slice(0, 2), 2).map((i) => i.id), idx: 0, results: [], startedAt: now }; }
   });
@@ -134,7 +147,7 @@ export function startSession(studentId: string, kind: Session['kind']) {
 /** Próximo item da sessão (diagnóstica: adaptativo; demais: lista fixa). */
 export function currentItem(studentId: string): Item | null {
   const s = studentOf(studentId); const ses = s.session; if (!ses) return null;
-  if (ses.kind === 'diagnostic') { const n = nextDiagnosticItem(s.learner, scope(), { targets: MATH_IDS, maxItems: 24 }); return n?.item ?? null; }
+  if (ses.kind === 'diagnostic') { const n = nextDiagnosticItem(s.learner, scope(), { targets: targetIds(s), maxItems: 24 }); return n?.item ?? null; }
   const id = ses.itemIds[ses.idx]; return id ? itemById(id) : null;
 }
 export function answer(studentId: string, item: Item, resp: Response, hintsUsed: number) {
@@ -241,7 +254,10 @@ export async function seedDemo() {
   const davi = addStudent(fam.id, { name: 'Davi', birthYear: new Date().getFullYear() - 13, interests: ['futebol', 'jogos'] });
   const caio = addStudent(fam.id, { name: 'Caio', birthYear: new Date().getFullYear() - 6, interests: ['dinossauros'] });
   const bia = addStudent(fam.id, { name: 'Bia', birthYear: new Date().getFullYear() - 16, interests: ['música'] });
-  for (const [s, e] of [[luna, 'luna'], [davi, 'davi'], [caio, 'caio'], [bia, 'bia']] as const) { const u = await register({ role: 'student', name: s.name, email: `${e}@demo.local`, password: DEMO_PASSWORD, studentId: s.id, familyId: fam.id }); update(() => { s.userId = u.id; }); }
+  const teo = addStudent(fam.id, { name: 'Teo', birthYear: new Date().getFullYear() - 14, interests: [] });
+  const malu = addStudent(fam.id, { name: 'Malu', birthYear: new Date().getFullYear() - 12, interests: [] });
+  for (const s of [luna, davi, caio, bia]) s.onboarded = true; // alunos de demonstração anteriores já fizeram o cadastro inicial; Teo e Malu mostram o fluxo de boas-vindas
+  for (const [s, e] of [[luna, 'luna'], [davi, 'davi'], [caio, 'caio'], [bia, 'bia'], [teo, 'teo'], [malu, 'malu']] as const) { const u = await register({ role: 'student', name: s.name, email: `${e}@demo.local`, password: DEMO_PASSWORD, studentId: s.id, familyId: fam.id }); update(() => { s.userId = u.id; }); }
   const t = await register({ role: 'teacher', name: 'Professora Demo', email: 'professora@demo.local', password: DEMO_PASSWORD, schoolId: school.id });
   await register({ role: 'school_manager', name: 'Gestora Demo', email: 'gestora@demo.local', password: DEMO_PASSWORD, schoolId: school.id });
   await register({ role: 'super_admin', name: 'Administrador Demo', email: 'admin@demo.local', password: DEMO_PASSWORD });

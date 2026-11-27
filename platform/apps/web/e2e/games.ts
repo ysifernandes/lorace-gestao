@@ -27,7 +27,7 @@ async function playRound(g: GameId, r: Round<unknown>) {
   await page.waitForTimeout(80);
 }
 
-console.log('Login: aluno novo (Caio) e central de jogos'); await page.goto(URL + '#/login'); await page.getByRole('button', { name: 'Aluno Caio (6)' }).click(); await page.waitForTimeout(800);
+console.log('Login: aluna Luna (9 anos) e central de jogos'); await page.goto(URL + '#/login'); await page.getByRole('button', { name: 'Aluna Luna (9 anos)' }).click(); await page.waitForTimeout(800);
 await page.goto(URL + '#/s'); await page.waitForTimeout(500); ok(await page.locator('.ax-shelf .gm-card').count() === 5, 'tela inicial mostra a prateleira com os 5 minigames'); await page.screenshot({ path: `${OUT}/home-jogos.png` });
 await page.locator('.ax-side').getByRole('link', { name: 'Jogos' }).click(); await page.waitForTimeout(400); ok(await page.locator('.gm-hub .gm-card').count() === 5, 'menu Jogos abre a central'); await page.screenshot({ path: `${OUT}/central-jogos.png` });
 for (const [w, h] of [[1440, 900], [390, 844]] as const) { await page.setViewportSize({ width: w, height: h }); await page.goto(URL + '#/s/jogos'); await page.waitForTimeout(500); await page.addScriptTag({ content: axeSrc }); const res = await page.evaluate(async () => (await (window as any).axe.run(document, { runOnly: ['wcag2a', 'wcag2aa'] })).violations.map((v: any) => ({ id: v.id, impact: v.impact, n: v.nodes.length, html: v.nodes[0]?.html?.slice(0, 80) }))); for (const v of res) console.log(`   · axe ${v.impact} ${v.id} ×${v.n} ${v.html}`); ok(res.filter((v: any) => v.impact === 'critical' || v.impact === 'serious').length === 0, `${w}px central de jogos sem violações críticas/sérias`); }

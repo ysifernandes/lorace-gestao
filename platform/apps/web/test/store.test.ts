@@ -21,7 +21,7 @@ describe('autenticação local', () => {
 describe('permissões e escopo de dados', () => {
   it('responsável vê só os filhos; admin não vê dado de criança; aluno só vê a si', async () => {
     const { d, by } = await world();
-    expect(S.visibleStudents(d, by('responsavel@demo.local')).visible.map((s) => s.name).sort()).toEqual(['Bia', 'Caio', 'Davi', 'Luna']);
+    expect(S.visibleStudents(d, by('responsavel@demo.local')).visible.map((s) => s.name).sort()).toEqual(['Bia', 'Caio', 'Davi', 'Luna', 'Malu', 'Teo']);
     expect(S.visibleStudents(d, by('admin@demo.local')).visible).toHaveLength(0);
     expect(S.visibleStudents(d, by('luna@demo.local')).visible.map((s) => s.name)).toEqual(['Luna']);
   });
@@ -60,5 +60,32 @@ describe('controle parental simulado (estados reais)', () => {
     expect(() => S.issueCommand(dev.id, 'block_app', 'com.android.dialer')).toThrow(/essenciais/);
     S.setSim(dev.id, { permissionOk: true }); S.requestTime(luna.id, dev.id, yt, 10, 'terminar'); const r = S.getDB().timeRequests[0]!; S.decideTime(r.id, true);
     expect(S.appState(dev, yt)).toMatchObject({ allowed: true, reason: 'grant' }); dev.rules.grants[0]!.untilMs = Date.now() - 1; expect(S.appState(dev, yt).allowed).toBe(false); // reaplica ao expirar
+  });
+});
+
+describe('personalização por idade, interesses e maturidade', () => {
+  const mk = async () => { const { d } = await world(); const by = (n: string) => d.students.find((x) => x.name === n)!; return { d, by }; };
+  it('faixa vem da idade informada pelo responsável e atualiza com o ano', async () => {
+    const { by } = await mk(); const y = new Date().getFullYear();
+    expect([by('Caio'), by('Luna'), by('Malu'), by('Teo')].map((s) => S.bandOf(s))).toEqual(['exploradores', 'aventureiros', 'desafiadores', 'estrategistas']);
+    const luna = by('Luna'); luna.birthYear = y - 11; expect(S.bandOf(luna)).toBe('desafiadores'); // aniversário muda a faixa sem ninguém configurar
+  });
+  it('ajuste de maturidade move UMA faixa e respeita travas de segurança', async () => {
+    const { by } = await mk(); const y = new Date().getFullYear();
+    const malu = by('Malu'); S.setProfile(malu.id, { maturity: 'tranquilo' }); expect(S.bandOf(malu)).toBe('aventureiros'); S.setProfile(malu.id, { maturity: 'desafiador' }); expect(S.bandOf(malu)).toBe('desafiadores'); // 12 anos não vai para 14–17
+    const luna = by('Luna'); S.setProfile(luna.id, { maturity: 'desafiador' }); expect(S.bandOf(luna)).toBe('desafiadores');
+    const teo = by('Teo'); S.setProfile(teo.id, { maturity: 'tranquilo' }); expect(S.bandOf(teo)).toBe('desafiadores'); S.setProfile(teo.id, { maturity: 'desafiador' }); expect(S.bandOf(teo)).toBe('estrategistas');
+    const caio = by('Caio'); S.setProfile(caio.id, { maturity: 'tranquilo' }); expect(S.bandOf(caio)).toBe('exploradores'); // já é a menor faixa
+    const kid = by('Luna'); kid.birthYear = y - 9; kid.maturity = 'tranquilo'; expect(S.bandOf(kid)).toBe('exploradores'); kid.birthYear = y - 10; expect(S.bandOf(kid)).toBe('aventureiros'); // a faixa 5–7 só é usada até 9 anos
+  });
+  it('diagnóstico só mira habilidades compatíveis com a idade (e o conteúdo avançado existe para os mais velhos)', async () => {
+    const { by } = await mk(); const caio = S.targetIds(by('Caio')), luna = S.targetIds(by('Luna')), teo = S.targetIds(by('Teo'));
+    expect(caio).toContain('add.facts'); expect(caio).not.toContain('frac.simplify'); expect(caio).not.toContain('perc.of'); expect(luna).not.toContain('alg.eq1'); expect(luna).not.toContain('ratio.prop');
+    for (const k of ['perc.of', 'perc.change', 'ratio.prop', 'alg.eq1', 'data.mean', 'fin.interest']) expect(teo).toContain(k);
+    expect(teo.length).toBeGreaterThan(luna.length); expect(luna.length).toBeGreaterThan(caio.length);
+  });
+  it('cadastro inicial: aluno novo precisa se cadastrar; escolhe até 3 interesses; estilo é salvo', async () => {
+    const { by } = await mk(); const teo = by('Teo'); expect(teo.onboarded).toBe(false); expect(by('Luna').onboarded).toBe(true);
+    S.setProfile(teo.id, { interests: ['futebol', 'jogos', 'musica', 'espaco'], onboarded: true }); expect(teo.interests).toEqual(['futebol', 'jogos', 'musica']); expect(teo.onboarded).toBe(true);
   });
 });

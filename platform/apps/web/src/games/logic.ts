@@ -3,7 +3,7 @@
 // Conteúdo autoral em rascunho (revisão profissional pendente), como o restante do banco.
 import { mulberry32, ri, shuffle, type Item } from '@edu/content-math';
 
-export type GameId = 'pizzaria' | 'mercado' | 'laboratorio' | 'frases' | 'detetive';
+export type GameId = 'pizzaria' | 'mercado' | 'laboratorio' | 'frases' | 'detetive' | 'financas' | 'escape' | 'placar';
 export interface Round<V> { item: Item; view: V }
 const SRC = { kind: 'authored' as const, reference: 'Rodada de minigame gerada deterministicamente pelo projeto; gabarito calculado por código', license: 'Autoral do projeto (licença final a definir)' };
 const base = (id: string, skillId: string, difficulty: number, statement: string, hints: string[], justification: string) => ({ id, skillId, difficulty, statement, hints, justification, source: { ...SRC }, review: { status: 'draft' as const, needsProfessionalReview: true, version: 1 } });
@@ -13,6 +13,7 @@ const mc = (id: string, skillId: string, d: number, statement: string, correct: 
   return { ...base(id, skillId, d, statement, hints, why), kind: 'multiple_choice', options: opts.map((o, i) => ({ id: ids[i]!, text: o.text, ...(o.tag ? { misconception: o.tag } : {}) })), correct: ids[opts.findIndex((o) => o.ok)]! };
 };
 
+const pick = <T,>(r: () => number, xs: T[]): T => xs[ri(r, 0, xs.length - 1)]!;
 // ---------------- Pizzaria das Frações ----------------
 export type PizzaView = { type: 'build'; den: number; target: number; order: string } | { type: 'identify'; den: number; eaten: number } | { type: 'compare'; a: number; b: number };
 export function pizzaRounds(seed = 1): Round<PizzaView>[] {
@@ -100,5 +101,66 @@ export function detectiveRounds(seed = 1): Round<DetectiveView>[] {
     return { view: { words: c.words, bad: c.bad }, item: mc(`game.detetive.${seed}.${n + 1}`, c.skill, 0.35 + n * 0.08, `Como se escreve corretamente a palavra "${wrongWord}"?`, c.fix, c.wrong, [c.hint, 'Leia a frase inteira para achar a palavra certa.'], `Correto: "${c.fix}".`, r) }; });
 }
 
-export const roundsFor = (g: GameId, seed: number): Round<unknown>[] => ({ pizzaria: pizzaRounds, mercado: marketRounds, laboratorio: labRounds, frases: sentenceRounds, detetive: detectiveRounds })[g](seed);
+// ---------------- Contextos por interesse (11–17 anos): o MESMO problema ganha o tema que o aluno gosta ----------------
+export type Ctx = 'futebol' | 'jogos' | 'musica' | 'espaco' | 'culinaria' | 'tecnologia' | 'animais' | 'desenho' | 'esportes' | 'dinossauros';
+export const CTX: Record<Ctx, { metric: string; per: string; plural: string; team: string; buy: string }> = {
+  futebol: { metric: 'gols', per: 'jogo', plural: 'jogos', team: 'o seu time', buy: 'uma chuteira' }, jogos: { metric: 'pontos', per: 'partida', plural: 'partidas', team: 'você', buy: 'um jogo' },
+  musica: { metric: 'mil reproduções', per: 'semana', plural: 'semanas', team: 'a sua banda favorita', buy: 'um fone de ouvido' }, espaco: { metric: 'horas de observação', per: 'noite', plural: 'noites', team: 'o seu telescópio', buy: 'um telescópio' },
+  culinaria: { metric: 'pratos vendidos', per: 'dia', plural: 'dias', team: 'o seu food truck', buy: 'uma batedeira' }, tecnologia: { metric: 'mil downloads', per: 'dia', plural: 'dias', team: 'o seu app', buy: 'um teclado' },
+  animais: { metric: 'animais atendidos', per: 'dia', plural: 'dias', team: 'o seu abrigo', buy: 'uma ração premium' }, desenho: { metric: 'desenhos publicados', per: 'semana', plural: 'semanas', team: 'o seu perfil de arte', buy: 'uma mesa digitalizadora' },
+  esportes: { metric: 'pontos', per: 'jogo', plural: 'jogos', team: 'o seu time', buy: 'um tênis' }, dinossauros: { metric: 'fósseis catalogados', per: 'dia', plural: 'dias', team: 'a sua expedição', buy: 'um kit de escavação' },
+};
+export const ctxOf = (interests: string[]): Ctx => (interests.find((i) => i in CTX) as Ctx | undefined) ?? 'esportes';
+
+// ---------------- Finanças do Dia a Dia ----------------
+export type FinView = { type: 'price' | 'budget' | 'interest' | 'deal'; text: string; aid?: { total: number; part: number } };
+export function financasRounds(seed = 1, ctx: Ctx = 'esportes'): Round<FinView>[] {
+  const r = mulberry32(seed * 6151 + 41); const id = (n: number) => `game.financas.${seed}.${n}`; const out: Round<FinView>[] = []; const thing = CTX[ctx].buy;
+  const v1 = pick(r, [120, 200, 300, 400]), p1 = pick(r, [10, 20, 25, 30]), a1 = (v1 * p1) / 100;
+  out.push({ view: { type: 'price', text: `Você quer comprar ${thing} de R$ ${v1}, com ${p1}% de desconto. Quanto vai pagar?`, aid: { total: v1, part: a1 } }, item: fill(id(1), 'perc.change', 0.45, `${thing[0]!.toUpperCase()}${thing.slice(1)} custa R$ ${v1} e está com ${p1}% de desconto. Quanto você paga?`, v1 - a1, [[a1, 'adjust_value_as_price'], [v1 - p1, 'percent_applied_as_number'], [v1 + a1, 'adjust_wrong_direction']], [`Ache ${p1}% de ${v1} primeiro.`, 'Depois tire esse valor do preço.'], `${p1}% de ${v1} = ${a1}; ${v1} − ${a1} = ${v1 - a1}`) });
+  const B = pick(r, [400, 600, 800, 1000]), pb = pick(r, [10, 15, 20, 25]), cut = (B * pb) / 100;
+  out.push({ view: { type: 'budget', text: `Seu orçamento do mês é R$ ${B}. Você decidiu guardar ${pb}% para o lazer. Quanto é?`, aid: { total: B, part: cut } }, item: fill(id(2), 'perc.of', 0.4, `Orçamento de R$ ${B}: ${pb}% para o lazer. Quanto é?`, cut, [[pb, 'perc_number_confusion'], [B * pb, 'perc_wrong_operation']], ['Porcentagem é "por cem".', `1% de ${B} é ${B / 100}.`], `${pb}% de ${B} = ${cut}`) });
+  const v3 = pick(r, [40, 60, 80, 120, 200]), p3 = pick(r, [10, 20, 25, 50]), a3 = (v3 * p3) / 100;
+  out.push({ view: { type: 'price', text: `A assinatura do seu streaming custa R$ ${v3} e vai subir ${p3}%. Qual será o novo valor?`, aid: { total: v3, part: a3 } }, item: fill(id(3), 'perc.change', 0.55, `Assinatura de R$ ${v3} sobe ${p3}%. Qual o novo valor?`, v3 + a3, [[a3, 'adjust_value_as_price'], [v3 - a3, 'adjust_wrong_direction'], [v3 + p3, 'percent_applied_as_number']], [`Ache ${p3}% de ${v3}.`, 'Aumento: some ao valor original.'], `${p3}% de ${v3} = ${a3}; ${v3} + ${a3} = ${v3 + a3}`) });
+  const P = pick(r, [200, 500, 1000]), rt = pick(r, [2, 3, 5]), t = pick(r, [2, 3, 4]), J = (P * rt * t) / 100;
+  out.push({ view: { type: 'interest', text: `Você guarda R$ ${P} num investimento que rende ${rt}% ao mês (juros simples). Quanto rende de juros em ${t} meses?` }, item: fill(id(4), 'fin.interest', 0.65, `R$ ${P} a ${rt}% ao mês, juros simples, ${t} meses. Quanto rende de juros?`, J, [[(P * rt) / 100, 'interest_ignores_time'], [P + J, 'interest_vs_total']], [`Juros de 1 mês: ${rt}% de ${P}.`, `Multiplique por ${t} meses.`], `${P} × ${rt}% × ${t} = ${J}`) });
+  const k = pick(r, [3, 4, 5]), q = pick(r, [45, 55, 60]), V = k * q - pick(r, [15, 20, 30]);
+  out.push({ view: { type: 'deal', text: `${thing[0]!.toUpperCase()}${thing.slice(1)} sai em ${k}x de R$ ${q} ou R$ ${V} à vista. Quanto você economiza pagando à vista?` }, item: fill(id(5), 'prob.multi', 0.7, `${k}x de R$ ${q} ou R$ ${V} à vista. Quanto economiza à vista?`, k * q - V, [[k * q, 'one_step_only'], [V, 'one_step_only']], ['Primeiro ache o total parcelado.', 'Depois compare com o preço à vista.'], `${k} × ${q} = ${k * q}; ${k * q} − ${V} = ${k * q - V}`) });
+  return out;
+}
+
+// ---------------- Escape Room: Laboratório Secreto ----------------
+export type EscapeView = { room: number; rooms: number; story: string; clue: string };
+export function escapeRounds(seed = 1, ctx: Ctx = 'esportes'): Round<EscapeView>[] {
+  const r = mulberry32(seed * 8837 + 53); const id = (n: number) => `game.escape.${seed}.${n}`; const out: Round<EscapeView>[] = [];
+  const k = pick(r, [3, 4, 5, 6]), a = pick(r, [2, 3, 4]), b = a + pick(r, [2, 3, 4]);
+  out.push({ view: { room: 1, rooms: 4, story: 'Você acorda trancado no laboratório. A porta 1 tem uma planta com escala.', clue: `${a} cm no mapa = ${a * k} m reais.` }, item: fill(id(1), 'ratio.prop', 0.5, `Na planta, ${a} cm equivalem a ${a * k} m. O corredor tem ${b} cm na planta. Quantos metros ele mede? (senha da porta 1)`, k * b, [[a * k + (b - a), 'additive_proportion']], [`Quantos metros vale 1 cm? ${a * k} ÷ ${a}.`, `Multiplique por ${b}.`], `${a * k} ÷ ${a} = ${k}; ${k} × ${b} = ${k * b}`) });
+  const x = ri(r, 3, 9), qa = ri(r, 2, 5), qb = ri(r, 2, 9), qc = qa * x - qb;
+  out.push({ view: { room: 2, rooms: 4, story: 'Porta 2: um cofre exibe uma equação riscada na parede.', clue: `${qa}x − ${qb} = ${qc}` }, item: fill(id(2), 'alg.eq1', 0.6, `Resolva ${qa}x − ${qb} = ${qc}. A senha da porta 2 é o valor de x.`, x, [[qc + qb, 'forgot_divide_coef']], ['Passe o número que está subtraindo somando do outro lado.', `Depois divida por ${qa}.`], `${qa}x = ${qc + qb}; x = ${x}`) });
+  const m = ri(r, 5, 9), len = 4; let xs = Array.from({ length: len - 1 }, () => ri(r, 3, 12)); let last = m * len - xs.reduce((s, v) => s + v, 0); while (last < 1 || last > 14) { xs = Array.from({ length: len - 1 }, () => ri(r, 3, 12)); last = m * len - xs.reduce((s, v) => s + v, 0); } xs = shuffle(r, [...xs, last]);
+  out.push({ view: { room: 3, rooms: 4, story: 'Porta 3: um painel mostra os resultados dos últimos testes.', clue: `Testes: ${xs.join(' · ')}` }, item: fill(id(3), 'data.mean', 0.55, `O painel mostra ${xs.join(', ')}. A senha da porta 3 é a média desses valores.`, m, [[xs.reduce((s, v) => s + v, 0), 'mean_sum_only']], ['Some todos os valores.', `Divida por ${len}.`], `${xs.join(' + ')} = ${m * len}; ÷ ${len} = ${m}`) });
+  const T = pick(r, [200, 400, 500]), pu = pick(r, [20, 25, 30, 40]), used = (T * pu) / 100;
+  out.push({ view: { room: 4, rooms: 4, story: 'Última porta: o gerador de energia está falhando.', clue: `Tanque: ${T} L · já usou ${pu}%` }, item: fill(id(4), 'perc.change', 0.7, `O tanque tem ${T} litros e ${pu}% já foi usado. Quantos litros ainda restam? (senha final)`, T - used, [[used, 'adjust_value_as_price'], [T - pu, 'percent_applied_as_number']], [`Ache ${pu}% de ${T}.`, 'Tire do total do tanque.'], `${pu}% de ${T} = ${used}; ${T} − ${used} = ${T - used}`) });
+  void ctx; return out;
+}
+
+// ---------------- Placar & Estatística ----------------
+export type PlacarView = { data: number[]; labels: string[]; ctx: Ctx; ask: string };
+export function placarRounds(seed = 1, ctx: Ctx = 'esportes'): Round<PlacarView>[] {
+  const r = mulberry32(seed * 4793 + 61); const c = CTX[ctx]; const id = (n: number) => `game.placar.${seed}.${n}`; const out: Round<PlacarView>[] = []; const lab = (n: number) => Array.from({ length: n }, (_, i) => `${i + 1}`);
+  const mk = (len: number, lo: number, hi: number) => { for (;;) { const m = ri(r, lo, hi); const xs = Array.from({ length: len - 1 }, () => ri(r, 1, hi + 4)); const last = m * len - xs.reduce((s, v) => s + v, 0); if (last >= 0 && last <= hi + 6) return { xs: shuffle(r, [...xs, last]), m }; } };
+  const a = mk(4, 2, 6), sA = a.xs.reduce((s, v) => s + v, 0);
+  out.push({ view: { data: a.xs, labels: lab(4), ctx, ask: 'média' }, item: fill(id(1), 'data.mean', 0.4, `Em ${a.xs.length} ${c.plural}, ${c.team} teve ${a.xs.join(', ')} ${c.metric}. Qual foi a média por ${c.per}?`, a.m, [[sA, 'mean_sum_only']], ['Some os valores do gráfico.', `Divida por ${a.xs.length}.`], `${sA} ÷ ${a.xs.length} = ${a.m}`) });
+  const b = mk(4, 3, 7), sB = b.xs.reduce((s, v) => s + v, 0), M = b.m + 1, need = M * 5 - sB;
+  out.push({ view: { data: b.xs, labels: lab(4), ctx, ask: 'meta' }, item: fill(id(2), 'data.mean', 0.6, `Nos ${b.xs.length} primeiros ${c.plural}: ${b.xs.join(', ')} ${c.metric}. Para fechar ${5} ${c.plural} com média ${M}, quanto precisa fazer no último?`, need, [[M, 'mean_as_middle'], [sB, 'mean_sum_only']], [`A soma final precisa ser ${M} × 5.`, 'Tire o que já tem dessa soma.'], `${M} × 5 = ${M * 5}; ${M * 5} − ${sB} = ${need}`) });
+  const tot = pick(r, [20, 25, 40, 50]), hit = (tot * pick(r, [60, 70, 75, 80])) / 100;
+  out.push({ view: { data: [hit, tot - hit], labels: ['acertos', 'erros'], ctx, ask: '%' }, item: fill(id(3), 'perc.of', 0.55, `${c.team[0]!.toUpperCase()}${c.team.slice(1)} acertou ${hit} de ${tot} tentativas. Qual foi a porcentagem de acertos?`, (hit / tot) * 100, [[hit, 'perc_number_confusion']], ['Porcentagem = parte ÷ total × 100.', `${hit} ÷ ${tot} = ${hit / tot}.`], `${hit}/${tot} = ${(hit / tot) * 100}%`) });
+  const gA = ri(r, 3, 6), jA = ri(r, 2, 4), mult = ri(r, 3, 5);
+  out.push({ view: { data: [gA], labels: [`${jA} ${c.plural}`], ctx, ask: 'proporção' }, item: fill(id(4), 'ratio.prop', 0.6, `Em ${jA} ${c.plural} foram ${gA} ${c.metric}. Mantendo o ritmo, quantos ${c.metric} em ${jA * mult} ${c.plural}?`, gA * mult, [[gA + (jA * mult - jA), 'additive_proportion']], [`Quantas vezes ${jA} cabe em ${jA * mult}?`, `Multiplique ${gA} por esse número.`], `${jA * mult} ÷ ${jA} = ${mult}; ${gA} × ${mult} = ${gA * mult}`) });
+  const d = mk(5, 3, 7), mx = Math.max(...d.xs), mn = Math.min(...d.xs);
+  out.push({ view: { data: d.xs, labels: lab(5), ctx, ask: 'diferença' }, item: fill(id(5), 'data.mean', 0.5, `No gráfico, qual é a diferença entre o MAIOR e o MENOR valor de ${c.metric}?`, mx - mn, [[mx, 'mean_as_middle']], ['Ache o maior e o menor valor.', 'Subtraia um do outro.'], `${mx} − ${mn} = ${mx - mn}`) });
+  return out;
+}
+
+export const roundsFor = (g: GameId, seed: number, ctx: Ctx = 'esportes'): Round<unknown>[] => ({ pizzaria: () => pizzaRounds(seed), mercado: () => marketRounds(seed), laboratorio: () => labRounds(seed), frases: () => sentenceRounds(seed), detetive: () => detectiveRounds(seed), financas: () => financasRounds(seed, ctx), escape: () => escapeRounds(seed, ctx), placar: () => placarRounds(seed, ctx) })[g]();
 export const starsFor = (firstTryCorrect: number, total: number, hints: number) => 1 + (firstTryCorrect >= Math.ceil(total * 0.6) ? 1 : 0) + (firstTryCorrect >= total - 1 && hints === 0 ? 1 : 0);

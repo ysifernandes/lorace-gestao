@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { brand } from '@edu/brand';
 import { useDB, logout, balances, setAvatar, requestTime, type Student, type DB } from '../store/db';
 import { buildDashboard, fmtMinutes, toneOf, type DashVM, type MapNode } from '../store/dashboard';
@@ -15,7 +15,7 @@ const MOBILE = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/
 
 /** Casca do aluno: menu lateral (desktop) + navegação inferior fixa (celular/tablet). */
 export function AxShell() {
-  const { d, s } = useStudent(); const [dark, setDark] = useState(false); const band = (d.students.find((x) => x.id === s.id) && buildBand(s));
+  const { d, s } = useStudent(); const [dark, setDark] = useState(false); if (!s.onboarded) return <Navigate to="/s/comecar" replace />; const band = (d.students.find((x) => x.id === s.id) && buildBand(s));
   return <div className="ax-app" data-theme={band} data-band={band} data-mode={band === 'estrategistas' && dark ? 'dark' : undefined}>
     <aside className="ax-side" aria-label="Menu principal"><Wordmark size={46} />
       <nav className="ax-nav" aria-label="Navegação">{NAV.map(([to, l, I]) => <NavLink key={to} end to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<hr />{NAV2.map(([to, l, I]) => <NavLink key={to} to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}</nav>
@@ -39,7 +39,7 @@ function Header({ vm, s }: { vm: DashVM; s: Student }) {
   return <header className="ax-head">
     <div className="ax-mtop"><Wordmark size={34} /><span className="grow" /><div className="ax-pop-wrap" ref={rb}><button className="ax-round" aria-label={`Notificações${vm.notifications.length ? `: ${vm.notifications.length}` : ''}`} aria-expanded={bell} onClick={() => setBell(!bell)}><IBell size={26} />{vm.notifications.length > 0 && <i className="ax-dot-red" />}</button>{bell && <Notifs vm={vm} />}</div><UserMenu onEdit={() => setEdit(true)} cls="ax-mmenu" /></div>
     <div className="ax-who"><button className="ax-avatar" aria-label="Personalizar avatar" onClick={() => setEdit(true)}><AvatarFace a={vm.avatar} size={120} name={vm.name} /></button>
-      <div className="ax-hello"><h1>Olá, {vm.name}! <span aria-hidden>👋</span></h1><p>{vm.band === 'estrategistas' ? 'Seu foco de hoje está pronto.' : vm.band === 'exploradores' ? 'Vamos brincar de aprender?' : 'Pronto para mais uma missão de aprendizado?'}</p></div></div>
+      <div className="ax-hello"><h1>Olá, {vm.name}! <span aria-hidden>👋</span></h1><p>{vm.band === 'estrategistas' ? 'Seu foco de hoje está pronto.' : vm.band === 'desafiadores' ? 'Seus desafios de hoje estão prontos.' : vm.band === 'exploradores' ? 'Vamos brincar de aprender?' : 'Pronto para mais uma missão de aprendizado?'}</p></div></div>
     <div className="ax-pills"><div className="ax-pill pts"><IStar size={38} /><span><b>{vm.xp.toLocaleString('pt-BR')}</b> pontos</span></div>
       <div className="ax-pill time"><IPhone size={34} /><span><b>{fmtMinutes(vm.minutes)}</b><small>de uso liberado</small></span></div></div>
     <div className="ax-tools"><div className="ax-pop-wrap ax-desk" ref={rb}><button className="ax-round" aria-label={`Notificações${vm.notifications.length ? `: ${vm.notifications.length}` : ''}`} aria-expanded={bell} onClick={() => setBell(!bell)}><IBell size={26} />{vm.notifications.length > 0 && <i className="ax-dot-red" />}</button>{bell && <Notifs vm={vm} />}</div>
@@ -61,8 +61,8 @@ function Banner({ vm }: { vm: DashVM }) {
   const nav = useNavigate(); const can = typeof window !== 'undefined' && 'speechSynthesis' in window; const [tap, setTap] = useState(-1); const [bounce, setBounce] = useState(false);
   const say = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(`${vm.mission.title} ${vm.mission.text}`); u.lang = 'pt-BR'; u.rate = 0.9; speechSynthesis.speak(u); } catch { /* sem voz disponível */ } };
   const poke = () => { setTap((tap + 1) % TIPS.length); setBounce(true); setTimeout(() => setBounce(false), 650); };
-  return <section className="ax-banner" aria-label="Missão"><Decor /><div className={`ax-banner-mascot ${bounce ? 'hop' : ''}`}><button className="ax-pet" onClick={poke} aria-label="Fazer carinho no mascote: ele conta uma dica"><Axolotl state={tap >= 0 ? MOODS[tap % MOODS.length]! : vm.mission.mascot} size={vm.band === 'estrategistas' ? 96 : 230} cap /></button>{tap >= 0 && <div className="ax-say" role="status">{TIPS[tap]}</div>}</div>
-    <div className="ax-banner-text"><h2><em>Nova</em> Missão!</h2><p>{vm.mission.text}</p>
+  return <section className="ax-banner" aria-label="Missão"><Decor /><div className={`ax-banner-mascot ${bounce ? 'hop' : ''}`}><button className="ax-pet" onClick={poke} aria-label="Fazer carinho no mascote: ele conta uma dica"><Axolotl state={tap >= 0 ? MOODS[tap % MOODS.length]! : vm.mission.mascot} size={vm.band === 'estrategistas' ? 84 : vm.band === 'desafiadores' ? 150 : 230} cap={vm.band === 'exploradores' || vm.band === 'aventureiros'} /></button>{tap >= 0 && <div className="ax-say" role="status">{TIPS[tap]}</div>}</div>
+    <div className="ax-banner-text"><h2>{vm.band === 'exploradores' || vm.band === 'aventureiros' ? <><em>Nova</em> Missão!</> : vm.mission.title}</h2><p>{vm.mission.text}</p>
       <div className="row"><button className="ax-cta" onClick={() => nav(vm.mission.route)}>{vm.mission.cta} <IPlay size={20} /></button>{can && <button className="ax-ghost" onClick={say} aria-label="Ouvir a missão em voz alta"><ISpeaker size={22} /><span className="ax-lbl"> Ouvir</span></button>}</div></div>
     <div className="ax-banner-pie" aria-hidden>{vm.mission.pie ? <PieArt /> : <ArtCompass size={96} />}</div><i className="ax-spark s1" /><i className="ax-spark s2" /></section>;
 }
@@ -85,7 +85,7 @@ function Subjects({ vm }: { vm: DashVM }) {
 }
 
 /** Prateleira de minigames na tela inicial. */
-function GamesShelf() { const nav = useNavigate(); return <section className="ax-shelf" aria-label="Minigames"><div className="row"><h3 className="grow"><IGame size={30} /> Minigames</h3><button className="ax-all link" onClick={() => nav('/s/jogos')}>Ver todos</button></div><GamesHub compact /></section>; }
+function GamesShelf({ teen }: { teen: boolean }) { const nav = useNavigate(); const shelfTitle = teen ? 'Jogos' : 'Minigames'; return <section className="ax-shelf" aria-label="Minigames"><div className="row"><h3 className="grow"><IGame size={30} /> {shelfTitle}</h3><button className="ax-all link" onClick={() => nav('/s/jogos')}>Ver todos</button></div><GamesHub compact /></section>; }
 
 /** Decoração animada e lúdica do fundo (nuvens, estrelas e bolhas). */
 function Decor() { return <div className="ax-decor" aria-hidden><i className="c c1" /><i className="c c2" /><i className="c c3" /><i className="s s1" /><i className="s s2" /><i className="s s3" /><i className="b b1" /><i className="b b2" /></div>; }
@@ -152,7 +152,7 @@ function Medals({ vm }: { vm: DashVM }) {
 
 export function Dashboard() {
   const { d, s } = useStudent(); const vm = buildDashboard(d, s);
-  return <div className="ax-dash"><Header vm={vm} s={s} /><div className="ax-cols"><div className="ax-left"><Banner vm={vm} /><Subjects vm={vm} /><GamesShelf /><div className="ax-two"><Performance vm={vm} /><Plan vm={vm} /></div></div>
+  return <div className="ax-dash"><Header vm={vm} s={s} /><div className="ax-cols"><div className="ax-left"><Banner vm={vm} /><Subjects vm={vm} /><GamesShelf teen={vm.band === 'desafiadores' || vm.band === 'estrategistas'} /><div className="ax-two"><Performance vm={vm} /><Plan vm={vm} /></div></div>
     <div className="ax-right"><Island vm={vm} /><Phone vm={vm} s={s} /><Medals vm={vm} /></div></div></div>;
 }
 export const _unused: ReactNode = null; void brand; void balances; void ArtGame; void ArtTarget; void ArtCompass;

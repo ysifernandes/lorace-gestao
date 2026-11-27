@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { examPrepSchedule } from '@edu/pedagogy';
 import { Ledger } from '@edu/gamification';
 import { MATH_SKILLS } from '@edu/content-math';
-import { useDB, currentUser, addStudent, bandOf, balances, levelInfo, reportFor, setConsent, addExam, setRewards, startPairing, completePairing, issueCommand, simulatorSync, setSim, appState, decideTime, sweep, skillName, visibleStudents, canSee, type Student, type Device } from '../store/db';
+import { useDB, currentUser, addStudent, ageOf, ageBandOf, setProfile, INTERESTS, type Maturity, bandOf, balances, levelInfo, reportFor, setConsent, addExam, setRewards, startPairing, completePairing, issueCommand, simulatorSync, setSim, appState, decideTime, sweep, skillName, visibleStudents, canSee, type Student, type Device } from '../store/db';
 import { Card, Btn, Badge, Notice, Tabs, Modal, StateBadge, ConfBadge, LineChart, Progress, Avatar, toast } from '../ui';
 
 const BAND = { exploradores: '5–7 anos · Exploradores', aventureiros: '8–10 anos · Aventureiros', desafiadores: '11–13 anos · Desafiadores', estrategistas: '14–17 anos · Estrategistas' } as const;
@@ -51,11 +51,18 @@ export function ReportView({ s, audience }: { s: Student; audience: 'family' | '
         {audience === 'teacher' && <p className="sm muted">Estimativa de domínio: {Math.round(r.probability * 100)}% (com {r.evidenceCount} evidências; confiança {r.confidenceLabel}). Não é nota.</p>}</details>)}</Card>; })}
     <Notice tone="info">Os resultados são estimativas pedagógicas, não diagnósticos médicos ou psicológicos. Uma única resposta nunca define uma dificuldade.</Notice></div>;
 }
+const BAND_NAME = { exploradores: 'Exploradores (5–7)', aventureiros: 'Aventureiros (8–10)', desafiadores: 'Desafiadores (11–13)', estrategistas: 'Estrategistas (14–17)' } as const;
+function ProfileCard({ s }: { s: Student }) {
+  const age = ageOf(s); const nominal = ageBandOf(s); const eff = bandOf(s);
+  return <Card><h3>Perfil de aprendizagem</h3><p className="sm">Idade: <b>{age} anos</b> (calculada pelo ano de nascimento que você informou) · Estilo atual: <b>{BAND_NAME[eff]}</b>{eff !== nominal ? <> (ajustado a partir de {BAND_NAME[nominal]})</> : null}</p>
+    <label htmlFor={`mat${s.id}`}>Estilo dos desafios</label><select id={`mat${s.id}`} value={s.maturity ?? 'padrao'} onChange={(e) => setProfile(s.id, { maturity: e.target.value as Maturity })}><option value="tranquilo">Mais tranquilo</option><option value="padrao">Recomendado para a idade</option><option value="desafiador">Mais desafiador</option></select>
+    <p className="sm muted">Interesses: {s.interests.length ? s.interests.map((i) => INTERESTS.find((x) => x[0] === i)?.[1] ?? i).join(', ') : s.onboarded ? 'nenhum informado' : 'a criança escolhe no primeiro acesso'}.</p><p className="sm muted">O conteúdo (o que estudar) é definido pelo diagnóstico, não pela idade. A faixa 14–17 só é liberada a partir de 13 anos.</p></Card>;
+}
 function Summary({ s }: { s: Student }) {
   const d = useDB(); const u = currentUser(d)!; const consent = d.consents.some((c) => c.studentId === s.id && !c.revokedAt); const week = s.learner.responses.filter((r) => Date.now() - r.at < 7 * 86_400_000);
   return <div className="col"><div className="grid g3"><Card><h3>Últimos 7 dias</h3><p><b>{week.length}</b> atividades · <b>{week.filter((r) => r.correct).length}</b> acertos · <b>{week.filter((r) => r.hintsUsed).length}</b> com dicas</p></Card>
     <Card><h3>Escola</h3><p className="sm">Código de vínculo: <b>{s.schoolCode}</b></p><label className="row"><input type="checkbox" style={{ width: 22, minHeight: 22 }} checked={consent} onChange={(e) => setConsent(s.id, u.id, e.target.checked)} /> Compartilhar progresso com a escola</label><p className="sm muted">Revogável a qualquer momento.</p></Card>
-    <Card><h3>Tutor com IA</h3><p className="muted sm">Indisponível (pendente). Nenhum dado é enviado a provedores de IA.</p></Card></div><ReportView s={s} audience="family" /></div>;
+    <Card><h3>Tutor com IA</h3><p className="muted sm">Indisponível (pendente). Nenhum dado é enviado a provedores de IA.</p></Card></div><ProfileCard s={s} /><ReportView s={s} audience="family" /></div>;
 }
 function Routine({ s }: { s: Student }) {
   const d = useDB(); const [title, setTitle] = useState(''); const [date, setDate] = useState(''); const [sk, setSk] = useState<string[]>([]);

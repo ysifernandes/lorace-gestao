@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { gradeItem, newLearner, recordResponse, buildReport } from '@edu/learning';
 import { ALL_SKILLS, MISCONCEPTIONS, type Item } from '@edu/content-math';
-import { pizzaRounds, marketRounds, labRounds, sentenceRounds, detectiveRounds, roundsFor, starsFor, type GameId } from '../src/games/logic';
-import { GAMES, gameForSkill } from '../src/games/registry';
+import { pizzaRounds, marketRounds, labRounds, sentenceRounds, detectiveRounds, financasRounds, escapeRounds, placarRounds, ctxOf, CTX, roundsFor, starsFor, type GameId } from '../src/games/logic';
+import { GAMES, gameForSkill, gamesForBand, labelFor } from '../src/games/registry';
 
-const IDS: GameId[] = ['pizzaria', 'mercado', 'laboratorio', 'frases', 'detetive'];
+const IDS: GameId[] = ['pizzaria', 'mercado', 'laboratorio', 'frases', 'detetive', 'financas', 'escape', 'placar'];
 const skillIds = new Set(ALL_SKILLS.map((s) => s.id));
 /** Resposta CORRETA do item (independente da UI) */
 function solve(it: Item) { switch (it.kind) { case 'fill_in': return { text: it.accepted[0]! }; case 'fraction_visual': return { shaded: it.targetNum }; case 'ordering': return { order: it.correctOrder }; case 'multiple_choice': return { choice: it.correct }; default: throw new Error(it.kind); } }
@@ -12,9 +12,9 @@ function solve(it: Item) { switch (it.kind) { case 'fill_in': return { text: it.
 describe('minigames: rodadas e itens', () => {
   it('cada jogo gera 5 rodadas determinísticas, com habilidade existente, dicas, fonte e rascunho', () => {
     for (const g of IDS) for (const seed of [1, 2, 3, 9, 42]) {
-      const a = roundsFor(g, seed), b = roundsFor(g, seed); expect(a).toHaveLength(5); expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+      const a = roundsFor(g, seed), b = roundsFor(g, seed); expect(a).toHaveLength(g === 'escape' ? 4 : 5); expect(JSON.stringify(a)).toBe(JSON.stringify(b));
       for (const r of a) { expect(skillIds.has(r.item.skillId), `${g}:${r.item.skillId}`).toBe(true); expect(r.item.hints.length).toBeGreaterThan(0); expect(r.item.source.license).toBeTruthy(); expect(r.item.review.status).toBe('draft'); expect(r.item.review.needsProfessionalReview).toBe(true); }
-      expect(new Set(a.map((r) => r.item.id)).size).toBe(5);
+      expect(new Set(a.map((r) => r.item.id)).size).toBe(a.length);
     }
   });
   it('a solução do jogo é corrigida como certa pelo mesmo motor', () => { for (const g of IDS) for (const seed of [1, 5, 8]) for (const r of roundsFor(g, seed)) expect(gradeItem(r.item, solve(r.item) as never).correct, `${g} ${r.item.id}`).toBe(true); });
@@ -39,5 +39,35 @@ describe('minigames: rodadas e itens', () => {
     const rep = buildReport(st, { skills: ALL_SKILLS, items: [] }, ['frac.visual'], t)[0]!; expect(rep.causes.some((c) => c.misconceptionId === 'count_unshaded')).toBe(true);
   });
   it('estrelas nunca punem: concluir dá ao menos 1; autonomia e acertos dão mais', () => { expect(starsFor(0, 5, 3)).toBe(1); expect(starsFor(3, 5, 2)).toBe(2); expect(starsFor(5, 5, 0)).toBe(3); expect(starsFor(4, 5, 0)).toBe(3); expect(starsFor(5, 5, 2)).toBe(2); });
-  it('registro de jogos cobre matemática e português e aponta jogo por habilidade', () => { expect(GAMES.map((g) => g.id).sort()).toEqual([...IDS].sort()); expect(gameForSkill('frac.compare')!.id).toBe('pizzaria'); expect(gameForSkill('pt.spell.rules')!.id).toBe('detetive'); expect(gameForSkill('div.facts')!.id).toBe('laboratorio'); for (const g of GAMES) for (const s of g.skills) expect(skillIds.has(s)).toBe(true); });
+  it('registro de jogos cobre matemática e português e aponta jogo por habilidade', () => { expect(GAMES.map((g) => g.id).sort()).toEqual([...IDS].sort()); expect(gameForSkill('frac.compare')!.id).toBe('pizzaria'); expect(gameForSkill('perc.change', 'estrategistas')!.id).toBe('financas'); expect(gameForSkill('frac.compare', 'estrategistas')!.id).toBe('pizzaria'); expect(gameForSkill('pt.spell.rules')!.id).toBe('detetive'); expect(gameForSkill('div.facts')!.id).toBe('laboratorio'); for (const g of GAMES) for (const s of g.skills) expect(skillIds.has(s)).toBe(true); });
+});
+
+describe('jogos por faixa etária e por interesse', () => {
+  it('catálogo muda com a faixa; adolescentes não veem jogos infantis como principais', () => {
+    const ids = (b: Parameters<typeof gamesForBand>[0]) => gamesForBand(b).main.map((g) => g.id);
+    expect(ids('exploradores')).toEqual(['pizzaria', 'mercado']); // 5–7: jogos visuais (sem leitura)
+    expect(ids('aventureiros').sort()).toEqual(['detetive', 'frases', 'laboratorio', 'mercado', 'pizzaria']);
+    expect(ids('desafiadores')).toEqual(expect.arrayContaining(['financas', 'escape', 'placar'])); expect(ids('desafiadores')).not.toContain('pizzaria');
+    expect(ids('estrategistas').sort()).toEqual(['escape', 'financas', 'placar']);
+    expect(gamesForBand('estrategistas').base.map((g) => g.id).sort()).toEqual(['detetive', 'frases', 'laboratorio', 'mercado', 'pizzaria']); expect(gamesForBand('aventureiros').base).toEqual([]);
+    for (const g of GAMES.filter((x) => x.base)) expect(g.teen).toBeTruthy();
+  });
+  it('treino de base para adolescentes usa nome e tom adultos (sem "Pizzaria das Frações")', () => {
+    const p = GAMES.find((g) => g.id === 'pizzaria')!; expect(labelFor(p, 'estrategistas').name).toBe('Frações na prática'); expect(labelFor(p, 'aventureiros').name).toBe('Pizzaria das Frações'); expect(labelFor(p, 'estrategistas').tagline).not.toMatch(/!/);
+  });
+  it('interesse vira o tema dos problemas (mesma conta, contexto diferente)', () => {
+    expect(ctxOf(['animais', 'futebol'])).toBe('animais'); expect(ctxOf(['xyz'])).toBe('esportes'); expect(ctxOf([])).toBe('esportes');
+    const f = placarRounds(1, 'futebol')[0]!, m = placarRounds(1, 'musica')[0]!; expect(f.item.statement).toContain(CTX.futebol.metric); expect(m.item.statement).toContain(CTX.musica.metric);
+    expect(f.item.kind === 'fill_in' && f.item.accepted[0]).toBe(m.item.kind === 'fill_in' ? m.item.accepted[0] : ''); // mesma matemática
+    expect(financasRounds(1, 'tecnologia')[0]!.item.statement).toContain('teclado'); expect(financasRounds(1, 'jogos')[0]!.item.statement).toContain('jogo');
+  });
+  it('matemática avançada dos jogos 11–17 confere de forma independente', () => {
+    for (const seed of [1, 2, 3, 7]) {
+      for (const r of financasRounds(seed)) { const a = r.item.kind === 'fill_in' ? Number(r.item.accepted[0]) : NaN; expect(Number.isInteger(a) && a > 0).toBe(true); }
+      const fr = financasRounds(seed); const m1 = fr[0]!.item.statement.match(/R\$ (\d+) e está com (\d+)%/)!; expect(Number(fr[0]!.item.kind === 'fill_in' && fr[0]!.item.accepted[0])).toBe(Number(m1[1]) * (1 - Number(m1[2]) / 100));
+      const m4 = fr[3]!.item.statement.match(/R\$ (\d+) a (\d+)% ao mês, juros simples, (\d+) meses/)!; expect(Number(fr[3]!.item.kind === 'fill_in' && fr[3]!.item.accepted[0])).toBe((Number(m4[1]) * Number(m4[2]) * Number(m4[3])) / 100);
+      for (const r of escapeRounds(seed)) expect(r.view.rooms).toBe(4);
+      const pl = placarRounds(seed); const mean = pl[0]!; if (mean.item.kind === 'fill_in') expect(Number(mean.item.accepted[0]) * mean.view.data.length).toBe(mean.view.data.reduce((s, v) => s + v, 0));
+    }
+  });
 });

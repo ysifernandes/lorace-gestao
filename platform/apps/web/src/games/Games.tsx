@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Item } from '@edu/content-math';
 import type { Response } from '@edu/learning';
-import { answerGame, finishGame } from '../store/db';
+import { answerGame, finishGame, bandOf } from '../store/db';
 import { Axolotl, type MascotState } from '../ui/axolotl';
 import { Btn } from '../ui';
 import { useStudent } from '../pages/student';
-import { BILLS, roundsFor, starsFor, type DetectiveView, type LabView, type MarketView, type PizzaView, type Round, type SentenceView } from './logic';
-import { GAMES, gameById, gameForSkill } from './registry';
+import { BILLS, CTX, ctxOf, roundsFor, starsFor, type DetectiveView, type EscapeView, type FinView, type LabView, type MarketView, type PizzaView, type PlacarView, type Round, type SentenceView } from './logic';
+import { gameById, gameForSkill, gamesForBand, labelFor } from './registry';
 
 /* ---------- confete (comemoração; respeita prefers-reduced-motion via CSS) ---------- */
 export function Confetti({ n = 36 }: { n?: number }) {
@@ -85,14 +85,42 @@ function DetectiveBoard({ round, locked, submit }: BoardProps<DetectiveView>) {
     {found && <><h3>{it.statement}</h3><div className="gm-opts">{it.options.map((o) => <button key={o.id} disabled={locked} className={pick === o.id ? 'on' : ''} onClick={() => setPick(o.id)}>{o.text}</button>)}</div><GoBtn disabled={locked || !pick} onClick={() => submit({ choice: pick! })}>Resolver o caso ✔</GoBtn></>}</div>;
 }
 
-const BOARD: Record<string, (p: BoardProps<never>) => ReactNode> = { pizzaria: PizzaBoard as never, mercado: MarketBoard as never, laboratorio: LabBoard as never, frases: SentenceBoard as never, detetive: DetectiveBoard as never };
+/* ---------- 11–17 anos: Finanças, Escape Room, Placar ---------- */
+function PercentBar({ total, part }: { total: number; part: number }) {
+  const w = (part / total) * 100;
+  return <svg viewBox="0 0 320 64" className="gm-pbar" role="img" aria-label="Barra que representa o valor total; a parte destacada mostra a fração em questão"><rect x="10" y="14" width="300" height="26" rx="8" fill="#2a2d52" />{w > 0 && <rect x="10" y="14" width={(w / 100) * 300} height="26" rx="8" fill="#34d1c4" />}{Array.from({ length: 11 }, (_, i) => <g key={i}><path d={`M${10 + i * 30} 14v-4`} stroke="#8d93c9" strokeWidth="1.6" /><text x={10 + i * 30} y="58" textAnchor="middle" fontSize="10" fill="#aab0e0">{i * 10}%</text></g>)}</svg>;
+}
+function FinancasBoard({ round, locked, submit }: BoardProps<FinView>) {
+  const v = round.view; const [txt, setTxt] = useState(''); const [aid, setAid] = useState(false);
+  return <div className="gm-board gm-teen"><div className="gm-scenario"><span className="gm-chip">{({ price: 'Preço', budget: 'Orçamento', interest: 'Investimento', deal: 'Decisão' })[v.type]}</span><p>{v.text}</p></div>
+    {v.aid && <button className="gm-link" onClick={() => setAid(!aid)} aria-pressed={aid}>{aid ? 'Esconder' : 'Mostrar'} a barra de 100%</button>}{aid && v.aid && <PercentBar total={v.aid.total} part={v.aid.part} />}
+    <Keypad value={txt} onChange={setTxt} disabled={locked} max={4} /><GoBtn disabled={locked || !txt} onClick={() => submit({ text: txt })}>Confirmar</GoBtn></div>;
+}
+function EscapeBoard({ round, locked, submit }: BoardProps<EscapeView>) {
+  const v = round.view; const [txt, setTxt] = useState('');
+  return <div className="gm-board gm-teen"><div className="gm-rooms" aria-label={`Porta ${v.room} de ${v.rooms}`}>{Array.from({ length: v.rooms }, (_, k) => <span key={k} className={k + 1 < v.room ? 'open' : k + 1 === v.room ? 'now' : ''}>{k + 1 < v.room ? '🔓' : '🔒'}</span>)}</div>
+    <div className="gm-scenario"><span className="gm-chip">Porta {v.room}</span><p>{v.story}</p><code className="gm-clue">{v.clue}</code></div>
+    <Keypad value={txt} onChange={setTxt} disabled={locked} max={4} /><GoBtn disabled={locked || !txt} onClick={() => submit({ text: txt })}>Inserir senha 🔓</GoBtn></div>;
+}
+function Bars({ v }: { v: PlacarView }) {
+  const max = Math.max(...v.data, 1), W = 360, H = 170, bw = Math.min(46, (W - 40) / v.data.length - 10); const c = CTX[v.ctx];
+  return <svg viewBox={`0 0 ${W} ${H}`} className="gm-chart" role="img" aria-label={`Gráfico de barras de ${c.metric}: ${v.data.map((d, i) => `${v.labels[i] ?? i + 1}: ${d}`).join(', ')}`}>
+    {[0, 0.5, 1].map((g) => <g key={g}><path d={`M30 ${H - 28 - g * (H - 56)}H${W - 6}`} stroke="#3a3f78" strokeWidth="1" strokeDasharray="3 4" /><text x="26" y={H - 24 - g * (H - 56)} textAnchor="end" fontSize="10" fill="#aab0e0">{Math.round(g * max)}</text></g>)}
+    {v.data.map((d, i) => { const x = 40 + i * ((W - 50) / v.data.length) + 4, h = (d / max) * (H - 56); return <g key={i}><rect x={x} y={H - 28 - h} width={bw} height={h} rx="6" fill={['#34d1c4', '#ffb21e', '#ff6fb6', '#7aa7ff', '#9b6dff'][i % 5]} /><text x={x + bw / 2} y={H - 32 - h} textAnchor="middle" fontSize="12" fontWeight="800" fill="#fff">{d}</text><text x={x + bw / 2} y={H - 10} textAnchor="middle" fontSize="10" fill="#aab0e0">{v.labels[i] ?? ''}</text></g>; })}</svg>;
+}
+function PlacarBoard({ round, locked, submit }: BoardProps<PlacarView>) {
+  const v = round.view; const [txt, setTxt] = useState(''); const c = CTX[v.ctx];
+  return <div className="gm-board gm-teen"><div className="gm-scenario"><span className="gm-chip">{c.metric} por {c.per}</span><p>{round.item.statement}</p></div><Bars v={v} /><Keypad value={txt} onChange={setTxt} disabled={locked} max={4} /><GoBtn disabled={locked || !txt} onClick={() => submit({ text: txt })}>Confirmar</GoBtn></div>;
+}
+
+const BOARD: Record<string, (p: BoardProps<never>) => ReactNode> = { pizzaria: PizzaBoard as never, mercado: MarketBoard as never, laboratorio: LabBoard as never, frases: SentenceBoard as never, detetive: DetectiveBoard as never, financas: FinancasBoard as never, escape: EscapeBoard as never, placar: PlacarBoard as never };
 
 /* ---------- Página do jogo ---------- */
 /** Recria a partida sempre que o jogo muda (evita estado preso do jogo anterior). */
 export function GameRoute() { const { id = '' } = useParams(); return <GamePage key={id} />; }
 function GamePage() {
   const { id = '' } = useParams(); const game = gameById(id); const { s } = useStudent(); const nav = useNavigate();
-  const [seed, setSeed] = useState(() => (s.games?.[id]?.plays ?? 0) + 1); const rounds = useMemo(() => (game ? roundsFor(game.id, seed) : []), [game, seed]);
+  const band = bandOf(s); const teen = band === 'desafiadores' || band === 'estrategistas'; const ctx = ctxOf(s.interests); const [seed, setSeed] = useState(() => (s.games?.[id]?.plays ?? 0) + 1); const rounds = useMemo(() => (game ? roundsFor(game.id, seed, ctx) : []), [game, seed, ctx]);
   const [i, setI] = useState(0); const [attempt, setAttempt] = useState(0); const [state, setState] = useState<{ ok: boolean; xp: number } | null>(null); const [recorded, setRecorded] = useState(false);
   const [first, setFirst] = useState<boolean[]>([]); const [hints, setHints] = useState(0); const [totalHints, setTotalHints] = useState(0); const [xp, setXp] = useState(0); const [done, setDone] = useState(false); const [stars, setStars] = useState(0);
   if (!game) return <div className="ax-page"><p>Jogo não encontrado.</p><Link to="/s/jogos">Voltar</Link></div>;
@@ -106,13 +134,14 @@ function GamePage() {
     setState({ ok, xp: gain });
   };
   const next = () => { if (i + 1 >= rounds.length) { const st = starsFor(first.filter(Boolean).length, rounds.length, totalHints); setStars(st); finishGame(s.id, game.id, st); setDone(true); } else { setI(i + 1); setAttempt(0); setState(null); setRecorded(false); setHints(0); } };
-  if (done) return <div className="ax-page gm-done"><Confetti /><Axolotl state="comemorando" size={170} cap /><h1>{game.name}: missão cumprida!</h1><div className="gm-stars" role="img" aria-label={`${stars} de 3 estrelas`}>{[1, 2, 3].map((n) => <span key={n} className={n <= stars ? 'on' : ''}>★</span>)}</div>
-    <p>Você acertou de primeira <b>{first.filter(Boolean).length}</b> de {rounds.length} e ganhou <b>{xp} XP</b>. Cada tentativa ajuda o Aprendix a conhecer o que você já sabe.</p><p className="ax-muted">Estrelas premiam o esforço: terminar já vale uma!</p>
+  const lab = labelFor(game, band);
+  if (done) return <div className="ax-page gm-done" data-teen={teen || undefined}><Confetti n={teen ? 18 : 36} /><Axolotl state="comemorando" size={teen ? 96 : 170} cap={!teen} /><h1>{lab.name}: {teen ? 'partida concluída' : 'missão cumprida!'}</h1><div className="gm-stars" role="img" aria-label={`${stars} de 3 estrelas`}>{[1, 2, 3].map((n) => <span key={n} className={n <= stars ? 'on' : ''}>★</span>)}</div>
+    <p>Você acertou de primeira <b>{first.filter(Boolean).length}</b> de {rounds.length} e ganhou <b>{xp} XP</b>. {teen ? 'O resultado atualiza o seu mapa de habilidades.' : 'Cada tentativa ajuda o Aprendix a conhecer o que você já sabe.'}</p><p className="ax-muted">{teen ? 'As estrelas consideram acertos de primeira e autonomia (sem dicas).' : 'Estrelas premiam o esforço: terminar já vale uma!'}</p>
     <div className="row" style={{ justifyContent: 'center' }}><Btn onClick={() => { setSeed(seed + 1); setI(0); setAttempt(0); setState(null); setRecorded(false); setFirst([]); setHints(0); setTotalHints(0); setXp(0); setDone(false); }}>Jogar de novo</Btn><Btn variant="ghost" onClick={() => nav('/s/jogos')}>Outros jogos</Btn><Btn variant="ghost" onClick={() => nav('/s/progress')}>Minha evolução</Btn></div></div>;
-  return <div className="ax-page gm" style={{ ['--g1' as string]: game.from, ['--g2' as string]: game.to }}>
-    <header className="gm-head"><Link to="/s/jogos" className="gm-back" aria-label="Voltar aos jogos">←</Link><div><h1>{game.emoji} {game.name}</h1><p>{game.goal}</p></div></header>
+  return <div className="ax-page gm" data-teen={teen || undefined} style={{ ['--g1' as string]: game.from, ['--g2' as string]: game.to }}>
+    <header className="gm-head"><Link to="/s/jogos" className="gm-back" aria-label="Voltar aos jogos">←</Link><div><h1>{lab.emoji} {lab.name}</h1><p>{game.goal}</p></div></header>
     <div className="gm-progress" role="progressbar" aria-valuenow={i + 1} aria-valuemin={1} aria-valuemax={rounds.length} aria-label="Rodadas">{rounds.map((_, k) => <span key={k} className={k < i ? 'done' : k === i ? 'now' : ''} />)}</div>
-    <div className="gm-coach"><Axolotl state={mood} size={104} cap /><div className="gm-bubble" aria-live="polite">{say}</div></div>
+    <div className={`gm-coach ${teen ? 'assistant' : ''}`}><Axolotl state={mood} size={teen ? 56 : 104} cap={!teen} animate={!teen} /><div className="gm-bubble" aria-live="polite">{say}</div></div>
     <section className="gm-stage" key={`${round.item.id}-${attempt}`}><Board round={round as never} locked={!!state?.ok || false} submit={submit} /></section>
     <div className="gm-actions">{!state && hints < round.item.hints.length && <button className="gm-link" onClick={() => setHints(hints + 1)}>💡 Preciso de uma dica {hints > 0 ? `(${hints}/${round.item.hints.length})` : ''}</button>}
       {state && !state.ok && <><button className="gm-go alt" onClick={() => { setAttempt(attempt + 1); setState(null); }}>Tentar de novo</button><span className="gm-why">Dica: {round.item.justification}</span></>}
@@ -123,10 +152,13 @@ const gradeLocal = (item: Item, resp: Response) => gradeItem(item, resp).correct
 
 /* ---------- Central de jogos ---------- */
 export function GamesHub({ compact = false }: { compact?: boolean }) {
-  const { s } = useStudent(); const nav = useNavigate();
-  const weak = Object.values(s.learner.hypotheses).filter((h) => h.status !== 'discarded').map((h) => h.skillId); const rec = weak.map((w) => gameForSkill(w)?.id).find(Boolean);
-  return <div className={compact ? 'gm-hub compact' : 'gm-hub'}>{GAMES.map((g) => { const st = s.games?.[g.id]; return <article key={g.id} className="gm-card" style={{ ['--g1' as string]: g.from, ['--g2' as string]: g.to }}>
-    {rec === g.id && <span className="gm-ribbon">Para você</span>}<div className="gm-art" aria-hidden>{g.emoji}</div><div className="gm-info"><b>{g.name}</b><small>{g.tagline}</small><span className="gm-tag">{g.subject}</span>
-      <div className="gm-foot"><span className="gm-stars sm" role="img" aria-label={`${st?.bestStars ?? 0} de 3 estrelas`}>{[1, 2, 3].map((n) => <span key={n} className={n <= (st?.bestStars ?? 0) ? 'on' : ''}>★</span>)}</span><button onClick={() => nav(`/s/jogos/${g.id}`)}>Jogar ▶</button></div></div></article>; })}</div>;
+  const { s } = useStudent(); const nav = useNavigate(); const band = bandOf(s); const teen = band === 'desafiadores' || band === 'estrategistas'; const { main, base } = gamesForBand(band);
+  const weak = Object.values(s.learner.hypotheses).filter((h) => h.status !== 'discarded').map((h) => h.skillId); const rec = weak.map((w) => gameForSkill(w, band)?.id).find(Boolean);
+  const card = (g: (typeof main)[number]) => { const st = s.games?.[g.id]; const L = labelFor(g, band); return <article key={g.id} className="gm-card" style={{ ['--g1' as string]: g.from, ['--g2' as string]: g.to }}>
+    {rec === g.id && <span className="gm-ribbon">Para você</span>}<div className="gm-art" aria-hidden>{L.emoji}</div><div className="gm-info"><b>{L.name}</b><small>{L.tagline}</small><span className="gm-tag">{g.subject}</span>
+      <div className="gm-foot"><span className="gm-stars sm" role="img" aria-label={`${st?.bestStars ?? 0} de 3 estrelas`}>{[1, 2, 3].map((n) => <span key={n} className={n <= (st?.bestStars ?? 0) ? 'on' : ''}>★</span>)}</span><button onClick={() => nav(`/s/jogos/${g.id}`)}>Jogar ▶</button></div></div></article>; };
+  const cls = `gm-hub ${compact ? 'compact' : ''} ${teen ? 'teen' : ''}`;
+  return <div className="gm-sections"><div className={cls}>{main.map(card)}</div>{!compact && base.length > 0 && <><h2 className="gm-sub">Treino de base</h2><p className="ax-muted gm-subp">Revise o que o diagnóstico mostrar que precisa de reforço, com situações rápidas e diretas.</p><div className={cls}>{base.map(card)}</div></>}</div>;
 }
-export function GamesPage() { return <div className="ax-page"><div className="row"><Axolotl state="apresentando" size={110} cap /><div className="grow"><h1>Minigames</h1><p className="ax-muted">Aprender brincando: cada jogo treina uma habilidade e ajuda a descobrir o que você já sabe. Sem tempo contado e sem perder vidas.</p></div></div><GamesHub /></div>; }
+export function GamesPage() { const { s } = useStudent(); const band = bandOf(s); const teen = band === 'desafiadores' || band === 'estrategistas';
+  return <div className="ax-page"><div className="row">{!teen && <Axolotl state="apresentando" size={110} cap />}<div className="grow"><h1>{teen ? 'Jogos' : 'Minigames'}</h1><p className="ax-muted">{teen ? 'Desafios de raciocínio com dados e situações reais, nos temas que você curte. Sem cronômetro e sem perder vidas: o resultado alimenta o seu mapa de habilidades.' : 'Aprender brincando: cada jogo treina uma habilidade e ajuda a descobrir o que você já sabe. Sem tempo contado e sem perder vidas.'}</p></div></div><GamesHub /></div>; }
