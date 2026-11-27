@@ -1,0 +1,62 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@edu/types": [
+        "packages/types/src/index.ts"
+      ],
+      "@edu/pedagogy": [
+        "packages/pedagogy/src/index.ts"
+      ],
+      "@edu/gamification": [
+        "packages/gamification/src/index.ts"
+      ],
+      "@edu/parental-control": [
+        "packages/parental-control/src/index.ts"
+      ],
+      "@edu/security": [
+        "packages/security/src/index.ts"
+      ],
+      "@edu/security/portable": [
+        "packages/security/src/portable.ts"
+      ],
+      "@edu/brand": [
+        "packages/brand/src/index.ts"
+      ],
+      "@edu/content-math": [
+        "packages/content-math/src/index.ts"
+      ],
+      "@edu/learning": [
+        "packages/learning/src/index.ts"
+      ],
+      "@edu/backend": [
+        "services/backend/src/index.ts"
+      ]
+    },
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ]
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "services/*/src",
+    "services/*/test",
+    "tests/poc",
+    "apps/web/src"
+  ]
+}

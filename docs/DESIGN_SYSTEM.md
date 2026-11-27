@@ -1,4 +1,0 @@
-# Design system (pendente)
-
-A imagem de referência mencionada **não foi anexada**; o único artefato visual no repositório (`index.html`, "Loracê") pertence a outro projeto e não foi usado como identidade do Estuda+. Aguardando a referência para fixar tokens.
-Estrutura planejada: `packages/design-system` (tokens: cor, tipografia, espaço, raio, movimento; temas claro/escuro) + `packages/ui` (componentes) com **4 variantes** sobre os mesmos componentes: Exploradores (5–7: botões grandes, narração, pouca leitura) · Aventureiros (8–10: missões/mapas) · Desafiadores (11–13: estética de jogo moderna) · Estrategistas (14–17: dashboard sóbrio, claro/escuro). Faixa derivada de `ageBandFor(idade)` (implementado, testado), sobreponível pelo responsável. Acessibilidade: WCAG 2.2 AA, alvos ≥ 48 dp (≥ 64 dp na faixa 5–7), contraste, leitura por voz, respeitar "reduzir movimento".

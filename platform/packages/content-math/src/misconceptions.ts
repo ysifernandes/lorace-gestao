@@ -1,0 +1,110 @@
+import type { ExplanationVariant, Misconception } from './types';
+
+const M = (id: string, skillId: string, category: Misconception['category'], label: string, description: string): Misconception => ({ id, skillId, category, label, description });
+
+export const MISCONCEPTIONS: Record<string, Misconception> = Object.fromEntries([
+  M('off_by_one', 'add.facts', 'occasional', 'Erro de contagem por 1', 'Resposta próxima do correto (±1): costuma ser distração ou contagem, não conceito.'),
+  M('forgot_carry', 'add.carry', 'procedural', 'Esqueceu de "levar" na adição', 'Somou coluna a coluna sem passar o excedente para a próxima ordem.'),
+  M('swap_operands', 'sub.facts', 'conceptual', 'Inverteu os números na subtração', 'Subtraiu o menor do maior independentemente da ordem.'),
+  M('smaller_from_larger', 'sub.borrow', 'procedural', 'Subtrai sempre o menor do maior em cada coluna', 'Quando o dígito de cima é menor, inverte em vez de reagrupar.'),
+  M('borrow_slip', 'sub.borrow', 'procedural', 'Erro ao reagrupar (±10)', 'Reagrupou mas não ajustou a ordem vizinha.'),
+  M('add_instead_of_multiply', 'mul.facts', 'conceptual', 'Somou em vez de multiplicar', 'Não associou multiplicação a parcelas iguais.'),
+  M('table_slip', 'mul.facts', 'occasional', 'Tabuada: produto vizinho', 'Resposta é de um produto vizinho na tabuada.'),
+  M('forgot_carry_mul', 'mul.multi', 'procedural', 'Esqueceu de levar na multiplicação', 'Multiplicou dígito a dígito sem transportar.'),
+  M('forgot_shift_zero', 'mul.multi', 'procedural', 'Não deslocou a casa na multiplicação por dezena', 'Somou os produtos parciais sem o zero do deslocamento.'),
+  M('divide_wrong_operation', 'div.facts', 'conceptual', 'Trocou a divisão por outra operação', 'Usou subtração ou multiplicação em vez de repartir/inverter a multiplicação.'),
+  M('ignore_remainder', 'div.algorithm', 'conceptual', 'Ignorou o resto', 'Apresentou só o quociente.'),
+  M('remainder_too_big', 'div.algorithm', 'procedural', 'Resto maior que o divisor', 'Não percebeu que ainda cabia mais uma vez o divisor.'),
+  M('multiple_divisor_confusion', 'factors', 'conceptual', 'Confundiu múltiplo com divisor', 'Escolheu um múltiplo comum quando se pedia divisor comum.'),
+  M('not_greatest', 'factors', 'procedural', 'Parou num divisor comum que não é o maior', 'Encontrou um divisor comum, mas não o maior.'),
+  M('swap_num_den', 'frac.id', 'conceptual', 'Trocou numerador e denominador', 'Escreveu partes do todo / partes pintadas ao contrário.'),
+  M('count_unshaded', 'frac.id', 'conceptual', 'Contou as partes não pintadas', 'Representou o que falta em vez do que foi destacado.'),
+  M('part_to_part', 'frac.id', 'conceptual', 'Comparou parte com parte (não com o todo)', 'Usou pintadas/não pintadas em vez de pintadas/total.'),
+  M('bigger_denominator_bigger', 'frac.compare', 'conceptual', 'Acha que denominador maior = fração maior', 'Usa o tamanho do denominador como se fosse número natural.'),
+  M('compare_numerators_only', 'frac.compare', 'conceptual', 'Compara só os numeradores', 'Ignora que as partes têm tamanhos diferentes.'),
+  M('add_same_to_both', 'frac.equiv', 'conceptual', 'Soma o mesmo valor a numerador e denominador', 'Pensa que equivalência é "somar o mesmo número" em cima e embaixo.'),
+  M('multiply_num_only', 'frac.equiv', 'procedural', 'Multiplica só o numerador', 'Altera um termo só e perde a proporção.'),
+  M('divide_only_numerator', 'frac.simplify', 'procedural', 'Dividiu só o numerador', 'Simplificou apenas em cima.'),
+  M('subtract_to_simplify', 'frac.simplify', 'conceptual', 'Subtraiu o mesmo valor dos dois termos', 'Usou subtração no lugar da divisão pelo fator comum.'),
+  M('partial_simplify', 'frac.simplify', 'procedural', 'Simplificou só parcialmente', 'Dividiu por um fator comum, mas não pelo maior.'),
+  M('add_denominators', 'frac.add.same', 'conceptual', 'Somou também os denominadores', 'Não percebeu que o denominador indica o tamanho da parte e não muda.'),
+  M('add_num_and_den', 'frac.add.diff', 'conceptual', 'Somou numeradores e denominadores diretamente', 'Ex.: 1/2 + 1/3 = 2/5.'),
+  M('common_den_not_converted', 'frac.add.diff', 'procedural', 'Achou o denominador comum mas não converteu os numeradores', 'Somou numeradores originais sobre o novo denominador.'),
+  M('wrong_operation', 'prob.interpret', 'text_interpretation', 'Escolheu a operação errada', 'Não relacionou a situação à operação correspondente.'),
+  M('keyword_trap', 'prob.interpret', 'text_interpretation', 'Guiou-se por palavra-chave', 'Escolheu a operação pela palavra ("mais", "ganhou") em vez da situação.'),
+  M('one_step_only', 'prob.multi', 'text_interpretation', 'Resolveu só uma etapa', 'Parou depois da primeira conta.'),
+  M('wrong_order', 'prob.multi', 'text_interpretation', 'Ordem das etapas trocada', 'Aplicou as operações em ordem que não corresponde à história.'),
+  M('fraction_of_quantity_error', 'prob.frac', 'conceptual', 'Erro ao calcular fração de uma quantidade', 'Não relacionou "fração de" a dividir e multiplicar.'),
+  M('pt_literal_skim', 'pt.read.literal', 'text_interpretation', 'Respondeu sem localizar no texto', 'Escolheu opção plausível que não está escrita no texto.'),
+  M('pt_over_infer', 'pt.read.infer', 'text_interpretation', 'Inferência sem apoio no texto', 'Concluiu algo que o texto não permite.'),
+  M('pt_agree_noun', 'pt.gram.agree', 'conceptual', 'Concordância nominal', 'Não ajustou gênero/número entre artigo, substantivo e adjetivo.'),
+].map((m) => [m.id, m]));
+
+const V = (method: ExplanationVariant['method'], title: string, ...body: string[]): ExplanationVariant => ({ method, title, body });
+
+/** Explicações AUTORAIS (rascunho; exigem revisão pedagógica). Duas ou mais variantes: se o erro persiste, muda-se a abordagem. */
+export const EXPLANATIONS: Record<string, ExplanationVariant[]> = {
+  off_by_one: [V('passo_a_passo', 'Confira contando', 'Sua resposta ficou perto — confira: conte nos dedos ou numa reta numérica e verifique se não parou um passo antes ou depois.')],
+  forgot_carry: [
+    V('passo_a_passo', 'Quando a coluna passa de 9', 'Some a coluna da direita (unidades). Se der 10 ou mais, escreva só o dígito das unidades e leve o dez para a coluna seguinte.', 'Na próxima coluna, some também o que veio "de carona".'),
+    V('visual', 'Caixas de 10', 'Imagine 10 cubinhos soltos: eles formam uma barra de 10. Ao passar de 9 unidades, troque 10 cubinhos por 1 barra e coloque a barra na coluna das dezenas.'),
+  ],
+  swap_operands: [V('passo_a_passo', 'Ordem importa na subtração', 'Em 12 − 5, você começa em 12 e tira 5. Não dá para "tirar 12 de 5". Escreva sempre o maior primeiro e confira com a soma: 7 + 5 = 12.'), V('historia', 'História das figurinhas', 'Você tem 12 figurinhas e dá 5. Quantas restam? Contar o que sobra mostra que o resultado é 7, não −7.')],
+  smaller_from_larger: [
+    V('passo_a_passo', 'Quando falta na coluna', 'Se o número de cima é menor que o de baixo, peça 1 dezena emprestada à coluna vizinha: ela vira 10 unidades. Ex.: 52 − 27: 12 − 7 = 5; depois 4 − 2 = 2 → 25.'),
+    V('visual', 'Trocar uma barra por 10 cubinhos', '52 = 5 barras e 2 cubinhos. Para tirar 7 cubinhos, desmonte 1 barra em 10 cubinhos: agora são 4 barras e 12 cubinhos.'),
+  ],
+  borrow_slip: [V('passo_a_passo', 'Conferir com a soma', 'Depois de subtrair, some o resultado ao número de baixo: deve voltar ao número de cima. Se não voltar, revise o empréstimo.')],
+  add_instead_of_multiply: [
+    V('visual', 'Grupos iguais', '4 × 3 significa 4 grupos de 3: 3 + 3 + 3 + 3 = 12. Desenhe os grupos e conte.'),
+    V('passo_a_passo', 'Multiplicar é somar parcelas iguais', 'Reescreva a multiplicação como soma repetida e some. Depois memorize os resultados na tabuada.'),
+  ],
+  table_slip: [V('passo_a_passo', 'Apoie-se em um produto que você sabe', '7 × 6: se 7 × 5 = 35, então 7 × 6 = 35 + 7 = 42.')],
+  forgot_carry_mul: [V('passo_a_passo', 'Levar também na multiplicação', '26 × 3: 6 × 3 = 18 → escreva 8 e leve 1; 2 × 3 = 6, mais 1 que veio = 7 → 78.')],
+  forgot_shift_zero: [V('passo_a_passo', 'O zero que "desliza"', 'Ao multiplicar pelas dezenas, a linha começa com um zero (ou uma casa vazia): você está multiplicando por 10, 20, 30… Só depois some as linhas.')],
+  divide_wrong_operation: [
+    V('historia', 'Repartir em partes iguais', '24 balas para 6 amigos: cada um recebe quantas? Pense "6 vezes quanto dá 24?" → 4. Dividir é o inverso de multiplicar.'),
+    V('passo_a_passo', 'Use a tabuada ao contrário', 'Para 24 ÷ 6, procure na tabuada do 6 o número que chega a 24.'),
+  ],
+  ignore_remainder: [V('passo_a_passo', 'O que sobra também conta', '47 ÷ 5: cabem 9 grupos de 5 (45) e sobram 2. Escrevemos "9 resto 2". Confira: 9 × 5 + 2 = 47.')],
+  remainder_too_big: [V('passo_a_passo', 'O resto é menor que o divisor', 'Se o resto é igual ou maior que o divisor, ainda dá para formar mais um grupo. Tente de novo com um quociente maior.')],
+  multiple_divisor_confusion: [V('contraexemplo', 'Divisor × múltiplo', 'Divisores "cabem dentro" do número (6 divide 12). Múltiplos "vão além" (24 é múltiplo de 12). Faça a pergunta: o número divide os dois, sem sobrar?')],
+  not_greatest: [V('passo_a_passo', 'Liste todos os divisores', 'Escreva os divisores de cada número, marque os comuns e escolha o maior.')],
+  swap_num_den: [
+    V('visual', 'Quem é quem', 'O denominador (embaixo) diz em quantas partes iguais o todo foi dividido. O numerador (em cima) diz quantas partes estamos considerando. 3 de 8 partes → 3/8.'),
+    V('historia', 'A pizza', 'A pizza tem 8 fatias (embaixo). Você comeu 3 (em cima). Lemos "três oitavos".'),
+  ],
+  count_unshaded: [V('visual', 'Conte o que está pintado', 'A fração representa as partes destacadas (pintadas). As não pintadas representam a fração complementar.')],
+  part_to_part: [V('visual', 'Sempre compare com o todo', 'O denominador é o total de partes iguais — pintadas e não pintadas juntas.')],
+  bigger_denominator_bigger: [
+    V('visual', 'Pizzas do mesmo tamanho', 'Divida duas pizzas iguais: uma em 3 fatias, outra em 5. As fatias de 1/3 são maiores que as de 1/5. Quanto mais partes, menores elas são.'),
+    V('contraexemplo', 'Teste com 1/2 e 1/10', 'Prefere 1/2 ou 1/10 de chocolate? Mesmo "10 > 2", 1/2 é muito mais.'),
+  ],
+  compare_numerators_only: [V('passo_a_passo', 'Mesmo tamanho de parte primeiro', 'Para comparar, deixe as frações com o mesmo denominador (partes do mesmo tamanho). Depois compare os numeradores.')],
+  add_same_to_both: [
+    V('visual', 'Equivalência é multiplicar (ou dividir) os dois termos', '1/2 → 2/4 → 3/6: o denominador dobra, triplica, e o numerador acompanha. Somar o mesmo valor muda o tamanho da fração.'),
+    V('contraexemplo', 'Teste: 1/2 e 2/3', 'Se somar 1 em cima e embaixo valesse, 1/2 = 2/3. Mas 1/2 é metade e 2/3 é mais que a metade.'),
+  ],
+  multiply_num_only: [V('passo_a_passo', 'Os dois termos juntos', 'Para manter o valor, multiplique numerador e denominador pelo mesmo número.')],
+  divide_only_numerator: [V('passo_a_passo', 'Dividir em cima e embaixo', 'Simplificar é dividir numerador e denominador pelo mesmo número: 6/8 ÷ 2 = 3/4.')],
+  subtract_to_simplify: [V('contraexemplo', 'Subtrair muda o valor', '6/8 − 2 em cima e embaixo daria 4/6, que não é a mesma quantidade. Divisão mantém o valor.')],
+  partial_simplify: [V('passo_a_passo', 'Continue até não dar mais', 'Depois de simplificar, veja se ainda há divisor comum. 12/18 → 6/9 → 2/3.')],
+  add_denominators: [
+    V('visual', 'Fatias do mesmo tamanho', '1/5 + 2/5: são fatias de quinto. Juntar 1 fatia e 2 fatias dá 3 fatias de quinto = 3/5. O tamanho da fatia (denominador) não muda.'),
+    V('historia', 'Barra de chocolate', 'Uma barra em 5 pedaços: você come 1 e depois mais 2. Comeu 3 pedaços de 5.'),
+  ],
+  add_num_and_den: [
+    V('visual', 'Fatias de tamanhos diferentes', '1/2 e 1/3 são fatias de tamanhos diferentes e não dá para somá-las direto. Troque ambas por sextos: 3/6 + 2/6 = 5/6.'),
+    V('contraexemplo', 'Teste simples', 'Se 1/2 + 1/3 fosse 2/5, a soma seria menor que 1/2 (2/5 = 0,4), mas juntar mais um pedaço não pode diminuir a quantidade.'),
+    V('passo_a_passo', 'Receita', '1) ache um denominador comum; 2) converta cada fração; 3) some os numeradores; 4) mantenha o denominador; 5) simplifique.'),
+  ],
+  common_den_not_converted: [V('passo_a_passo', 'Converter também o numerador', '1/2 = 3/6 (multiplicou por 3 em cima e embaixo). Só depois some os numeradores.')],
+  wrong_operation: [V('historia', 'Qual é a história?', 'Juntar → somar. Tirar/comparar → subtrair. Grupos iguais → multiplicar. Repartir igualmente → dividir. Conte a história com suas palavras antes de escolher a conta.')],
+  keyword_trap: [V('contraexemplo', 'Palavra-pista pode enganar', '"4 a mais que João" não significa somar a 4 se já sabemos quanto tem o outro. Desenhe quem tem mais e quem tem menos.')],
+  one_step_only: [V('passo_a_passo', 'Releia a pergunta', 'Sublinhe o que a pergunta final pede. Se ainda faltam informações, há outra etapa.')],
+  wrong_order: [V('passo_a_passo', 'Siga a história na ordem', 'Escreva cada acontecimento como uma conta, na ordem em que acontece.')],
+  fraction_of_quantity_error: [V('passo_a_passo', '1/4 de 20', 'O denominador diz em quantas partes dividir (20 ÷ 4 = 5). O numerador diz quantas dessas partes pegar (1 × 5 = 5).')],
+  pt_literal_skim: [V('passo_a_passo', 'Volte ao texto', 'Procure a frase que responde à pergunta e sublinhe-a antes de escolher a alternativa.')],
+  pt_over_infer: [V('passo_a_passo', 'Do texto, não do palpite', 'Uma inferência precisa de pelo menos uma pista no texto. Qual frase apoia sua resposta?')],
+  pt_agree_noun: [V('passo_a_passo', 'Combine artigo, substantivo e adjetivo', 'Se o substantivo está no feminino plural, os acompanhantes também: "as casas pequenas".')],
+};

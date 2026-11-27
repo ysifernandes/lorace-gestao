@@ -1,0 +1,24 @@
+{
+  "name": "edu-platform",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:db": "bash tests/db/run.sh",
+    "seed:gen": "vite-node --config vitest.config.ts database/seed/generate.ts",
+    "web:dev": "pnpm --filter @edu/web dev",
+    "web:build": "pnpm --filter @edu/web build",
+    "web:preview-build": "pnpm --filter @edu/web build:preview",
+    "test:all": "vitest run && bash tests/db/run.sh",
+    "e2e": "vite-node --config vitest.config.ts apps/web/e2e/journey.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "vite-node": "^2.1.0"
+  }
+}
