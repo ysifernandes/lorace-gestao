@@ -6,7 +6,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-iZsGS2DhHfuLN+qTrk8ooDjPMhe9WpGzHHDeMxl9ya8=' 'sha256-mq0YhWfMxHUfJnEunnVRZSN/nQdK2RvPgom4uZyAO0s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; connect-src 'self' https://zeatslwacibkodkjbswg.supabase.co wss://zeatslwacibkodkjbswg.supabase.co https://api.open-meteo.com https://geocoding-api.open-meteo.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'sha256-iZsGS2DhHfuLN+qTrk8ooDjPMhe9WpGzHHDeMxl9ya8=' 'sha256-zvUXTL/8Y1JDMtBQXRs1Y+3yMFTDwGG5rFuKZAP3/NY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; connect-src 'self' https://zeatslwacibkodkjbswg.supabase.co wss://zeatslwacibkodkjbswg.supabase.co https://api.open-meteo.com https://geocoding-api.open-meteo.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         {
           "key": "X-Frame-Options",

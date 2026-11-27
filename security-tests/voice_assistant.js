@@ -55,7 +55,7 @@ const STUBS = () => {
     // 2) fala -> executa sozinho, sem apertar nada
     await setReply({ intencao: 'consulta', resumo: 'Amanhã, sábado 28/11: 2 compromissos', fala: 'Amanhã você tem 2 compromissos. Às 10 horas, ligar para a gráfica. E pagar boleto.', itens: [{ texto: '10:00 · Ligar para a gráfica', detalhe: 'Pessoal' }, { texto: 'Pagar boleto', detalhe: '' }], perguntas: [], acoes: [] });
     await spoke('quais os compromissos', false); await p.waitForTimeout(100);
-    t('enquanto fala, o texto aparece ao vivo', /quais os compromissos/.test(await p.textContent('#cmd-st')) && (await nCalls()) === 0);
+    t('enquanto fala, o texto aparece ao vivo', /quais os compromissos/.test(await p.textContent('#cmd-live')) && (await nCalls()) === 0);
     await spoke('quais os compromissos de amanhã', true);
     await p.waitForTimeout(1900); // 1,5 s de silêncio e o app encerra a escuta sozinho
     t('quando a pessoa para de falar, o app encerra a escuta sozinho', await p.evaluate(() => window.__rec.stops >= 1));
@@ -104,14 +104,44 @@ const STUBS = () => {
     // 8) resposta incompreensível na confirmação mantém os botões
     await p.keyboard.press('Escape'); await p.waitForTimeout(200);
     t('fechar a janela para a escuta e a voz', await p.evaluate(() => window.__cancels > 0));
-    // 9) não ouviu / sem permissão
+    // 9) o iPhone corta a escuta cedo / não ouviu / sem permissão
     await p.click('#cmd-fab'); await p.waitForTimeout(150);
-    await p.evaluate(() => window.__rec.last.err('no-speech')); await p.waitForTimeout(100);
-    t('silêncio total: mensagem simples, sem pedido enviado', /Não ouvi nada/.test(await p.textContent('#cmd-st')));
-    await p.click('#cmd-mic'); await p.waitForTimeout(100); await p.evaluate(() => window.__rec.last.err('not-allowed')); await p.waitForTimeout(100);
+    const nrec = () => p.evaluate(() => window.__rec.starts);
+    const s0 = await nrec();
+    await p.evaluate(() => window.__rec.last.err('no-speech')); await p.waitForTimeout(80);
+    t('aparelho cortou a escuta sem ouvir nada: religa sozinho (não desiste)', (await nrec()) === s0 + 1 && /Ouvindo/.test(await p.textContent('#cmd-st')) && !(await p.evaluate(() => document.querySelector('#modal').querySelector('#cmd-out').textContent.includes('Não consegui'))));
+    await p.evaluate(() => window.__rec.last.err('no-speech')); await p.waitForTimeout(80);
+    await p.evaluate(() => window.__rec.last.err('no-speech')); await p.waitForTimeout(80);
+    t('depois de 3 tentativas sem ouvir nada: mensagem simples, sem pedido enviado', /Não consegui ouvir/.test(await p.textContent('#cmd-st')));
+    // religou no meio da fala: o texto fica e continua juntando
+    await p.click('#cmd-mic'); await p.waitForTimeout(100);
+    await spoke('mover compromissos', true);
+    await p.evaluate(() => { const r = window.__rec.last; r.stop = () => {}; }); // o aparelho encerra por conta própria depois
+    await p.evaluate(() => window.__rec.last.onend && window.__rec.last.onend()); await p.waitForTimeout(100);
+    t('terminou sozinho depois de ouvir algo: envia o que ouviu', (await p.inputValue('#cmd-text')).includes('mover compromissos'));
+    await p.waitForTimeout(300);
+    // só texto provisório (sem frase "fechada") também vale
+    await setReply({ intencao: 'consulta', resumo: 'Ok', fala: 'ok', itens: [], perguntas: [], acoes: [] });
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+    await p.click('#cmd-fab'); await p.waitForTimeout(150);
+    const before = await nCalls();
+    await spoke('o que tenho hoje', false); // só provisório
+    await p.evaluate(() => { const r = window.__rec.last; r.stop = () => { r.active = false; setTimeout(() => r.onend && r.onend(), 10); }; });
+    await p.waitForTimeout(2000); await p.waitForTimeout(300);
+    t('o iPhone termina sem "fechar" a frase: o texto provisório é aproveitado e enviado', (await nCalls()) === before + 1 && await p.evaluate(() => /o que tenho hoje/.test(window.__calls[window.__calls.length - 1].body.texto)));
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+    await p.click('#cmd-fab'); await p.waitForTimeout(150);
+    await p.evaluate(() => { const r = window.__rec.last; r.onerror && r.onerror({ error: 'not-allowed' }); r.onend && r.onend(); }); await p.waitForTimeout(100);
     t('microfone negado: orienta a liberar ou escrever', /não foi liberado/.test(await p.textContent('#cmd-st')));
+    // teclado não pode abrir e atrapalhar o microfone
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+    await p.click('#cmd-fab'); await p.waitForTimeout(400);
+    t('ao abrir pelo botão, o campo de texto NÃO ganha foco (o teclado do iPhone não abre)', await p.evaluate(() => document.activeElement && document.activeElement.id !== 'cmd-text'));
+    t('a transcrição ao vivo aparece em destaque enquanto fala', await (async () => { await spoke('mostrar', false); const r1 = await p.textContent('#cmd-live'); await spoke('mostrar meus conteúdos de amanhã', false); const r2 = await p.textContent('#cmd-live'); return /mostrar/.test(r1) && /conteúdos de amanhã/.test(r2) && await p.$eval('#cmd-live', (e) => !e.hidden); })());
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150);
     // 10) digitar também funciona (Enter envia)
     await setReply({ intencao: 'consulta', resumo: 'Resultados', fala: 'Seus reels têm 5000 visualizações.', itens: [{ texto: '5.000 visualizações', detalhe: 'Publicado bom' }], perguntas: [], acoes: [] });
+    await p.click('#cmd-fab'); await p.waitForTimeout(150);
     await p.fill('#cmd-text', 'como foram meus resultados no instagram'); await p.press('#cmd-text', 'Enter'); await p.waitForTimeout(300);
     t('digitar e apertar Enter envia', /Resultados/.test(await p.textContent('.cmd-ans h3')));
     // 11) segurança: texto da IA com HTML não vira elemento

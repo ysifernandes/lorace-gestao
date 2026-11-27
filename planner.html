@@ -1341,6 +1341,8 @@
   .cmd-mic.on { animation: cmd-pulse 1.2s ease-in-out infinite; background: var(--danger, #c2185b); }
   @keyframes cmd-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent); } 50% { box-shadow: 0 0 0 16px color-mix(in srgb, var(--brand) 0%, transparent); } }
   @media (prefers-reduced-motion: reduce) { .cmd-mic.on { animation: none; } }
+  .cmd-live { margin: 0 0 10px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--butter) 55%, var(--surface)); font-size: 18px; line-height: 1.4; max-height: 38vh; overflow-y: auto; overflow-wrap: anywhere; }
+  .cmd-live.hot { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 55%, transparent); }
   .cmd-st { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; color: var(--ink-soft); overflow-wrap: anywhere; min-height: 22px; }
   .cmd-st.listen { color: var(--ink); font-weight: 600; }
   .cmd-type { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
@@ -2042,7 +2044,7 @@
     else input = `<input id="${id}" type="${f.type || 'text'}" name="${f.name}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'url' ? 'inputmode="url"' : ''}>`;
     return `<div class="field ${f.full ? 'full' : ''}"><label for="${id}">${esc(f.label)}</label>${input}</div>`;
   }
-  function modal({ title, message, fields = [], saveLabel = 'Salvar', danger = false, onSave, onDelete, extraHTML = '', onOpen, cancelLabel = 'Cancelar', wide = false }) {
+  function modal({ title, message, fields = [], saveLabel = 'Salvar', danger = false, onSave, onDelete, extraHTML = '', onOpen, cancelLabel = 'Cancelar', wide = false, noFocus = false }) {
     dlg.classList.toggle('modal-wide', !!wide);
     const twoCol = fields.length > 2;
     dlg.innerHTML = `<form class="md" novalidate>
@@ -2080,7 +2082,7 @@
     if (onOpen) onOpen(form);
     dlg.showModal();
     const first = form.querySelector('input:not([type=radio]), textarea, select');
-    if (first) setTimeout(() => first.focus(), 30);
+    if (first && !noFocus) setTimeout(() => first.focus(), 30);
   }
   /* Fechar a janela como no iPhone: arrastar para a direita (ou para baixo, do topo) ou tocar fora */
   (() => {
@@ -6157,27 +6159,57 @@
      A Claude só devolve um PLANO; o app confere cada item, mostra a prévia, e só muda depois do "confirmar".
      ========================================================= */
 
-  /* Escuta de uma frase (para o assistente): termina sozinha quando a pessoa para de falar */
+  /* Escuta de uma frase (para o assistente). Igual ao ditado do Bloom, que já funciona no iPhone: escuta contínua que religa
+     sozinha quando o aparelho corta, junta o texto, mostra enquanto a pessoa fala e envia quando ela fica em silêncio. */
   const Listen = {
-    SR: window.SpeechRecognition || window.webkitSpeechRecognition, rec: null,
+    SR: window.SpeechRecognition || window.webkitSpeechRecognition, cur: null,
     ok() { return !!this.SR; },
-    stop() { const r = this.rec; this.rec = null; if (r) { r.__off = true; try { r.abort ? r.abort() : r.stop(); } catch (e) { /* já parou */ } } },
+    get rec() { return this.cur && this.cur.rec; },
+    nudge() { try { this.cur && this.cur.rec && this.cur.rec.stop(); } catch (e) { /* já parou */ } }, // "terminei": encerra e envia o que já ouviu
+    stop() {
+      const st = this.cur; this.cur = null;
+      if (!st) return;
+      st.done = true; clearTimeout(st.silence); clearTimeout(st.hard);
+      if (st.rec) { st.rec.__off = true; try { st.rec.abort ? st.rec.abort() : st.rec.stop(); } catch (e) { /* já parou */ } }
+    },
     start({ onText, onDone, onFail }) {
       this.stop();
-      let r; try { r = new this.SR(); } catch (e) { onFail('unavailable'); return; }
-      this.rec = r; r.lang = 'pt-BR'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
-      let final = '', interim = '', finished = false, silence = null, hard = null;
-      const done = (why) => { if (finished || r.__off) return; finished = true; clearTimeout(silence); clearTimeout(hard); if (this.rec === r) this.rec = null; const txt = (final || interim).trim(); if (why && !txt) onFail(why); else onDone(txt); };
-      r.onresult = (e) => {
-        final = ''; interim = '';
-        for (let i = 0; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) final += x[0].transcript + ' '; else interim += x[0].transcript; }
-        onText((final + interim).trim());
-        clearTimeout(silence); silence = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 1500); // parou de falar: encerra e executa
+      const SRc = this.SR, st = { acc: '', empty: 0, t0: Date.now(), done: false, silence: null, hard: null, rec: null, fatal: '' };
+      this.cur = st;
+      const finish = (why) => { if (st.done) return; st.done = true; clearTimeout(st.silence); clearTimeout(st.hard); if (this.cur === st) this.cur = null; const txt = st.acc.trim(); if (!txt && why) onFail(why); else onDone(txt); };
+      const cycle = () => {
+        if (st.done) return;
+        let r; try { r = new SRc(); } catch (e) { finish('error'); return; }
+        st.rec = r; r.lang = 'pt-BR'; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
+        let got = '', interim = '';
+        r.onresult = (e) => {
+          if (st.done || r.__off) return;
+          let fin = ''; interim = '';
+          for (let i = 0; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fin += x[0].transcript + ' '; else interim += x[0].transcript; }
+          got = fin.trim();
+          const live = [st.acc, got, interim.trim()].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+          onText(live);
+          if (live) {
+            clearTimeout(st.hard); st.hard = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 60000);
+            clearTimeout(st.silence); st.silence = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 1600); // parou de falar: encerra e envia
+          }
+        };
+        r.onerror = (e) => { const c = e && e.error; if (c === 'aborted' || c === 'no-speech') return; st.fatal = c === 'not-allowed' || c === 'service-not-allowed' ? 'denied' : c === 'network' ? 'network' : 'error'; };
+        r.onend = () => {
+          if (st.done || r.__off) return;
+          clearTimeout(st.silence);
+          const txt = (got || interim).trim(); // o iPhone às vezes termina sem "fechar" a última frase: aproveita o que apareceu na tela
+          if (txt) { st.acc = (st.acc + ' ' + txt).replace(/\s+/g, ' ').trim(); st.empty = 0; } else st.empty++;
+          if (st.fatal) { finish(st.acc ? '' : st.fatal); return; }
+          if (st.acc) { finish(''); return; }
+          // ainda não ouviu nada: o aparelho corta a escuta cedo demais às vezes, então religa sozinho
+          if (st.empty < 3 && Date.now() - st.t0 < 12000) { try { cycle(); return; } catch (x) { /* o aparelho não deixou religar */ } }
+          finish('nospeech');
+        };
+        try { r.start(); } catch (e) { finish('error'); }
       };
-      r.onerror = (e) => { const c = e && e.error; if (c === 'aborted') return; done(c === 'not-allowed' || c === 'service-not-allowed' ? 'denied' : c === 'no-speech' ? 'nospeech' : 'error'); };
-      r.onend = () => done('nospeech');
-      hard = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 15000); // ninguém falou: desiste
-      try { r.start(); } catch (e) { done('error'); }
+      st.hard = setTimeout(() => { try { st.rec && st.rec.stop(); } catch (x) { /* já parou */ } }, 14000); // ninguém falou: desiste
+      cycle();
     },
   };
   /* Voz de resposta (o aparelho lê o texto em voz alta) */
@@ -6309,32 +6341,37 @@
     },
     open(o = {}) {
       if (dlg.open) return;
-      Say.unlock();
       if (typeof Voice !== 'undefined' && Voice.kill) Voice.kill();
       const speakOn = () => { try { return localStorage.getItem('bloom_cmd_speak') !== '0'; } catch (e) { return true; } };
       modal({
-        title: 'assistente', cancelLabel: 'Fechar', wide: false,
+        title: 'assistente', cancelLabel: 'Fechar', wide: false, noFocus: !!o.listen,
         extraHTML: `<div class="cmd">
           <div class="cmd-top"><button type="button" class="cmd-mic" id="cmd-mic" aria-label="Falar com o assistente" title="Falar">${MIC_SVG}</button><div class="cmd-st" id="cmd-st" role="status" aria-live="polite">Toque no microfone e fale.</div></div>
+          <div class="cmd-live" id="cmd-live" aria-live="polite" hidden></div>
           <div class="cmd-type"><textarea class="input" id="cmd-text" rows="2" placeholder="ou escreva aqui: quais os compromissos de amanhã?" aria-label="O que você quer saber ou fazer"></textarea><button type="button" class="btn" id="cmd-go">Enviar</button></div>
           <label class="cmd-opt"><input type="checkbox" class="check" id="cmd-speak" ${speakOn() ? 'checked' : ''}> responder em voz alta</label>
           <div id="cmd-out" aria-live="polite"></div>
           <details class="cmd-help"><summary>o que posso pedir</summary><ul><li>quais são os compromissos de amanhã?</li><li>quais conteúdos tenho para gravar amanhã?</li><li>que ideias de conteúdo tenho na agenda?</li><li>como foram meus resultados no Instagram?</li><li>como estão meus hábitos e minhas metas?</li><li>mover os compromissos de hoje para amanhã</li><li>reagendar os vídeos dessa semana para a semana que vem</li><li>mudar a reunião de toda sexta para toda segunda</li></ul></details>
         </div>`,
         onOpen: (form) => {
-          const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form), st = $('#cmd-st', form), mic = $('#cmd-mic', form), chk = $('#cmd-speak', form);
+          const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form), st = $('#cmd-st', form), live = $('#cmd-live', form), mic = $('#cmd-mic', form), chk = $('#cmd-speak', form);
           let dead = false, busy = false, doConfirm = null, doCancel = null;
           dlg.addEventListener('close', () => { dead = true; Listen.stop(); Say.stop(); }, { once: true });
+          const setLive = (t, cls) => { live.hidden = !t; live.textContent = t ? '“' + t + '”' : ''; live.className = 'cmd-live' + (cls ? ' ' + cls : ''); live.scrollTop = live.scrollHeight; };
           const setSt = (t, cls) => { st.textContent = t || 'Toque no microfone para falar.'; st.className = 'cmd-st' + (cls ? ' ' + cls : ''); };
           chk.addEventListener('change', () => { try { localStorage.setItem('bloom_cmd_speak', chk.checked ? '1' : '0'); } catch (e) { /* sem armazenamento */ } if (!chk.checked) Say.stop(); });
           const listen = (mode) => {
             if (dead) return false;
             if (!Listen.ok()) { setSt('Seu aparelho não liberou o microfone aqui. Escreva abaixo, ou use o 🎤 do teclado.'); return false; }
-            Say.stop(); mic.classList.add('on'); setSt('Ouvindo… pode falar', 'listen');
+            Say.stop(); mic.classList.add('on'); setSt(mode === 'confirm' ? 'Ouvindo… diga “sim” ou “não”' : 'Ouvindo… pode falar', 'listen'); setLive('');
             Listen.start({
-              onText: (t) => { if (mode === 'ask') ta.value = t; setSt('“' + t + '”', 'listen'); },
-              onDone: (t) => { mic.classList.remove('on'); if (dead) return; if (mode === 'confirm') return answerConfirm(t); ta.value = t; submit(t, true); },
-              onFail: (why) => { mic.classList.remove('on'); if (dead) return; setSt(why === 'denied' ? 'O microfone não foi liberado. Libere nas configurações do aparelho, ou escreva abaixo.' : why === 'nospeech' ? 'Não ouvi nada. Toque no microfone para tentar de novo.' : 'Não consegui ouvir agora. Toque no microfone ou escreva abaixo.'); },
+              onText: (t) => { if (dead) return; if (mode === 'ask') ta.value = t; setLive(t, 'hot'); },
+              onDone: (t) => { mic.classList.remove('on'); if (dead) return; setLive(t); if (mode === 'confirm') return answerConfirm(t); ta.value = t; submit(t, true); },
+              onFail: (why) => {
+                mic.classList.remove('on'); if (dead) return;
+                if (mode === 'confirm') { setSt('Toque em Confirmar ou Cancelar, ou no microfone para responder.'); return; }
+                setSt(why === 'denied' ? 'O microfone não foi liberado. No iPhone: Ajustes → Safari → Microfone, ou escreva abaixo.' : why === 'network' ? 'O reconhecimento de voz precisa de internet. Tente de novo.' : why === 'nospeech' ? 'Não consegui ouvir. Toque no microfone e fale de novo, ou escreva abaixo.' : 'Não consegui ligar o microfone. Toque nele de novo ou escreva abaixo.');
+              },
             });
             return true;
           };
@@ -6394,7 +6431,7 @@
             if (busy) return;
             text = String(text || '').trim();
             if (text.length < 3) { toast('Fale ou escreva o que você quer saber ou fazer.'); ta.focus(); return; }
-            busy = true; go.disabled = true; Say.stop(); setSt('Pensando…', 'think'); out.innerHTML = '';
+            busy = true; go.disabled = true; Say.stop(); setSt('Pensando…', 'think'); setLive(text); out.innerHTML = '';
             try { const r = await this.ask(text); if (dead) return; setSt(''); render(r.data || r, viaVoice); }
             catch (e) {
               const c = e && e.code;
@@ -6404,7 +6441,7 @@
           go.addEventListener('click', () => { Listen.stop(); mic.classList.remove('on'); submit(ta.value, false); });
           ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Listen.stop(); mic.classList.remove('on'); submit(ta.value, false); } });
           mic.addEventListener('click', () => {
-            if (mic.classList.contains('on')) { try { Listen.rec && Listen.rec.stop(); } catch (e) { /* já parou */ } return; } // tocar de novo = terminei
+            if (mic.classList.contains('on')) { Listen.nudge(); return; } // tocar de novo = terminei
             Say.stop(); listen('ask');
           });
           if (o.listen) listen('ask');
@@ -6426,7 +6463,7 @@
       b.innerHTML = `${MIC_SVG}<span class="cmd-sp" aria-hidden="true">✦</span>`;
       document.body.appendChild(b); this.place(b);
       let st = null;
-      b.addEventListener('pointerdown', (e) => { st = { x: e.clientX, y: e.clientY, r: parseFloat(b.style.right), b: parseFloat(b.style.bottom), moved: false }; try { b.setPointerCapture(e.pointerId); } catch (x) {} });
+      b.addEventListener('pointerdown', (e) => { Say.unlock(); st = { x: e.clientX, y: e.clientY, r: parseFloat(b.style.right), b: parseFloat(b.style.bottom), moved: false }; try { b.setPointerCapture(e.pointerId); } catch (x) {} });
       b.addEventListener('pointermove', (e) => {
         if (!st) return;
         const dx = e.clientX - st.x, dy = e.clientY - st.y;
