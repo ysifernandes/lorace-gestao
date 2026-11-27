@@ -6169,6 +6169,254 @@
      A Claude só devolve um PLANO; o app confere cada item, mostra a prévia, e só muda depois do "confirmar".
      ========================================================= */
 
+
+  /* =========================================================
+     Motor de comandos do Bloom: entende frases em português NO PRÓPRIO APARELHO, sem IA e sem custo.
+     Devolve o mesmo formato que a IA (consulta, mudança, abrir tela), então a prévia, o "confirmar" e o "desfazer" são os mesmos.
+     Se não entender, devolve intencao "naoentendi" e a pessoa escolhe se quer perguntar à IA (que usa créditos).
+     ========================================================= */
+  const Engine = {
+    WD: { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 },
+    WD3: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
+    STOP: new Set(('a o as os um uma uns umas de da do das dos para pra pro por em no na nos nas e ou que com sem ate me meu minha meus minhas seu sua isso essa esse esta este ja so tudo toda todo todas todos favor ' +
+      'mover move mova passar passa passe transferir transfere adiar adia adie reagendar reagenda remarcar remarca jogar joga mudar muda mude trocar troca ' +
+      'criar cria crie adicionar adiciona adicione colocar coloca lembrar lembra lembre anotar anota anote marcar marca marque concluir conclui conclua finalizar finaliza finalize terminei terminar fiz ' +
+      'dessa desta desse deste nessa nesta neste hoje amanha ontem depois semana proxima proximo vem dia dias daqui feira horas hora as quais qual quero fala diz mostra mostrar listar lista tenho tem ha ver').split(' ')),
+    norm(t) {
+      return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9:/ ]/g, ' ')
+        .replace(/\b(pra|pro)\b/g, 'para').replace(/\s+/g, ' ').trim();
+    },
+    cap: (t) => { t = String(t || '').trim(); return t.charAt(0).toUpperCase() + t.slice(1); },
+    dayLabel(d) { const t = today(); if (d === t) return 'hoje'; if (d === addDays(t, 1)) return 'amanhã'; if (d === addDays(t, -1)) return 'ontem'; return `${DOW_LONG[dow(d)]} ${fmtShort(d)}`; },
+    dayTitle(d) { const t = today(); const base = `${DOW_LONG[dow(d)]} ${fmtShort(d)}`; return d === t ? `Hoje, ${base}` : d === addDays(t, 1) ? `Amanhã, ${base}` : this.cap(base); },
+    spokenTime(h) { const [hh, mm] = h.split(':').map(Number); return mm ? `às ${hh} e ${String(mm).padStart(2, '0')}` : `às ${hh} ${hh === 1 ? 'hora' : 'horas'}`; },
+    plural: (n, one, many) => `${n} ${n === 1 ? one : many}`,
+    // hora dita: "às 16h", "as 16:30", "as 16 e 30", "as 9 horas"
+    time(n) {
+      const m = n.match(/\bas (\d{1,2})(?:[:h ]?(?:oras?|hs?)? ?(\d{2})\b| e (\d{2})\b| ?h(?:oras?)?\b| horas?\b)?/);
+      if (!m) return '';
+      const h = Number(m[1]), mi = Number(m[2] || m[3] || 0);
+      return h >= 0 && h <= 23 && mi <= 59 ? `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` : '';
+    },
+    // data dita: devolve um dia ({k:'day'}) ou uma semana ({k:'week'})
+    when(seg) {
+      const t = today(); let m;
+      if (/\bdepois de amanha\b/.test(seg)) return { k: 'day', d: addDays(t, 2) };
+      if (/\bamanha\b/.test(seg)) return { k: 'day', d: addDays(t, 1) };
+      if (/\bhoje\b/.test(seg)) return { k: 'day', d: t };
+      if (/\bontem\b/.test(seg)) return { k: 'day', d: addDays(t, -1) };
+      if (/\b(semana que vem|proxima semana|semana seguinte)\b/.test(seg)) { const f = addDays(weekStart(t), 7); return { k: 'week', from: f, to: addDays(f, 6), next: true }; }
+      if (/\b(essa|esta|nessa|nesta|dessa|desta) semana\b/.test(seg)) { const f = weekStart(t); return { k: 'week', from: f, to: addDays(f, 6) }; }
+      if ((m = seg.match(/\b(?:daqui a|em) (\d{1,2}) dias?\b/))) return { k: 'day', d: addDays(t, Number(m[1])) };
+      if ((m = seg.match(/\b(\d{1,2})\/(\d{1,2})\b/))) { const mo = Number(m[2]), da = Number(m[1]); let y = new Date().getFullYear(); let d = `${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}`; if (Cmd.ok(d)) { if (d < t) d = d.replace(/^\d{4}/, y + 1); return { k: 'day', d }; } }
+      if ((m = seg.match(/\bdia (\d{1,2})\b/))) { const da = Number(m[1]); let d = t.slice(0, 8) + String(da).padStart(2, '0'); if (Cmd.ok(d)) { if (d < t) { const nx = parseISO(t); nx.setMonth(nx.getMonth() + 1); d = iso(nx).slice(0, 8) + String(da).padStart(2, '0'); } if (Cmd.ok(d)) return { k: 'day', d }; } }
+      if ((m = seg.match(/\b(?:(proxim[oa]|essa|nessa|dessa|esta|nesta|desta) )?(domingo|segunda|terca|quarta|quinta|sexta|sabado)(?: feira)?\b/))) {
+        const di = this.WD[m[2]], mod = m[1] || '';
+        if (/^(essa|nessa|dessa|esta|nesta|desta)$/.test(mod)) return { k: 'day', d: addDays(weekStart(t), (di + 6) % 7) };
+        let diff = (di - dow(t) + 7) % 7; if (mod.startsWith('proxim') && diff === 0) diff = 7;
+        return { k: 'day', d: addDays(t, diff) };
+      }
+      return null;
+    },
+    words(n) { return n.split(' ').filter((w) => w.length >= 3 && !this.STOP.has(w) && !this.WD[w] && !/^\d+$/.test(w) && !/^(compromissos?|tarefas?|reunioes?|reuniao|eventos?|lembretes?|videos?|reels|conteudos?|posts?|carrosseis|carrossel|stories|story|habitos?|metas?|notas?)$/.test(w)); },
+    match(title, kw) {
+      if (!kw.length) return true;
+      const tn = this.norm(title), hit = kw.filter((w) => tn.includes(w.length > 5 ? w.slice(0, w.length - 1) : w)).length;
+      return hit >= Math.max(1, Math.ceil(kw.length * 0.6));
+    },
+    tasksOn(d) { return S.tasks.items.filter((it) => occursOn(it, d) && !isDoneOn(it, d)).sort(byTime); },
+    postsIn(a, b) { return B().posts.filter((x) => !x.example && x.status !== 'publicado' && x.date && x.date >= a && x.date <= b).sort((p1, p2) => (p1.date + (p1.time || '')).localeCompare(p2.date + (p2.time || ''))); },
+    ans(resumo, fala, itens) { return { intencao: 'consulta', resumo, fala, itens: itens || [], perguntas: [], acoes: [] }; },
+    chg(resumo, acoes) { return { intencao: 'mudanca', resumo, fala: resumo, itens: [], perguntas: [], acoes }; },
+    no(resumo) { return { intencao: 'naoentendi', resumo, fala: '', itens: [], perguntas: [], acoes: [] }; },
+    // ---------- ponto de entrada ----------
+    run(raw) {
+      const n = this.norm(raw);
+      if (this.off || n.length < 3) return null; // "off": só os testes desligam o motor para exercitar o caminho da IA
+      return this.nav(n) || this.create(raw, n) || this.note(raw, n) || this.habitMark(n) || this.done(n) || this.series(n) || this.move(n) || this.query(n) || null;
+    },
+    nav(n) {
+      if (!/^(abrir|abre|abra|ir para|vai para|va para|me leva|leva|quero ver a tela|mostrar a tela)\b/.test(n)) return null;
+      const map = [['insights', /\binsight|resultado|desempenho/], ['gravar', /\bgravar|gravacao|producao/], ['conteudo', /\bconteudo|calendario de conteudo|planejamento/], ['agenda', /\bagenda|calendario/], ['tarefas', /\btarefa/], ['habitos', /\bhabito/], ['metas', /\bmeta|objetivo/], ['vision', /\bmural|vision|visao/], ['ano', /\bmeu ano\b|\bano\b/], ['mapa', /\bmapa/], ['hoje', /\bhoje|inicio|tela inicial|home|principal/]];
+      const hit = map.find(([, re]) => re.test(n));
+      return hit ? { intencao: 'abrir', tela: hit[0], resumo: 'Abrindo…', fala: '', itens: [], perguntas: [], acoes: [] } : null;
+    },
+    create(raw, n) {
+      if (!/\b(criar|cria|crie|adicionar|adiciona|adicione|colocar|coloca|lembrar|lembra|lembre|nova tarefa|novo compromisso|nova reuniao|novo lembrete)\b/.test(n)) return null;
+      if (/\b(quais|qual|o que)\b/.test(n)) return null;
+      const cleaned = String(raw).replace(/^\s*(?:por favor[, ]*)?(?:(?:criar|cria|crie|adicionar|adiciona|adicione|colocar|coloca|me lembrar|me lembra|me lembre|lembrar|lembra|lembre)\s+)?(?:(?:uma?|a|o)\s+)?(?:(?:nova|novo)\s+)?(?:(?:tarefa|compromisso|lembrete|reuni[aã]o)\s*)?(?:(?:de|para|pra|que)\s+)?/i, '');
+      const ps = parsePT(cleaned);
+      let text = String(ps.text || '').replace(/\s+/g, ' ').trim().replace(/[.,;:!?]+$/, '');
+      if (text.length < 2) return this.no('O que devo criar? Diga, por exemplo: “criar tarefa ligar para a gráfica amanhã às 10”.');
+      const due = ps.due || today(), tm = ps.time || this.time(n);
+      return this.chg(`Vou criar a tarefa “${this.cap(text)}” para ${this.dayLabel(due)}${tm ? ' ' + this.spokenTime(tm) : ''}.`, [{ tipo: 'criar_tarefa', alvo: 'tarefa', id: '', data_origem: '', nova_data: due, novo_horario: tm, novo_dia_semana: '', texto: this.cap(text) }]);
+    },
+    note(raw, n) {
+      if (!/^(anotar|anota|anote|nota|salvar nota|guardar nota|guarda)\b/.test(n)) return null;
+      const text = String(raw).replace(/^\s*(?:anotar|anota|anote|nota|salvar nota|guardar nota|guarda)\s*(?:que|isso|aí|ai|:)?\s*/i, '').trim();
+      if (text.length < 2) return this.no('O que devo anotar? Diga, por exemplo: “anotar comprar embalagem”.');
+      return this.chg(`Vou anotar: “${text.slice(0, 80)}”.`, [{ tipo: 'criar_nota', alvo: 'nota', id: '', data_origem: '', nova_data: '', novo_horario: '', novo_dia_semana: '', texto: text.slice(0, 500) }]);
+    },
+    habitMark(n) {
+      if (!/\b(marcar|marca|marque|fiz|completei|terminei|bebi|treinei|li)\b/.test(n) || /\b(tarefa|compromisso|reuniao)\b/.test(n)) return null;
+      const kw = this.words(n).filter((w) => !/^(feito|feita|como|habito)$/.test(w));
+      let best = null, bs = 0;
+      for (const h of S.habits) { const hn = this.norm(h.name); const sc = kw.filter((w) => hn.includes(w.length > 5 ? w.slice(0, w.length - 1) : w)).length; if (sc > bs) { bs = sc; best = h; } }
+      if (!best) return /\bhabito\b/.test(n) ? this.no('Qual hábito? Diga, por exemplo: “marcar hábito água como feito”.') : null;
+      const w = this.when(n), d = w && w.k === 'day' ? w.d : today();
+      return this.chg(`Vou marcar “${best.name}” como feito ${this.dayLabel(d)}.`, [{ tipo: 'marcar_habito', alvo: 'habito', id: best.id, data_origem: '', nova_data: d, novo_horario: '', novo_dia_semana: '' }]);
+    },
+    done(n) {
+      if (!/\b(concluir|conclui|conclua|finalizar|finaliza|finalize|terminei|dar baixa|marcar como feit[ao]|marca como feit[ao])\b/.test(n)) return null;
+      const t = today(), kw = this.words(n).filter((w) => !/^(feito|feita|como|baixa)$/.test(w));
+      const all = /\b(tudo|todas|todos|compromissos|tarefas)\b/.test(n) && !kw.length;
+      const out = [];
+      for (let i = 0; i < (all ? 1 : 31) && out.length < (all ? 40 : 3); i++) {
+        const d = addDays(t, i);
+        for (const it of this.tasksOn(d)) if ((all || this.match(it.text, kw)) && !out.some((o) => o.id === it.id)) out.push({ tipo: 'concluir', alvo: 'tarefa', id: it.id, data_origem: d, nova_data: '', novo_horario: '', novo_dia_semana: '' });
+      }
+      if (!out.length) return this.ans('Não achei essa tarefa', 'Não achei essa tarefa para concluir.', []);
+      return this.chg(`Vou marcar ${this.plural(out.length, 'tarefa', 'tarefas')} como concluída${out.length > 1 ? 's' : ''}.`, out);
+    },
+    series(n) {
+      if (!/\b(mover|move|mova|passar|passa|passe|mudar|muda|mude|trocar|troca|remarcar|remarca|reagendar|reagenda)\b/.test(n) || !/\btod[ao]s?\b/.test(n)) return null;
+      const ds = [...n.matchAll(/\b(domingo|segunda|terca|quarta|quinta|sexta|sabado)\b/g)].map((m) => this.WD[m[1]]);
+      if (ds.length < 2) return null;
+      const [from, to] = [ds[0], ds[ds.length - 1]], kw = this.words(n).filter((w) => !/^(toda|todas)$/.test(w)).concat((n.match(/\b(reuniao|reunioes|evento|eventos|lembrete|lembretes)\b/g) || []).map((w) => (w === 'reunioes' ? 'reuniao' : w.replace(/s$/, ''))));
+      const found = S.tasks.items.filter((it) => isRep(it) && it.repeat === 'weekly' && dow(it.due) === from && this.match(it.text, kw));
+      if (!found.length) return this.ans(`Não achei tarefa de toda ${DOW_LONG[from]}`, `Não achei nenhuma tarefa semanal de toda ${DOW_LONG[from]}${kw.length ? ' com esse nome' : ''}.`, []);
+      return this.chg(`Vou mudar ${found.length === 1 ? `“${found[0].text}”` : this.plural(found.length, 'tarefa semanal', 'tarefas semanais')} de toda ${DOW_LONG[from]} para toda ${DOW_LONG[to]}.`, found.map((it) => ({ tipo: 'mudar_serie', alvo: 'tarefa', id: it.id, data_origem: '', nova_data: '', novo_horario: this.time(n), novo_dia_semana: this.WD3[to] })));
+    },
+    move(n) {
+      if (!/\b(mover|move|mova|passar|passa|passe|transferir|transfere|adiar|adia|adie|reagendar|reagenda|remarcar|remarca|jogar|joga)\b/.test(n)) return null;
+      const t = today(), cut = n.lastIndexOf(' para ');
+      const srcTxt = cut >= 0 ? n.slice(0, cut) : n, tgtTxt = cut >= 0 ? n.slice(cut + 6) : '';
+      const time = this.time(tgtTxt) || this.time(n);
+      const sh = !tgtTxt && n.match(/\b(?:em |por |daqui a )?(\d{1,2}) dias?\b/);
+      const shift = sh ? Number(sh[1]) : null;
+      const src = this.when(srcTxt), tgt = this.when(tgtTxt);
+      if (!tgt && shift === null && !time) return this.no('Mover para quando? Diga, por exemplo: “mover os compromissos de hoje para amanhã”.');
+      const wantT = /\b(compromissos?|tarefas?|reunioes?|reuniao|eventos?|lembretes?|tudo)\b/.test(n), wantP = /\b(videos?|reels|conteudos?|posts?|carrosseis|carrossel|stories|story|publicacoes|postagens|tudo)\b/.test(n);
+      const spec = (srcTxt.match(/\b(reuniao|reunioes|evento|eventos|lembrete|lembretes)\b/g) || []).map((w) => (w === 'reunioes' ? 'reuniao' : w.replace(/s$/, '')));
+      const kw = this.words(srcTxt).concat(spec), keyword = kw.length > 0;
+      const both = !wantT && !wantP;
+      let fmt = null;
+      if (/\bvideos?\b/.test(n)) fmt = VIDEO_FORMATS; else if (/\breels\b/.test(n)) fmt = ['reels']; else if (/\bcarrosse(l|is)\b/.test(n)) fmt = ['carrossel']; else if (/\bstor(y|ies)\b/.test(n)) fmt = ['stories'];
+      let from, to;
+      if (src) { from = src.k === 'day' ? src.d : src.from; to = src.k === 'day' ? src.d : src.to; }
+      else if (keyword) { from = t; to = addDays(t, 30); } else { from = t; to = t; }
+      if (!src && tgt && tgt.k === 'week') return this.no('Quais itens? Diga, por exemplo: “reagendar os vídeos dessa semana para a semana que vem”.');
+      if (src && src.k === 'day' && tgt && tgt.k === 'week') return this.no('Para qual dia da semana que vem? Diga, por exemplo: “para segunda”.');
+      const dest = (d) => (shift !== null ? addDays(d, shift) : tgt ? (tgt.k === 'day' ? tgt.d : addDays(d, diffDays(from, tgt.from))) : d);
+      const acoes = [], seen = new Set();
+      if (wantT || both) {
+        for (let d = from; d <= to && acoes.length < 80; d = addDays(d, 1)) {
+          for (const it of this.tasksOn(d)) {
+            if (!wantT && !keyword) continue;
+            if (!this.match(it.text, kw)) continue;
+            if (keyword && !src && seen.has(it.id)) continue; seen.add(it.id);
+            const nd = dest(d); if (nd === d && !time) continue;
+            acoes.push({ tipo: isRep(it) ? 'mover_ocorrencia' : 'mover_item', alvo: 'tarefa', id: it.id, data_origem: isRep(it) ? d : '', nova_data: nd, novo_horario: time, novo_dia_semana: '' });
+          }
+        }
+      }
+      if (wantP || both) {
+        for (const x of this.postsIn(from, to)) {
+          if (!wantP && !keyword) continue;
+          if (fmt && !fmt.includes(x.format)) continue;
+          if (!this.match(x.title, kw)) continue;
+          const nd = dest(x.date); if (nd === x.date && !time) continue;
+          acoes.push({ tipo: 'mover_item', alvo: 'conteudo', id: x.id, data_origem: '', nova_data: nd, novo_horario: time, novo_dia_semana: '' });
+        }
+      }
+      const where = shift !== null && !tgt ? `${shift} ${shift === 1 ? 'dia' : 'dias'} para frente` : tgt ? (tgt.k === 'day' ? this.dayLabel(tgt.d) : 'a semana que vem') : 'o mesmo dia';
+      if (!acoes.length) return this.ans('Não achei nada para mover', 'Não achei nada para mover com esse pedido.', []);
+      return this.chg(`Vou mover ${this.plural(acoes.length, 'item', 'itens')} para ${where}${time ? ' ' + this.spokenTime(time) : ''}.`, acoes);
+    },
+    // ---------- perguntas ----------
+    query(n) {
+      if (/\binsight|resultado|desempenho|metric|visualizac|seguidor|engajamento|alcance|como (foi|foram|esta|estao) (o|os|meu|meus) (instagram|perfil|posts?)|\binstagram\b/.test(n)) return this.insights();
+      if (/\bideias?\b/.test(n)) return this.ideas();
+      if (/\bhabitos?\b/.test(n)) return this.habits();
+      if (/\bmetas?\b|\bobjetivos?\b/.test(n)) return this.goals();
+      if (/\bnotas?\b|\banotei\b|\banotacoes?\b|\banotacao\b/.test(n)) return this.notes();
+      if (/\b(conteudos?|videos?|reels|posts?|carrosseis|carrossel|stories|gravar|gravacao|gravacoes|publicar|postar)\b/.test(n)) return this.contents(n);
+      if (/\b(compromissos?|tarefas?|agenda|reunioes?|reuniao|eventos?|tenho|fazer|afazeres|programado)\b/.test(n)) return this.agenda(n);
+      return null;
+    },
+    span(n) {
+      const w = this.when(n), t = today();
+      if (!w) return { from: t, to: t, title: this.dayTitle(t), many: false, day: t };
+      if (w.k === 'day') return { from: w.d, to: w.d, title: this.dayTitle(w.d), many: false, day: w.d };
+      const from = w.from < t && w.to >= t && !w.next ? t : w.from;
+      return { from, to: w.to, title: w.next ? 'Semana que vem' : 'Essa semana', many: true, day: null };
+    },
+    fala(intro, lines, total) {
+      const first = lines.slice(0, 5).join('. ');
+      return `${intro}${first ? ' ' + first + '.' : ''}${total > 5 ? ` E mais ${total - 5}.` : ''}`;
+    },
+    agenda(n) {
+      const sp = this.span(n), t = today();
+      const items = [];
+      for (let d = sp.from; d <= sp.to; d = addDays(d, 1)) for (const it of this.tasksOn(d)) items.push({ d, it });
+      const done = sp.many ? 0 : S.tasks.items.filter((it) => occursOn(it, sp.from) && isDoneOn(it, sp.from)).length;
+      const what = /\breunio|reuniao\b/.test(n) && !/\bcompromissos?|tarefas?\b/.test(n) ? ['reunião', 'reuniões'] : ['compromisso', 'compromissos'];
+      const when = sp.many ? sp.title.toLowerCase() : this.dayLabel(sp.from);
+      const resumo = `${sp.title}: ${items.length ? this.plural(items.length, what[0], what[1]) : 'nenhum ' + what[0]}${done ? ` (${this.plural(done, 'já concluído', 'já concluídos')})` : ''}`;
+      const lines = items.map(({ d, it }) => `${it.time ? this.spokenTime(it.time) + ', ' : ''}${it.text}`);
+      const intro = items.length ? `${this.cap(when)} você tem ${this.plural(items.length, what[0], what[1])}.` : `${this.cap(when)} você não tem ${what[1]}.`;
+      return this.ans(resumo, this.fala(intro, lines, items.length), items.slice(0, 20).map(({ d, it }) => ({ texto: `${it.time ? it.time + ' · ' : ''}${it.text}`, detalhe: sp.many ? `${DOW_LONG[dow(d)]} ${fmtShort(d)}` : (listById(it.listId).name + (it.prio === 'alta' ? ' · prioridade alta' : '')) })));
+    },
+    contents(n) {
+      const sp = this.span(n), rec = /\bgravar|gravacao|gravacoes\b/.test(n), has = !!this.when(n);
+      let posts = this.postsIn(has ? sp.from : addDays(today(), -30), has ? sp.to : addDays(today(), 60));
+      if (rec) posts = posts.filter((x) => VIDEO_FORMATS.includes(x.format) && ['ideia', 'roteiro', 'gravar'].includes(x.status));
+      if (/\bvideos?\b/.test(n)) posts = posts.filter((x) => VIDEO_FORMATS.includes(x.format));
+      const label = has ? (sp.many ? sp.title.toLowerCase() : this.dayLabel(sp.from)) : 'na agenda';
+      const resumo = `${rec ? 'Para gravar' : 'Conteúdos'} ${label}: ${posts.length || 'nenhum'}`;
+      const lines = posts.map((x) => x.title);
+      const intro = posts.length ? `${this.cap(label)} você tem ${this.plural(posts.length, rec ? 'conteúdo para gravar' : 'conteúdo', rec ? 'conteúdos para gravar' : 'conteúdos')}.` : `Não há ${rec ? 'conteúdos para gravar' : 'conteúdos'} ${label === 'na agenda' ? 'na agenda' : label}.`;
+      return this.ans(resumo, this.fala(intro, lines, posts.length), posts.slice(0, 20).map((x) => ({ texto: x.title, detalhe: [sp.many || !has ? `${DOW_LONG[dow(x.date)]} ${fmtShort(x.date)}` : '', FORMATS[x.format] || x.format, (STATUSES[x.status] || {}).label || x.status].filter(Boolean).join(' · ') })));
+    },
+    ideas() {
+      const list = B().posts.filter((x) => !x.example && x.status === 'ideia').sort((a, b2) => (a.date || '9').localeCompare(b2.date || '9'));
+      const intro = list.length ? `Você tem ${this.plural(list.length, 'ideia de conteúdo', 'ideias de conteúdo')}.` : 'Você ainda não tem ideias de conteúdo guardadas.';
+      return this.ans(`Ideias de conteúdo: ${list.length || 'nenhuma'}`, this.fala(intro, list.map((x) => x.title), list.length), list.slice(0, 20).map((x) => ({ texto: x.title, detalhe: [x.date ? `${DOW_LONG[dow(x.date)]} ${fmtShort(x.date)}` : 'sem data', FORMATS[x.format] || ''].filter(Boolean).join(' · ') })));
+    },
+    habits() {
+      const hs = S.habits;
+      if (!hs.length) return this.ans('Hábitos', 'Você ainda não tem hábitos cadastrados.', []);
+      const t = today(), lines = hs.map((h) => `${h.name}: ${weekCount(h)} de ${h.goal} nesta semana`);
+      const feitos = hs.filter((h) => h.days && h.days[t]).length;
+      return this.ans(`Hábitos: ${feitos} de ${hs.length} feitos hoje`, this.fala(`Hoje você fez ${feitos} de ${hs.length} hábitos.`, lines, hs.length), hs.map((h) => ({ texto: `${h.emoji || ''} ${h.name}`.trim(), detalhe: `${weekCount(h)} de ${h.goal} nesta semana${h.days && h.days[t] ? ' · feito hoje' : ''}` })));
+    },
+    goals() {
+      const gs = (S.goals || []).filter((g) => !g.done);
+      if (!gs.length) return this.ans('Metas', 'Você não tem metas em andamento.', []);
+      const det = (g) => (g.target ? `${g.current || 0} de ${g.target}${g.unit ? ' ' + g.unit : ''} (${Math.min(100, Math.round(((g.current || 0) / g.target) * 100))}%)` : g.deadline ? `prazo ${fmtShort(g.deadline)}` : 'em andamento');
+      return this.ans(`Metas em andamento: ${gs.length}`, this.fala(`Você tem ${this.plural(gs.length, 'meta em andamento', 'metas em andamento')}.`, gs.map((g) => `${g.title}, ${det(g)}`), gs.length), gs.slice(0, 20).map((g) => ({ texto: g.title, detalhe: det(g) })));
+    },
+    notes() {
+      const ns = [...(S.notes || [])].sort((a, b2) => (b2.at || 0) - (a.at || 0)).slice(0, 8);
+      if (!ns.length) return this.ans('Notas', 'Você não tem notas guardadas.', []);
+      return this.ans('Suas últimas notas', this.fala('Suas últimas notas.', ns.map((x) => x.text), ns.length), ns.map((x) => ({ texto: x.text, detalhe: '' })));
+    },
+    insights() {
+      let d; try { d = pulseData(); } catch (e) { d = null; }
+      const posts = B().posts.filter((x) => !x.example && x.status === 'publicado' && x.metrics && x.date && x.date >= addDays(today(), -30)).map((x) => ({ x, v: num(x.metrics.views ?? x.metrics.reach) })).sort((a, b2) => b2.v - a.v).slice(0, 3);
+      if (!d || (!d.hasData && !posts.length)) return this.ans('Ainda sem resultados', 'Ainda não tenho resultados dos seus posts. Conecte o Instagram na página Insights, ou anote os números à mão.', []);
+      const itens = [], lines = [];
+      itens.push({ texto: `${d.n} ${d.n === 1 ? 'post publicado' : 'posts publicados'} e ${fmtNum(d.v)} visualizações`, detalhe: d.dv != null ? `${d.dv > 0 ? '+' : ''}${d.dv}% contra a semana anterior` : 'últimos 7 dias' });
+      lines.push(`Nos últimos 7 dias você publicou ${this.plural(d.n, 'post', 'posts')} e teve ${fmtNum(d.v)} visualizações${d.dv != null ? (d.dv > 0 ? `, ${d.dv} por cento a mais que na semana anterior` : d.dv < 0 ? `, ${Math.abs(d.dv)} por cento a menos que na semana anterior` : ', igual à semana anterior') : ''}`);
+      if (d.e != null) { itens.push({ texto: `${String(Math.round(d.e * 10) / 10).replace('.', ',')}% de engajamento`, detalhe: d.de != null ? `${d.de > 0 ? '+' : ''}${String(d.de).replace('.', ',')} ponto contra a semana anterior` : '' }); }
+      if (d.fol) { itens.push({ texto: `${d.fol.n >= 0 ? '+' : ''}${fmtNum(d.fol.n)} seguidores`, detalhe: `desde ${fmtShort(d.fol.since)}` }); lines.push(`${d.fol.n >= 0 ? 'Ganhou' : 'Perdeu'} ${fmtNum(Math.abs(d.fol.n))} seguidores desde ${fmtShort(d.fol.since)}`); }
+      if (d.best) { const f = (k) => (FORMATS[k] || k).toLowerCase(); itens.push({ texto: `${this.cap(f(d.best.top))} dão ${String(d.best.x).replace('.', ',')}x mais visualizações que ${f(d.best.low)}`, detalhe: 'últimos 30 dias' }); lines.push(`Seus ${f(d.best.top)} têm ${String(d.best.x).replace('.', ',')} vezes mais visualizações que ${f(d.best.low)}`); }
+      posts.forEach(({ x, v }, i) => { itens.push({ texto: `${i + 1}º: ${x.title}`, detalhe: `${fmtNum(v)} visualizações · ${FORMATS[x.format] || x.format}` }); });
+      if (posts.length) lines.push(`O post mais visto foi ${posts[0].x.title}, com ${fmtNum(posts[0].v)} visualizações`);
+      return this.ans('Seus resultados no Instagram', lines.join('. ') + '.', itens);
+    },
+  };
+
   /* Escuta de uma frase (para o assistente). Igual ao ditado do Bloom, que já funciona no iPhone: escuta contínua que religa
      sozinha quando o aparelho corta, junta o texto, mostra enquanto a pessoa fala e envia quando ela fica em silêncio. */
   const Listen = {
@@ -6247,6 +6495,7 @@
     POS: 'bloom_cmd_pos',
     DOWS: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
     last: null, undoSnap: null,
+    EXAMPLES: ['quais são os compromissos de amanhã?', 'o que eu tenho essa semana?', 'quais conteúdos tenho para gravar amanhã?', 'quais as ideias de conteúdo?', 'como foram meus resultados no Instagram?', 'como estão meus hábitos? e minhas metas?', 'mover os compromissos de hoje para amanhã', 'reagendar os vídeos dessa semana para a semana que vem', 'mudar a reunião de toda sexta para toda segunda', 'criar tarefa ligar para a gráfica amanhã às 10', 'anotar comprar embalagem', 'marcar hábito água como feito', 'concluir a tarefa pagar boleto', 'abrir insights'],
     ok: (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '') && iso(parseISO(d)) === d,
     okTime: (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t || ''),
     // o que vai para a Claude: só o necessário, cortado aqui (o servidor corta de novo)
@@ -6282,6 +6531,10 @@
       const out = [], t = today(), notes = [];
       for (const a of (res && Array.isArray(res.acoes) ? res.acoes : []).slice(0, 80)) {
         const nd = a.nova_data, nt = this.okTime(a.novo_horario) ? a.novo_horario : '';
+        if (a.tipo === 'criar_tarefa') { const tx = String(a.texto || '').trim().slice(0, 120); if (tx && this.ok(nd)) out.push({ kind: 'newtask', id: 'new' + out.length, icon: '➕', title: tx, to: nd, time: nt }); continue; }
+        if (a.tipo === 'criar_nota') { const tx = String(a.texto || '').trim().slice(0, 500); if (tx) out.push({ kind: 'note', id: 'note' + out.length, icon: '📝', title: tx }); continue; }
+        if (a.tipo === 'marcar_habito') { const h = S.habits.find((x) => x.id === a.id); if (h && this.ok(nd)) out.push({ kind: 'habit', id: h.id, icon: h.emoji || '✅', title: h.name, to: nd }); continue; }
+        if (a.tipo === 'concluir') { const it = S.tasks.items.find((x) => x.id === a.id); const od = isRep(it || {}) ? a.data_origem : ''; if (it && !isDoneOn(it, od || today()) && (!isRep(it) || this.ok(od))) out.push({ kind: 'done', id: it.id, icon: '✔️', title: it.text, from: od }); continue; }
         if (a.alvo === 'conteudo') {
           const p = B().posts.find((x) => x.id === a.id);
           if (!p || p.status === 'publicado' || !this.ok(nd)) continue;
@@ -6310,13 +6563,21 @@
     },
     label(x) {
       const d = (s) => (s ? `${fmtShort(s)} (${DOW[dow(s)]})` : 'sem data');
+      if (x.kind === 'newtask') return `nova tarefa para <b>${d(x.to)}</b>${x.time ? ` <span class="muted">às ${x.time}</span>` : ''}`;
+      if (x.kind === 'note') return 'nova nota rápida';
+      if (x.kind === 'habit') return `marcar como feito em <b>${d(x.to)}</b>`;
+      if (x.kind === 'done') return `marcar como concluída${x.from ? ` <span class="muted">(${d(x.from)})</span>` : ''}`;
       if (x.kind === 'series') return `${esc(x.fromLabel)} → <b>${esc(x.toLabel)}</b> <span class="muted">(a próxima será ${d(x.to)}${x.time ? ' às ' + x.time : ''})</span>`;
       return `${d(x.from)} → <b>${d(x.to)}</b>${x.time ? ` <span class="muted">às ${x.time}</span>` : ''}${x.kind === 'occ' ? ' <span class="muted">só este dia, a série continua</span>' : ''}`;
     },
     apply(items) {
-      const snap = JSON.stringify({ tasks: S.tasks.items, posts: S.biz.posts });
+      const snap = JSON.stringify({ tasks: S.tasks.items, posts: S.biz.posts, notes: S.notes, habits: S.habits });
       let n = 0;
       for (const x of items) {
+        if (x.kind === 'newtask') { S.tasks.items.push({ id: uid(), listId: (S.tasks.lists[0] || {}).id, text: x.title, done: false, doneDates: {}, prio: 'normal', due: x.to, time: x.time || '', end: '', repeat: 'none', remindMin: x.time ? '0' : '', notes: '' }); n++; continue; }
+        if (x.kind === 'note') { S.notes.push({ id: uid(), text: x.title, at: Date.now() }); n++; continue; }
+        if (x.kind === 'habit') { const h = S.habits.find((q) => q.id === x.id); if (h) { h.days[x.to] = true; n++; } continue; }
+        if (x.kind === 'done') { const it = S.tasks.items.find((q) => q.id === x.id); if (it) { markDone(it, x.from || today()); n++; } continue; }
         if (x.kind === 'post') { const p = B().posts.find((q) => q.id === x.id); if (!p) continue; p.date = x.to; if (x.time) p.time = x.time; n++; }
         else {
           const it = S.tasks.items.find((q) => q.id === x.id); if (!it) continue;
@@ -6335,7 +6596,7 @@
     },
     undo() {
       if (!this.undoSnap) return;
-      const o = JSON.parse(this.undoSnap); S.tasks.items = o.tasks; S.biz.posts = o.posts; this.undoSnap = null;
+      const o = JSON.parse(this.undoSnap); S.tasks.items = o.tasks; S.biz.posts = o.posts; if (o.notes) S.notes = o.notes; if (o.habits) S.habits = o.habits; this.undoSnap = null;
       save(); rerender(); const b = $('#cmd-undo'); if (b) b.remove(); toast('Desfeito.');
     },
     undoBar(n) {
@@ -6351,6 +6612,7 @@
     },
     open(o = {}) {
       if (dlg.open) return;
+      const navTo = go; // dentro da janela existe um botão chamado "go"
       if (typeof Voice !== 'undefined' && Voice.kill) Voice.kill();
       const speakOn = () => { try { return localStorage.getItem('bloom_cmd_speak') !== '0'; } catch (e) { return true; } };
       modal({
@@ -6361,7 +6623,7 @@
           <div class="cmd-type"><textarea class="input" id="cmd-text" rows="2" placeholder="ou escreva aqui: quais os compromissos de amanhã?" aria-label="O que você quer saber ou fazer"></textarea><button type="button" class="btn" id="cmd-go">Enviar</button></div>
           <label class="cmd-opt"><input type="checkbox" class="check" id="cmd-speak" ${speakOn() ? 'checked' : ''}> responder em voz alta</label>
           <div id="cmd-out" aria-live="polite"></div>
-          <details class="cmd-help"><summary>o que posso pedir</summary><ul><li>quais são os compromissos de amanhã?</li><li>quais conteúdos tenho para gravar amanhã?</li><li>que ideias de conteúdo tenho na agenda?</li><li>como foram meus resultados no Instagram?</li><li>como estão meus hábitos e minhas metas?</li><li>mover os compromissos de hoje para amanhã</li><li>reagendar os vídeos dessa semana para a semana que vem</li><li>mudar a reunião de toda sexta para toda segunda</li></ul></details>
+          <details class="cmd-help"><summary>o que posso pedir (sem custo)</summary><ul>${Cmd.EXAMPLES.map((x) => `<li>${x}</li>`).join('')}</ul></details>
         </div>`,
         onOpen: (form) => {
           const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form), st = $('#cmd-st', form), live = $('#cmd-live', form), mic = $('#cmd-mic', form), chk = $('#cmd-speak', form);
@@ -6405,6 +6667,13 @@
           }));
           const render = (d, viaVoice) => {
             doConfirm = null; doCancel = null;
+            if (d.intencao === 'abrir') { Say.stop(); Listen.stop(); dlg.close(); navTo(d.tela); return; }
+            if (d.intencao === 'naoentendi') {
+              out.innerHTML = `<div class="cmd-ask"><b>${esc(d.resumo || 'Não entendi esse pedido do meu jeito simples.')}</b><p style="margin:6px 0 4px">Tente de outro jeito, por exemplo:</p><ul>${Cmd.EXAMPLES.slice(0, 5).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${d.resumo ? '' : '<div class="row" style="margin-top:8px"><button type="button" class="btn sm ghost" id="cmd-ai">🤖 perguntar à IA</button></div><span class="muted">A IA usa créditos da sua conta. O Bloom só chama a IA se você tocar aqui.</span>'}</div>`;
+              const ai = $('#cmd-ai', form); if (ai) ai.addEventListener('click', () => submit(ta.value, false, true));
+              speak(d.resumo || 'Não entendi esse pedido. Tente de outro jeito.', null);
+              return;
+            }
             const itens = (Array.isArray(d.itens) ? d.itens : []).slice(0, 30);
             const ask = d.perguntas && d.perguntas.length ? `<div class="cmd-ask"><b>Preciso entender melhor:</b><ul>${d.perguntas.map((q) => `<li>${esc(q)}</li>`).join('')}</ul><span class="muted">Toque no microfone e responda, ou escreva acima.</span></div>` : '';
             const sayBtn = '<button type="button" class="btn sm ghost" data-say>🔊 ouvir</button>';
@@ -6437,10 +6706,16 @@
             try { out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
             speak(spoken, viaVoice && d.perguntas && d.perguntas.length ? () => listen('ask') : null);
           };
-          const submit = async (text, viaVoice) => {
+          const submit = async (text, viaVoice, useAI) => {
             if (busy) return;
             text = String(text || '').trim();
             if (text.length < 3) { toast('Fale ou escreva o que você quer saber ou fazer.'); ta.focus(); return; }
+            if (!useAI) { // primeiro o motor do Bloom, no próprio aparelho: sem IA e sem custo
+              Say.stop(); setLive(text); out.innerHTML = ''; setSt('');
+              let d = null; try { d = Engine.run(text); } catch (e) { d = null; }
+              render(d || { intencao: 'naoentendi', resumo: '', fala: '', itens: [], perguntas: [], acoes: [] }, viaVoice);
+              return;
+            }
             busy = true; go.disabled = true; Say.stop(); setSt('Pensando…', 'think'); setLive(text); out.innerHTML = '';
             try { const r = await this.ask(text); if (dead) return; setSt(''); render(r.data || r, viaVoice); }
             catch (e) {
@@ -6502,7 +6777,7 @@
   Reminders.tick();
   if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
-  if (location.protocol === 'file:') window.__bloom = { Cmd, Listen, Say, Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
+  if (location.protocol === 'file:') window.__bloom = { Cmd, Engine, Listen, Say, Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
   setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });

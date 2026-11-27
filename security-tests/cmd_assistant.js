@@ -33,9 +33,9 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     await p.clock.install({ time: new Date(2026, 10, 27, 10, 0, 0) });
     await p.goto(FILE); await p.waitForTimeout(700);
     const calls = []; let reply = null;
-    await p.evaluate(() => { window.__calls = []; window.__reply = null; window.__bloom.Social.call = async (path, body) => { window.__calls.push({ path, body }); if (window.__fail) throw Object.assign(new Error(window.__fail), { code: window.__fail }); return { ok: true, data: window.__reply }; }; });
+    await p.evaluate(() => { window.__bloom.Engine.off = true; window.__calls = []; window.__reply = null; window.__bloom.Social.call = async (path, body) => { window.__calls.push({ path, body }); if (window.__fail) throw Object.assign(new Error(window.__fail), { code: window.__fail }); return { ok: true, data: window.__reply }; }; });
     const setReply = (r) => p.evaluate((r) => { window.__reply = r; window.__fail = null; }, Object.assign({ intencao: 'mudanca', fala: '', itens: [] }, r));
-    const ask = async (text) => { await p.click('#cmd-fab'); await p.waitForSelector('#cmd-text'); await p.fill('#cmd-text', text); await p.click('#cmd-go'); await p.waitForTimeout(250); };
+    const ask = async (text) => { await p.click('#cmd-fab'); await p.waitForSelector('#cmd-text'); await p.fill('#cmd-text', text); await p.click('#cmd-go'); await p.waitForSelector('#cmd-ai'); await p.click('#cmd-ai'); await p.waitForTimeout(250); };
     const st = () => p.evaluate(() => { const S = window.__bloom.S(); return { tasks: S.tasks.items.map((x) => ({ id: x.id, due: x.due, time: x.time, repeat: x.repeat, skip: x.skipDates && Object.keys(x.skipDates), from: x.movedFrom, text: x.text })), posts: S.biz.posts.map((x) => ({ id: x.id, date: x.date, time: x.time })) }; });
     const on = (id, d) => p.evaluate(([id, d]) => { const S = window.__bloom.S(); const it = S.tasks.items.find((x) => x.id === id); return window.__bloom.Cmd && (function () { const occ = (it, date) => window.__occ(it, date); return null; })(); }, [id, d]);
 
@@ -53,7 +53,7 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     await p.reload(); await p.waitForTimeout(600);
     const b3 = await (await p.$('#cmd-fab')).boundingBox();
     t('a posição fica guardada depois de recarregar', Math.abs(b3.x - b2.x) < 3 && Math.abs(b3.y - b2.y) < 3);
-    await p.evaluate(() => { window.__calls = []; window.__bloom.Social.call = async (path, body) => { window.__calls.push({ path, body }); if (window.__fail) throw Object.assign(new Error(window.__fail), { code: window.__fail }); return { ok: true, data: window.__reply }; }; });
+    await p.evaluate(() => { window.__bloom.Engine.off = true; window.__calls = []; window.__bloom.Social.call = async (path, body) => { window.__calls.push({ path, body }); if (window.__fail) throw Object.assign(new Error(window.__fail), { code: window.__fail }); return { ok: true, data: window.__reply }; }; });
 
     // 1) compromissos de hoje -> amanhã
     await setReply({ resumo: 'Vou mover 3 compromissos de hoje para amanhã.', perguntas: [], acoes: [
@@ -127,7 +127,7 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     t('pedido vago: mostra a pergunta e nenhum botão de confirmar', /Mover para qual dia\?/.test(await p.textContent('#cmd-out')) && (await p.$$eval('#cmd-ok', (e) => e.length)) === 0);
     // 6) erros do servidor
     for (const [code, re] of [['rate_limited', /usou todos os pedidos/], ['not_found', /ainda não está disponível/], ['boom', /Não consegui agora/]]) {
-      await p.evaluate((c) => { window.__fail = c; }, code); await p.click('#cmd-go'); await p.waitForTimeout(250);
+      await p.evaluate((c) => { window.__fail = c; }, code); await p.click('#cmd-go'); await p.waitForSelector('#cmd-ai'); await p.click('#cmd-ai'); await p.waitForTimeout(250);
       t('erro ' + code + ' vira mensagem amigável', re.test(await p.textContent('#cmd-out')));
     }
     t('janela cabe na tela (sem rolagem lateral)', await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.querySelector('#modal').scrollWidth <= document.querySelector('#modal').clientWidth + 1));
