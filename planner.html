@@ -1314,6 +1314,25 @@
   .rs-cons { margin-top: 12px; font-size: 13px; }
   .rs-cons .row { justify-content: space-between; margin-bottom: 4px; }
   .org-hidden .chip.on { background: var(--brand); color: var(--on-brand); }
+  /* ---------- Assistente de comandos (botão flutuante e janela) ---------- */
+  .cmd-fab { all: unset; box-sizing: border-box; position: fixed; z-index: 45; width: 56px; height: 56px; border-radius: 50%; cursor: grab; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); box-shadow: 0 12px 28px -8px color-mix(in srgb, var(--brand) 70%, #000), 0 0 0 4px color-mix(in srgb, var(--brand) 25%, transparent); touch-action: none; -webkit-user-select: none; user-select: none; }
+  .cmd-fab svg { width: 26px; height: 26px; }
+  .cmd-fab .cmd-sp { position: absolute; top: 7px; right: 8px; font-size: 11px; line-height: 1; }
+  .cmd-fab:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .cmd-fab.drag { cursor: grabbing; transform: scale(1.08); }
+  .cmd-undo { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(88px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; white-space: nowrap; background: var(--ink); color: var(--surface); box-shadow: 0 14px 30px -10px rgba(0,0,0,.5); font-size: 14px; max-width: calc(100vw - 24px); }
+  .cmd-undo .btn { color: var(--surface); border-color: color-mix(in srgb, var(--surface) 50%, transparent); }
+  .cmd-list { display: grid; gap: 6px; margin-top: 8px; }
+  .cmd-it { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border-radius: 12px; background: var(--surface-2); cursor: pointer; }
+  .cmd-it .check { flex: none; margin-top: 3px; }
+  .cmd-tx { display: flex; flex-direction: column; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+  .cmd-tx b { font-weight: 600; }
+  .cmd-sum { margin: 12px 0 0; font-size: 14.5px; }
+  .cmd-ask { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--butter) 70%, var(--surface)); font-size: 14px; }
+  .cmd-ask ul { margin: 6px 0 6px 18px; padding: 0; }
+  .cmd-help { margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
+  .cmd-help ul { margin: 6px 0 0 18px; padding: 0; }
+  @media (prefers-reduced-motion: no-preference) { .cmd-fab { transition: transform .15s ease; } }
 </style>
 </head>
 <body>
@@ -1812,6 +1831,7 @@
       try { await Cloud.load(); } catch (e) { setSync('offline'); }
       Social.refresh(true);
       Push.sync();
+      if (typeof Cmd !== 'undefined') Cmd.mount();
     },
     showLogin() {
       if ($('#auth')) return;
@@ -2176,6 +2196,7 @@
     if (!it.due) return false;
     if (!isRep(it)) return it.due === date;
     if (date < it.due) return false;
+    if (it.skipDates && it.skipDates[date]) return false; // esse dia foi movido para outra data
     switch (it.repeat) {
       case 'daily': return true;
       case 'weekdays': { const d = dow(date); return d >= 1 && d <= 5; }
@@ -6110,6 +6131,187 @@
   if (inSupa && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   go((location.hash || '#hoje').slice(1));
   window.addEventListener('hashchange', () => { const p = location.hash.slice(1); if (p && p !== current && PAGES[p]) go(p); });
+
+  /* =========================================================
+     Assistente de comandos: "mover os compromissos de hoje para amanhã", "reagendar os vídeos da semana".
+     A Claude só devolve um PLANO; o app confere cada item, mostra a prévia, e só muda depois do "confirmar".
+     ========================================================= */
+  const Cmd = {
+    POS: 'bloom_cmd_pos',
+    DOWS: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
+    last: null, undoSnap: null,
+    ok: (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '') && iso(parseISO(d)) === d,
+    okTime: (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t || ''),
+    // o que vai para a Claude: só o necessário, cortado aqui (o servidor corta de novo)
+    context(text) {
+      const t = today(), from = addDays(t, -7), to = addDays(t, 60);
+      const tarefas = [];
+      for (const it of S.tasks.items) {
+        if (!it.due) continue;
+        if (isRep(it)) {
+          const occ = []; for (let i = 0; i < 28 && occ.length < 8; i++) { const d = addDays(t, i); if (occursOn(it, d) && !isDoneOn(it, d)) occ.push(d); }
+          if (occ.length) tarefas.push({ id: it.id, t: it.text, rep: it.repeat, time: it.time || '', ocorre_em: occ });
+        } else if (!it.done && it.due >= from && it.due <= to) tarefas.push({ id: it.id, t: it.text, rep: 'none', time: it.time || '', due: it.due });
+      }
+      const conteudos = B().posts.filter((x) => !x.example && x.status !== 'publicado' && x.date && x.date >= from && x.date <= to).map((x) => ({ id: x.id, t: x.title, data: x.date, hora: x.time || '', formato: x.format, status: x.status }));
+      const calendario = Array.from({ length: 21 }, (_, i) => { const d = addDays(t, i - 1); return { data: d, dia: this.DOWS[dow(d)] }; });
+      return { texto: String(text).trim().slice(0, 500), hoje: t, dia_semana: this.DOWS[dow(t)], calendario, tarefas: tarefas.slice(0, 120), conteudos: conteudos.slice(0, 80) };
+    },
+    // confere cada ação que a Claude sugeriu contra os dados reais. O que não bate é descartado.
+    plan(res) {
+      const out = [], t = today(), notes = [];
+      for (const a of (res && Array.isArray(res.acoes) ? res.acoes : []).slice(0, 80)) {
+        const nd = a.nova_data, nt = this.okTime(a.novo_horario) ? a.novo_horario : '';
+        if (a.alvo === 'conteudo') {
+          const p = B().posts.find((x) => x.id === a.id);
+          if (!p || p.status === 'publicado' || !this.ok(nd)) continue;
+          out.push({ kind: 'post', id: p.id, icon: '🎬', title: p.title, from: p.date || '', to: nd, time: nt });
+          continue;
+        }
+        const it = S.tasks.items.find((x) => x.id === a.id);
+        if (!it) continue;
+        if (a.tipo === 'mudar_serie') {
+          const di = this.DOWS.indexOf(a.novo_dia_semana);
+          if (di < 0 || !isRep(it) || it.repeat !== 'weekly') { notes.push(`“${it.text}” não é uma tarefa semanal, então não mudei o dia dela.`); continue; }
+          const base = it.due > t ? it.due : t, first = addDays(base, (di - dow(base) + 7) % 7);
+          out.push({ kind: 'series', id: it.id, icon: '🔁', title: it.text, fromLabel: `toda ${DOW_LONG[dow(it.due)]}`, toLabel: `toda ${DOW_LONG[di]}`, to: first, time: nt });
+          continue;
+        }
+        if (!this.ok(nd)) continue;
+        if (isRep(it)) {
+          const od = this.ok(a.data_origem) ? a.data_origem : t;
+          if (!occursOn(it, od) || isDoneOn(it, od)) continue;
+          out.push({ kind: 'occ', id: it.id, icon: '🔁', title: it.text, from: od, to: nd, time: nt });
+        } else if (!it.done) out.push({ kind: 'task', id: it.id, icon: '📝', title: it.text, from: it.due, to: nd, time: nt });
+      }
+      // nada repetido: o mesmo item não entra duas vezes no mesmo dia de origem
+      const seen = new Set();
+      return { items: out.filter((x) => { const k = x.kind + x.id + (x.from || ''); if (seen.has(k)) return false; seen.add(k); return true; }), notes };
+    },
+    label(x) {
+      const d = (s) => (s ? `${fmtShort(s)} (${DOW[dow(s)]})` : 'sem data');
+      if (x.kind === 'series') return `${esc(x.fromLabel)} → <b>${esc(x.toLabel)}</b> <span class="muted">(a próxima será ${d(x.to)}${x.time ? ' às ' + x.time : ''})</span>`;
+      return `${d(x.from)} → <b>${d(x.to)}</b>${x.time ? ` <span class="muted">às ${x.time}</span>` : ''}${x.kind === 'occ' ? ' <span class="muted">só este dia, a série continua</span>' : ''}`;
+    },
+    apply(items) {
+      const snap = JSON.stringify({ tasks: S.tasks.items, posts: S.biz.posts });
+      let n = 0;
+      for (const x of items) {
+        if (x.kind === 'post') { const p = B().posts.find((q) => q.id === x.id); if (!p) continue; p.date = x.to; if (x.time) p.time = x.time; n++; }
+        else {
+          const it = S.tasks.items.find((q) => q.id === x.id); if (!it) continue;
+          if (x.kind === 'task') { it.due = x.to; if (x.time) it.time = x.time; delete it.snooze; n++; }
+          else if (x.kind === 'series') { it.due = x.to; if (x.time) it.time = x.time; delete it.snooze; n++; }
+          else if (x.kind === 'occ') {
+            it.skipDates = Object.assign({}, it.skipDates, { [x.from]: true });
+            const c = JSON.parse(JSON.stringify(it)); delete c.skipDates; delete c.snooze;
+            Object.assign(c, { id: uid(), repeat: 'none', due: x.to, done: false, doneDates: {}, movedFrom: it.id }); if (x.time) c.time = x.time;
+            S.tasks.items.push(c); n++;
+          }
+        }
+      }
+      if (n) { this.undoSnap = snap; save(); rerender(); this.undoBar(n); }
+      return n;
+    },
+    undo() {
+      if (!this.undoSnap) return;
+      const o = JSON.parse(this.undoSnap); S.tasks.items = o.tasks; S.biz.posts = o.posts; this.undoSnap = null;
+      save(); rerender(); const b = $('#cmd-undo'); if (b) b.remove(); toast('Desfeito.');
+    },
+    undoBar(n) {
+      let b = $('#cmd-undo'); if (b) b.remove();
+      b = document.createElement('div'); b.id = 'cmd-undo'; b.className = 'cmd-undo'; b.setAttribute('role', 'status');
+      b.innerHTML = `<span>✓ ${n} ${n === 1 ? 'mudança feita' : 'mudanças feitas'}</span><button type="button" class="btn sm ghost">desfazer</button>`;
+      b.querySelector('button').addEventListener('click', () => this.undo());
+      document.body.appendChild(b); setTimeout(() => { if (b.isConnected) b.remove(); }, 20000);
+    },
+    async ask(text) {
+      if (typeof Social === 'undefined') throw new Error('x');
+      return Social.call('command', this.context(text));
+    },
+    open() {
+      if (dlg.open) return;
+      modal({
+        title: 'pedir pela voz', cancelLabel: 'Fechar', wide: false,
+        extraHTML: `<div class="cmd">
+          <p class="muted" style="margin:0 0 8px">Fale ou escreva o que quer mudar de data. Eu mostro o que vai mudar e só faço depois que você confirmar.</p>
+          <div class="mic-wrap"><textarea class="input" id="cmd-text" rows="3" placeholder="Ex.: mover os compromissos de hoje para amanhã" aria-label="O que você quer fazer"></textarea><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button></div>
+          <div class="row" style="margin-top:8px"><button type="button" class="btn" id="cmd-go">Pedir</button></div>
+          <div id="cmd-out" aria-live="polite"></div>
+          <details class="cmd-help"><summary>exemplos</summary><ul><li>mover os compromissos de hoje para amanhã</li><li>reagendar os vídeos dessa semana para a semana que vem</li><li>passar só a reunião de hoje para as 16h de amanhã</li><li>mudar a reunião de toda sexta para toda segunda</li></ul></details>
+        </div>`,
+        onOpen: (form) => {
+          const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form);
+          const say = (html) => { out.innerHTML = html; };
+          go.addEventListener('click', async () => {
+            if (Voice.kill) Voice.kill();
+            const text = ta.value.trim();
+            if (text.length < 4) { toast('Fale ou escreva o que você quer mudar.'); ta.focus(); return; }
+            go.disabled = true; say('<p class="muted">pensando…</p>');
+            try {
+              const r = await this.ask(text), d = r.data || r;
+              const plan = this.plan(d);
+              this.last = plan;
+              let html = '';
+              if (d.perguntas && d.perguntas.length) html += `<div class="cmd-ask"><b>Preciso entender melhor:</b><ul>${d.perguntas.map((q) => `<li>${esc(q)}</li>`).join('')}</ul><span class="muted">Complete o pedido acima e toque em “Pedir” de novo.</span></div>`;
+              if (!plan.items.length) { html += `<p>${d.perguntas && d.perguntas.length ? '' : 'Não achei nada para mudar com esse pedido.'}</p>`; }
+              else {
+                html += `<p class="cmd-sum">${esc(d.resumo || 'Vou fazer estas mudanças:')}</p><div class="cmd-list">${plan.items.map((x, i) => `<label class="cmd-it"><input type="checkbox" class="check" data-i="${i}" checked><span class="cmd-ic" aria-hidden="true">${x.icon}</span><span class="cmd-tx"><b>${esc(x.title)}</b><span>${this.label(x)}</span></span></label>`).join('')}</div>
+                  <div class="row" style="margin-top:10px"><button type="button" class="btn" id="cmd-ok">Confirmar</button><button type="button" class="btn ghost" id="cmd-no">Cancelar</button></div>`;
+              }
+              if (plan.notes.length) html += `<p class="muted">${plan.notes.map(esc).join('<br>')}</p>`;
+              say(html);
+              try { out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+              const ok = $('#cmd-ok', form);
+              if (ok) {
+                ok.addEventListener('click', () => { const pick = [...form.querySelectorAll('.cmd-it input:checked')].map((c) => plan.items[Number(c.dataset.i)]); dlg.close(); if (!pick.length) { toast('Nada foi marcado.'); return; } this.apply(pick); });
+                $('#cmd-no', form).addEventListener('click', () => { say('<p class="muted">Tudo bem, não mudei nada.</p>'); });
+              }
+            } catch (e) {
+              const c = e && e.code;
+              say(`<p>${c === 'rate_limited' ? 'Você usou todos os pedidos de hoje. Amanhã libera de novo.' : c === 'unauthorized' ? 'Entre na sua conta para usar.' : c === 'not_found' || c === 'not_configured' ? 'Essa função ainda não está disponível. Tente mais tarde.' : 'Não consegui agora. Confira a internet e tente de novo.'}</p>`);
+            } finally { go.disabled = false; }
+          });
+        },
+      });
+    },
+    // botão flutuante, na direita, que a pessoa pode arrastar para onde preferir
+    pos() { try { return JSON.parse(localStorage.getItem(this.POS) || 'null'); } catch (e) { return null; } },
+    place(el) {
+      const p = this.pos() || { r: 14, b: matchMedia('(max-width: 820px)').matches ? 96 : 28 };
+      const w = innerWidth, h = innerHeight, sz = 56;
+      el.style.right = Math.min(Math.max(8, p.r), Math.max(8, w - sz - 8)) + 'px';
+      el.style.bottom = Math.min(Math.max(8, p.b), Math.max(8, h - sz - 8)) + 'px';
+    },
+    mount() {
+      if ($('#cmd-fab')) return;
+      const b = document.createElement('button');
+      b.id = 'cmd-fab'; b.type = 'button'; b.className = 'cmd-fab'; b.setAttribute('aria-label', 'Pedir pela voz: mover compromissos e conteúdos'); b.title = 'Pedir pela voz (arraste para mudar de lugar)';
+      b.innerHTML = `${MIC_SVG}<span class="cmd-sp" aria-hidden="true">✦</span>`;
+      document.body.appendChild(b); this.place(b);
+      let st = null;
+      b.addEventListener('pointerdown', (e) => { st = { x: e.clientX, y: e.clientY, r: parseFloat(b.style.right), b: parseFloat(b.style.bottom), moved: false }; try { b.setPointerCapture(e.pointerId); } catch (x) {} });
+      b.addEventListener('pointermove', (e) => {
+        if (!st) return;
+        const dx = e.clientX - st.x, dy = e.clientY - st.y;
+        if (!st.moved && Math.hypot(dx, dy) < 8) return;
+        st.moved = true; b.classList.add('drag');
+        b.style.right = Math.min(Math.max(8, st.r - dx), innerWidth - 56 - 8) + 'px';
+        b.style.bottom = Math.min(Math.max(8, st.b - dy), innerHeight - 56 - 8) + 'px';
+      });
+      const end = () => {
+        if (!st) return; const moved = st.moved; st = null; b.classList.remove('drag');
+        if (moved) { try { localStorage.setItem(this.POS, JSON.stringify({ r: parseFloat(b.style.right), b: parseFloat(b.style.bottom) })); } catch (e) {} }
+        else this.open();
+      };
+      b.addEventListener('pointerup', end);
+      b.addEventListener('pointercancel', () => { st = null; b.classList.remove('drag'); });
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.open(); } });
+      window.addEventListener('resize', () => this.place(b));
+    },
+  };
+
+  if (location.protocol === 'file:') Cmd.mount(); // no navegador de testes, sem login
   Reminders.prune();
   Weather.load();
   setInterval(() => { if (!document.hidden) Weather.load(); }, 30 * 60000);
@@ -6117,7 +6319,7 @@
   Reminders.tick();
   if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
-  if (location.protocol === 'file:') window.__bloom = { Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
+  if (location.protocol === 'file:') window.__bloom = { Cmd, Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
   setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });

@@ -321,6 +321,7 @@ function occursOn(it: any, date: string) {
   const rep = it.repeat && it.repeat !== 'none' ? it.repeat : null;
   if (!rep) return it.due === date;
   if (date < it.due) return false;
+  if (it.skipDates && it.skipDates[date]) return false; // esse dia foi movido para outra data
   if (rep === 'daily') return true;
   if (rep === 'weekdays') { const d = dowOf(date); return d >= 1 && d <= 5; }
   if (rep === 'weekly') return dowOf(date) === dowOf(it.due);
@@ -535,15 +536,15 @@ async function aiAllowed(userId: string) {
   return true;
 }
 // uma chamada à Claude com saída em JSON no formato pedido
-async function askClaude(system: string, user: string, schema: unknown) {
+async function askClaude(system: string, user: string, schema: unknown, opt: { effort?: string; max?: number } = {}) {
   const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
   try {
     const resp: any = await client.beta.messages.create({
       model: 'claude-opus-5-5',
-      max_tokens: 16000,
+      max_tokens: opt.max ?? 16000,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default', // se o pedido for recusado, a própria API tenta de novo em outro modelo
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
+      output_config: { effort: opt.effort ?? 'medium', format: { type: 'json_schema', schema } },
       system,
       messages: [{ role: 'user', content: user }],
     } as any);
@@ -739,6 +740,79 @@ async function monthPlan(userId: string, body: any) {
   return startJob(userId, 'plan', { mes }, PLAN_SYSTEM, `Pedido (JSON):\n${JSON.stringify(pedido)}`, PLAN_SCHEMA,
     (d) => ({ title: `🗓️ Seu plano de ${mes.slice(5)}/${mes.slice(0, 4)} está pronto`, body: `${(d?.posts || []).length} posts esperando a sua aprovação. Toque para ver.` }));
 }
+/* Assistente de comandos: a Claude só devolve um PLANO de mudanças de data. Quem confere e aplica é o app, depois do "confirmar". */
+const CMD_DAYS = ['', 'dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+const CMD_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['resumo', 'perguntas', 'acoes'],
+  properties: {
+    resumo: { type: 'string' },
+    perguntas: { type: 'array', items: { type: 'string' } },
+    acoes: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        required: ['tipo', 'alvo', 'id', 'data_origem', 'nova_data', 'novo_horario', 'novo_dia_semana'],
+        properties: {
+          tipo: { type: 'string', enum: ['mover_item', 'mover_ocorrencia', 'mudar_serie'] },
+          alvo: { type: 'string', enum: ['tarefa', 'conteudo'] },
+          id: { type: 'string' }, data_origem: { type: 'string' }, nova_data: { type: 'string' }, novo_horario: { type: 'string' },
+          novo_dia_semana: { type: 'string', enum: CMD_DAYS },
+        },
+      },
+    },
+  },
+};
+const CMD_SYSTEM = `Você ajuda uma empreendedora brasileira a reorganizar a agenda do app Bloom por comando de voz ou texto. Você NÃO executa nada: devolve um plano de mudanças de data que ela vai conferir e confirmar.
+
+O que você recebe (JSON): o pedido dela, a data de hoje, um calendário com o dia da semana de cada data, as tarefas e os conteúdos (posts, vídeos) que ainda não foram concluídos ou publicados.
+
+Faça somente o que ela pediu, nem mais nem menos. Use apenas os ids que estão na lista; nunca invente itens. Tipos de ação:
+- "mover_item": muda a data de uma tarefa que NÃO se repete (rep = "none") ou de um conteúdo. Preencha "nova_data" (AAAA-MM-DD). "data_origem" fica vazio.
+- "mover_ocorrencia": muda UMA ocorrência de uma tarefa que se repete (rep diferente de "none"), sem mexer na série. Preencha "data_origem" com a data da ocorrência (uma das de "ocorre_em") e "nova_data".
+- "mudar_serie": muda o dia da semana de uma tarefa SEMANAL (rep = "weekly") para sempre, só quando ela pedir isso claramente ("toda sexta para toda segunda"). Preencha "novo_dia_semana" (dom, seg, ter, qua, qui, sex, sab).
+- Em "mover_item" e "mover_ocorrencia", "novo_dia_semana" fica "". Em "mudar_serie", "nova_data" e "data_origem" ficam vazios.
+- "novo_horario": HH:MM só se ela pedir um horário novo; senão deixe vazio (o horário atual fica).
+- "alvo": "tarefa" para tarefas e compromissos, "conteudo" para posts, vídeos, reels, carrosséis e stories da lista de conteúdos.
+
+Regras de interpretação:
+- "compromissos de hoje" e "tarefas de hoje": itens de tarefas cuja data é hoje (ou que se repetem e ocorrem hoje). Itens que se repetem entram como "mover_ocorrencia" (só a de hoje), nunca como mudar_serie, a menos que ela peça para mudar a série.
+- "amanhã", "depois de amanhã", "sexta", "semana que vem": use o calendário. "Semana que vem" = a mesma data somada a 7 dias, mantendo o dia da semana. "Essa semana" = de segunda a domingo da semana de hoje.
+- "vídeos": conteúdos com formato reels, curto ou video. Se ela disser "conteúdos" ou "posts", todos os formatos.
+- Se o pedido for vago ou houver mais de um jeito de entender, não chute: devolva "perguntas" (curtas, em português) e "acoes" vazio.
+- Se não houver nada na lista para mexer, devolva "acoes" vazio e explique em "resumo".
+- "resumo": uma frase curta no tom acolhedor, dizendo o que você vai fazer (ex.: "Vou mover 3 compromissos de hoje para amanhã.").
+Escreva em português do Brasil.`;
+async function commandPlan(userId: string, body: any) {
+  if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const isDate = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const texto = clip(body?.texto, 500);
+  if (texto.length < 4) return { status: 400, body: { error: 'no_text' } };
+  if (!isDate(body?.hoje)) return { status: 400, body: { error: 'bad_date' } };
+  const tarefas = (Array.isArray(body?.tarefas) ? body.tarefas : []).slice(0, 120).map((x: any) => ({
+    id: clip(x?.id, 60), t: clip(x?.t, 80), rep: ['none', 'daily', 'weekdays', 'weekly', 'monthly'].includes(x?.rep) ? x.rep : 'none',
+    time: clip(x?.time, 5), due: isDate(x?.due) ? x.due : undefined,
+    ocorre_em: Array.isArray(x?.ocorre_em) ? x.ocorre_em.filter(isDate).slice(0, 8) : undefined,
+  })).filter((x: any) => x.id);
+  const conteudos = (Array.isArray(body?.conteudos) ? body.conteudos : []).slice(0, 80).map((x: any) => ({
+    id: clip(x?.id, 60), t: clip(x?.t, 80), data: isDate(x?.data) ? x.data : '', hora: clip(x?.hora, 5), formato: clip(x?.formato, 20), status: clip(x?.status, 20),
+  })).filter((x: any) => x.id);
+  const calendario = (Array.isArray(body?.calendario) ? body.calendario : []).slice(0, 30).filter((x: any) => isDate(x?.data)).map((x: any) => ({ data: x.data, dia: clip(x?.dia, 3) }));
+  if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
+  const pedido = { pedido: texto, hoje: body.hoje, dia_semana: clip(body?.dia_semana, 3), calendario, tarefas, conteudos };
+  const r = await askClaude(CMD_SYSTEM, `Dados (JSON):\n${JSON.stringify(pedido)}`, CMD_SCHEMA, { effort: 'low', max: 4000 });
+  if (r.status !== 200) return r;
+  // o servidor só deixa passar ações sobre itens que ele mesmo enviou, com datas válidas
+  const d: any = (r.body as any).data;
+  const idsT = new Set(tarefas.map((x: any) => x.id)), idsC = new Set(conteudos.map((x: any) => x.id));
+  d.acoes = (Array.isArray(d.acoes) ? d.acoes : []).filter((a: any) =>
+    (a.alvo === 'tarefa' ? idsT.has(a.id) : idsC.has(a.id)) &&
+    (a.tipo === 'mudar_serie' ? CMD_DAYS.includes(a.novo_dia_semana) && a.novo_dia_semana !== '' : isDate(a.nova_data)) &&
+    (!a.novo_horario || /^([01]\d|2[0-3]):[0-5]\d$/.test(a.novo_horario))).slice(0, 80);
+  d.perguntas = (Array.isArray(d.perguntas) ? d.perguntas : []).slice(0, 3).map((q: unknown) => String(q).slice(0, 200));
+  d.resumo = String(d.resumo ?? '').slice(0, 300);
+  return { status: 200, body: { ok: true, data: d } };
+}
 async function analyzePosts(userId: string, raw: unknown) {
   if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
   const posts = cleanPosts(raw);
@@ -922,6 +996,14 @@ async function handle(req: Request): Promise<Response> {
       if (!user) return json({ error: 'unauthorized' }, 401);
       const body = await readJson(req);
       const r = await monthPlan(user.id, body);
+      return json(r.body, r.status);
+    }
+
+    if (route[0] === 'command' && req.method === 'POST') {
+      const user = await userFrom(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await readJson(req);
+      const r = await commandPlan(user.id, body);
       return json(r.body, r.status);
     }
 

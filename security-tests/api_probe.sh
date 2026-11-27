@@ -3,7 +3,7 @@
 FN=https://zeatslwacibkodkjbswg.supabase.co/functions/v1/social
 K=$(cat "$(dirname "$0")/../app/.anon_key")
 c(){ printf "%-52s -> " "$1"; shift; curl -s -m 30 -o /tmp/probe.out -w "%{http_code}" "$@"; echo "  $(head -c 90 /tmp/probe.out)"; }
-for r in start sync analyze plan assist script choices choose disconnect push-test delete-account; do c "POST /$r sem login (anon key)" -X POST "$FN/$r" -H "Authorization: Bearer $K" -H "Content-Type: application/json" -d '{}'; done
+for r in start sync analyze plan assist script command choices choose disconnect push-test delete-account; do c "POST /$r sem login (anon key)" -X POST "$FN/$r" -H "Authorization: Bearer $K" -H "Content-Type: application/json" -d '{}'; done
 c "POST /sync sem nenhum cabeçalho" -X POST "$FN/sync"
 c "POST /push-tick segredo errado" -X POST "$FN/push-tick" -H "x-cron-secret: errado"
 c "POST /push-tick sem segredo" -X POST "$FN/push-tick"
