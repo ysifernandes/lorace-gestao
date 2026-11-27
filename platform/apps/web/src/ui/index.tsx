@@ -37,14 +37,6 @@ export const STATE_LABEL: Record<MasteryState, { adult: string; kid: string; cls
 export const StateBadge = ({ s, kid }: { s: MasteryState; kid?: boolean }) => { const l = STATE_LABEL[s]; return <span className={`badge ${l.cls}`}>{l.icon} {kid ? l.kid : l.adult}</span>; };
 export const ConfBadge = ({ c }: { c: 'baixa' | 'média' | 'alta' }) => <Badge tone={c === 'alta' ? 'ok' : c === 'média' ? 'info' : 'warn'}>confiança {c}</Badge>;
 
-// ---- mascote (SVG) ----
-export function Mascot({ mood = 'happy', size = 96, color = 'var(--primary)' }: { mood?: 'happy' | 'think' | 'cheer'; size?: number; color?: string }) {
-  return <svg className="mascot" width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Mascote">
-    <ellipse cx="50" cy="92" rx="26" ry="5" fill="#0002" /><path d="M20 62c0-24 13-42 30-42s30 18 30 42c0 14-13 24-30 24S20 76 20 62z" fill={color} />
-    <path d="M32 24 24 8l16 8M68 24l8-16-16 8" fill={color} />
-    <circle cx="39" cy="54" r="9" fill="#fff" /><circle cx="61" cy="54" r="9" fill="#fff" /><circle cx={mood === 'think' ? 42 : 40} cy="55" r="4.5" fill="#1d1640" /><circle cx={mood === 'think' ? 64 : 62} cy="55" r="4.5" fill="#1d1640" />
-    <path d={mood === 'cheer' ? 'M38 70q12 14 24 0z' : mood === 'think' ? 'M42 72h16' : 'M38 68q12 10 24 0'} fill={mood === 'cheer' ? '#fff' : 'none'} stroke="#fff" strokeWidth="3" strokeLinecap="round" /></svg>;
-}
 export const Avatar = ({ name, color, face, size = 48 }: { name: string; color: string; face?: string; size?: number }) => <span aria-label={`Avatar de ${name}`} style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'inline-grid', placeItems: 'center', fontSize: size * 0.5, color: '#fff', fontWeight: 800 }}>{face ?? name[0]}</span>;
 
 // ---- gráficos ----

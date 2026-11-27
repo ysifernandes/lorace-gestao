@@ -5,11 +5,14 @@ import { brand } from '@edu/brand';
 import { useDB, currentUser, logout, sweep } from './store/db';
 import { Logo, Badge, Btn, ErrorBoundary, Toaster, Notice } from './ui';
 import { HOME, Login } from './pages/auth';
-import { StudentShell, StudentHome, StudentSession, StudentExplain, StudentProgress } from './pages/student';
+import { StudentSession, StudentExplain, StudentProgress } from './pages/student';
+import { AxShell, Dashboard } from './pages/ax';
+import { Estudar, Missoes, Conquistas, Biblioteca, Tutor, Familia } from './pages/ax-pages';
 import { ParentHome, ParentChild } from './pages/parent';
 import { TeacherHome, TeacherStudent, ManagerHome } from './pages/school';
 import { AdminContent, AdminPlans, AdminSystem } from './pages/admin';
 import { useEffect } from 'react';
+import { BrandGallery } from './pages/brand';
 
 function Guard({ role, children }: { role: Role; children: ReactNode }) {
   const d = useDB(); const u = currentUser(d); if (!u) return <Navigate to="/login" replace />; if (u.role !== role) return <Navigate to={HOME[u.role]} replace />; return <>{children}</>;
@@ -30,8 +33,8 @@ const Router = import.meta.env.VITE_MEMORY_ROUTER ? MemoryRouter : HashRouter;
 export default function App() {
   useEffect(() => { sweep(); const t = setInterval(sweep, 15_000); return () => clearInterval(t); }, []);
   return <ErrorBoundary><Router><Routes>
-    <Route path="/" element={<Root />} /><Route path="/login" element={<Login />} />
-    <Route path="/s" element={<Guard role="student"><StudentShell /></Guard>}><Route index element={<StudentHome />} /><Route path="session" element={<StudentSession />} /><Route path="explain" element={<StudentExplain />} /><Route path="progress" element={<StudentProgress />} /></Route>
+    <Route path="/" element={<Root />} /><Route path="/login" element={<Login />} /><Route path="/marca" element={<BrandGallery />} />
+    <Route path="/s" element={<Guard role="student"><AxShell /></Guard>}><Route index element={<Dashboard />} /><Route path="estudar" element={<Estudar />} /><Route path="missoes" element={<Missoes />} /><Route path="conquistas" element={<Conquistas />} /><Route path="biblioteca" element={<Biblioteca />} /><Route path="tutor" element={<Tutor />} /><Route path="familia" element={<Familia />} /><Route path="session" element={<StudentSession />} /><Route path="explain" element={<StudentExplain />} /><Route path="progress" element={<StudentProgress />} /></Route>
     <Route path="/p" element={<Guard role="guardian"><AdultShell role="guardian" /></Guard>}><Route index element={<ParentHome />} /><Route path="child/:id" element={<ParentChild />} /></Route>
     <Route path="/t" element={<Guard role="teacher"><AdultShell role="teacher" /></Guard>}><Route index element={<TeacherHome />} /><Route path="student/:id" element={<TeacherStudent />} /></Route>
     <Route path="/m" element={<Guard role="school_manager"><AdultShell role="school_manager" /></Guard>}><Route index element={<ManagerHome />} /><Route path="student/:id" element={<TeacherStudent />} /></Route>

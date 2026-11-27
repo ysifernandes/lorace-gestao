@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { Item } from '@edu/content-math';
 import type { Response, Grade } from '@edu/learning';
-import { Btn, Badge, Mascot } from '../ui';
+import { Btn, Badge } from '../ui';
+import { Axolotl, mascotForEvent } from '../ui/axolotl';
 
 export function FractionBar({ num, den, onToggle, shaded }: { num?: number; den: number; onToggle?: (i: number) => void; shaded?: Set<number> }) {
   return <div className="row" style={{ gap: 0 }} role="img" aria-label={num !== undefined ? `Barra com ${num} de ${den} partes pintadas` : `Barra com ${den} partes`}>
@@ -59,6 +60,7 @@ export function ActivityPlayer({ item, onSubmit, hints = true, showResult = true
   const submit = () => { if (resp) setFb(onSubmit(resp, h)); };
   return <div className="col">
     {item.context && <div className="card flat" style={{ background: 'var(--line)' }}>📖 {item.context}</div>}
+    <div className="ax-coach" aria-live="polite"><Axolotl state={fb ? mascotForEvent(fb.grade.correct ? 'correct' : 'incorrect') : h > 0 ? mascotForEvent('hint') : mascotForEvent('waiting')} size={72} /><span>{fb ? (fb.grade.correct ? 'Isso! Você mandou bem!' : 'Quase! Cada tentativa ensina algo.') : h > 0 ? 'Aqui vai uma ajudinha.' : 'Pense no seu ritmo, sem pressa.'}</span></div>
     <h2>{item.statement}</h2>
     {item.figure?.type === 'fraction-bar' && <FractionBar num={item.figure.num} den={item.figure.den} />}
     {(item.kind === 'multiple_choice' || item.kind === 'word_problem' || item.kind === 'reasoning') && <MC item={item} disabled={dis} onChange={setResp} revealed={fb && showResult ? item.correct : undefined} />}
@@ -66,7 +68,7 @@ export function ActivityPlayer({ item, onSubmit, hints = true, showResult = true
     {item.kind === 'drag_drop' && <DragDrop item={item} {...common} />}{item.kind === 'fraction_visual' && <FracVisual item={item} {...common} />}{item.kind === 'simulation' && <Sim item={item} {...common} />}
     {hints && !dis && <div className="col">{item.hints.slice(0, h).map((t, i) => <div key={i} className="notice info" role="note">💡 Dica {i + 1}: {t}</div>)}{h < item.hints.length && <Btn variant="ghost sm" type="button" onClick={() => setH(h + 1)}>Preciso de uma dica {h > 0 ? `(${h}/${item.hints.length})` : ''}</Btn>}</div>}
     {!fb && <Btn onClick={submit} disabled={!resp}>{kid ? 'Pronto!' : 'Responder'}</Btn>}
-    {fb && <div className="card flat" role="status" style={{ borderColor: fb.grade.correct ? 'var(--ok)' : 'var(--warn)' }}><div className="row"><Mascot size={56} mood={fb.grade.correct ? 'cheer' : 'think'} />
+    {fb && <div className="card flat" role="status" style={{ borderColor: fb.grade.correct ? 'var(--ok)' : 'var(--warn)' }}><div className="row"><Axolotl state={mascotForEvent(fb.grade.correct ? 'correct' : fb.grade.score > 0 ? 'partial' : 'incorrect')} size={84} />
       <div className="grow">{showResult ? <><b>{fb.grade.correct ? 'Muito bem! 🎉' : fb.grade.score > 0 ? 'Quase lá! Você acertou uma parte.' : 'Ainda não foi dessa vez — errar faz parte de aprender.'}</b>{!fb.grade.correct && <p className="sm">{item.justification}</p>}</> : <b>Resposta registrada. Continue!</b>}
         <p className="sm muted">{fb.xp > 0 && <span className="xp-pop">+{fb.xp} XP </span>}{fb.minutes > 0 && <span>· +{fb.minutes} min de lazer</span>}{h > 0 && <span> · {h} dica(s) usada(s)</span>}</p></div></div></div>}
     {fb && onNext && <Btn onClick={onNext}>{nextLabel}</Btn>}

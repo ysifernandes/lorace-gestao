@@ -18,7 +18,7 @@ const DAY = 86_400_000;
 export interface User { id: string; role: Role; name: string; email: string; salt: string; hash: string; studentId?: string; schoolId?: string; familyId?: string }
 export interface Session { kind: 'diagnostic' | 'practice' | 'reassessment'; itemIds: string[]; idx: number; results: boolean[]; startedAt: number }
 export interface Student {
-  id: string; familyId: string; userId?: string; name: string; birthYear: number; bandOverride?: AgeBand; avatar: { color: string; face: string }; interests: string[];
+  id: string; familyId: string; userId?: string; name: string; birthYear: number; bandOverride?: AgeBand; avatar: { color: string; face: string; spec?: import('../ui/art').AvatarSpec }; interests: string[];
   learner: LearnerState; diagDone: boolean; practiceRounds: number; reassessRounds: number; session?: Session; shownExplanations: string[];
   rewards: { xpPerMinute: number; dailyCapMinutes: number }; ledger: Tx[]; schoolCode: string;
 }
@@ -167,6 +167,7 @@ export function nextExplanation(studentId: string) {
 }
 export const pendingExplanationCount = (s: Student) => pendingExplanations(s.learner).length;
 export function addExam(studentId: string, title: string, date: string, skillIds: string[]) { update((d) => { d.exams.push({ id: uid(), studentId, title: title.trim(), date, skillIds }); }); }
+export const setAvatar = (studentId: string, spec: import('../ui/art').AvatarSpec) => update(() => { studentOf(studentId).avatar.spec = spec; });
 export const setRewards = (studentId: string, xpPerMinute: number, dailyCapMinutes: number) => update(() => { studentOf(studentId).rewards = { xpPerMinute, dailyCapMinutes }; });
 export function createReinforcement(studentId: string, teacherId: string, skillIds: string[], count: number, note: string) { update((d) => { d.reinforcement.push({ id: uid(), studentId, teacherId, skillIds, count, note, at: Date.now() }); log(d, teacherId, 'reinforcement', studentId); }); }
 

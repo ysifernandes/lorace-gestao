@@ -98,3 +98,7 @@ export class Ledger {
   /** Somente para testes de adulteração. */
   _unsafeRaw(): Tx[] { return this.txs; }
 }
+
+/** Títulos de nível (editoriais, configuráveis). Nível acima da lista usa o último título. */
+export const LEVEL_TITLES = ['Aprendiz Curioso', 'Descobridor', 'Desbravador', 'Navegador do Saber', 'Explorador do Conhecimento', 'Mestre das Ideias', 'Guardião do Saber'];
+export const levelTitle = (level: number) => LEVEL_TITLES[Math.min(Math.max(level, 1), LEVEL_TITLES.length) - 1]!;

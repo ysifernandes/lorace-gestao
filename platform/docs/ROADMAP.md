@@ -21,3 +21,20 @@ Legenda: ✅ implementado+testado · 🟡 parcial · 📝 escrito, não validado
 
 ## Fase 2 do desenvolvimento (esta entrega) — resumo de status
 ✅ plataforma isolada em `platform/` (Loracê intocada) · ✅ marca central · ✅ web navegável + preview publicado · ✅ migration 0006 + seed + testes de segurança · ✅ backend endurecido (bloqueio de força bruta de pareamento, tokens em hash, revogação, registro, tempo extra) · 📝 nativo: persistência (EncryptedSharedPreferences), `SyncWorker`, FCM, canonicalização, testes de vetores (Kotlin) e `CommandSync` (Swift) — **escritos, não compilados** · ⛔ aparelhos, credenciais, parecer jurídico, curadoria BNCC.
+
+## Fase 3 (identidade, mobile, evolução) — status
+| Item | Status |
+|---|---|
+| Referências salvas, marca Aprendix centralizada | ✅ |
+| Mascote axolote com 9 estados (SVG), integrado à pedagogia | ✅ (arte própria; ilustrador profissional recomendado) · ⏳ Rive/Lottie |
+| Dashboard desktop e mobile fiéis às referências, dados reais | ✅ testado (7 resoluções, axe, comparação lado a lado) |
+| Faixas etárias no novo painel | ✅ (áudio = voz do navegador) |
+| Páginas Estudar, Missões, Conquistas, Biblioteca, Tutor, Família | ✅ básicas |
+| Painéis de responsável/professor/gestor/admin | ✅ existentes (não redesenhados com a identidade infantil, por decisão) · ⏳ polimento visual |
+| Mapa de evolução interativo, fases por evidência | ✅ primeira versão · ⏳ mais mundos, animações |
+| Jogos educativos (mercado, pizzaria, laboratório, detetive, frases, interpretação) | ⏳ **não iniciados** — 9 tipos de atividade existentes são a base; cada jogo exige design pedagógico próprio |
+| Expansão da base (BNCC verificada, mais habilidades) | ⏳ bloqueado por conferência humana do documento oficial |
+| Tutor | ✅ arquitetura/segurança testadas · ⛔ conversa livre depende de provedor de IA |
+| Supabase (auth, recuperação de senha, sync, storage) | ⛔ aguarda credenciais; ⏳ repositório adaptador a escrever |
+| Controle parental: UI de limites diários/horários/histórico | ⏳ (apps/bloqueio/tempo extra existem; limites e janelas na UI pendentes) |
+| Apps nativos (React Native + módulos Kotlin/Swift) | ⏳ estrutura a criar; módulos nativos escritos e não compilados |

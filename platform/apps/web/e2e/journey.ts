@@ -13,7 +13,7 @@ page.on('pageerror', (e: Error) => { console.log('PAGEERROR', e.message); failur
 const shot = (n: string) => page.screenshot({ path: `${SHOTS}/${n}.png` });
 const txt = async () => (await page.locator('body').innerText());
 async function loginAs(label: string) { await page.goto(URL + '#/login'); await page.getByRole('button', { name: label }).click(); await page.waitForTimeout(700); }
-async function logout() { await page.getByRole('button', { name: 'Sair' }).first().click(); await page.waitForTimeout(200); }
+async function logout() { const b = page.getByRole('button', { name: 'Sair' }); if (await b.count()) await b.first().click(); else { await page.getByRole('button', { name: 'Menu do aluno' }).click(); await page.getByRole('menuitem', { name: /Sair/ }).click(); } await page.waitForTimeout(200); }
 
 type Slips = Record<string, string>;
 async function findItem(): Promise<Item> {
@@ -41,17 +41,17 @@ async function runSession0(slips: Slips, max = 40) { for (let i = 0; i < max; i+
 
 console.log('1) Login e demonstração'); await page.goto(URL); await shot('01-login'); ok((await txt()).includes('nome provisório'), 'marca provisória configurável exibida');
 console.log('2) Luna (8–10): diagnóstico adaptativo'); await loginAs('Aluna Luna (9 anos)'); await shot('02-aluno-home-novo');
-ok((await txt()).includes('Tutor virtual') && (await txt()).includes('Nada aqui é simulado'), 'tutor de IA declarado indisponível (não simulado)');
-await page.getByRole('button', { name: 'Vamos!' }).click(); await page.waitForTimeout(300); await shot('03-atividade');
+await page.goto(URL + '#/s/tutor'); await page.waitForTimeout(300); ok((await txt()).includes('Ainda indisponível') && (await txt()).includes('Nada aqui é simulado'), 'tutor de IA declarado indisponível (não simulado)'); await page.goto(URL + '#/s'); await page.waitForTimeout(300);
+await page.getByRole('button', { name: /Começar agora/ }).click(); await page.waitForTimeout(300); await shot('03-atividade');
 const slipLuna: Slips = { 'frac.add.diff': 'add_num_and_den' }; const n = await runSessionSafe(slipLuna); ok(n >= 8 && n <= 24, `diagnóstico adaptativo com ${n} atividades (<= 24)`); await shot('04-diagnostico-concluido');
 console.log('3) Explicação personalizada'); await page.getByRole('button', { name: /Ver explicação/ }).click(); await page.waitForTimeout(300); const ex = await txt(); ok(/denominadores/i.test(ex) && /rascunho/.test(ex), 'explicação do equívoco, sinalizada como rascunho'); await shot('05-explicacao');
 console.log('4) Prática focada, reavaliação e evolução'); await page.getByRole('button', { name: /vamos praticar/ }).click(); await page.waitForTimeout(300); await runSessionSafe({}); await shot('06-pratica-concluida');
-await page.getByRole('button', { name: 'Início' }).click(); await page.waitForTimeout(300); await page.getByRole('button', { name: 'Vamos!' }).click(); await page.waitForTimeout(300); await runSessionSafe({}); await shot('07-reavaliacao');
+await page.getByRole('button', { name: 'Início' }).click(); await page.waitForTimeout(300); await page.getByRole('button', { name: /Começar agora/ }).click(); await page.waitForTimeout(300); await runSessionSafe({}); await shot('07-reavaliacao');
 await page.goto(URL + '#/s/progress'); await page.waitForTimeout(400); ok(await page.locator('svg[aria-label^="Gráfico de evolução"]').count() > 0, 'gráfico de evolução exibido'); await shot('08-evolucao');
 await page.goto(URL + '#/s'); await page.waitForTimeout(300); await shot('09-aluno-home-depois'); await logout();
 console.log('5) Outras faixas etárias'); const slipDavi: Slips = { 'frac.compare': 'bigger_denominator_bigger' };
 for (const [label, slips, key] of [['Aluno Davi (13)', slipDavi, '10-desafiadores'], ['Aluno Caio (6)', {}, '11-exploradores'], ['Aluna Bia (16)', { 'sub.borrow': 'smaller_from_larger' }, '12-estrategistas']] as const) {
-  await loginAs(label); await page.getByRole('button', { name: /Vamos!|Começar/ }).click(); await page.waitForTimeout(250); await runSessionSafe(slips); await page.goto(URL + '#/s'); await page.waitForTimeout(300); await shot(key); await logout(); }
+  await loginAs(label); await page.getByRole('button', { name: /Começar agora/ }).click(); await page.waitForTimeout(250); await runSessionSafe(slips); await page.goto(URL + '#/s'); await page.waitForTimeout(300); await shot(key); await logout(); }
 console.log('6) Responsável'); await loginAs('Responsável'); await page.waitForTimeout(300); await shot('13-responsavel');
 for (const name of ['Davi', 'Bia', 'Caio']) { await page.locator('.card', { hasText: name }).getByRole('button', { name: 'Abrir' }).first().click(); await page.waitForTimeout(300); await page.getByLabel('Compartilhar progresso com a escola').check().catch(async () => { await page.locator('input[type=checkbox]').first().check(); }); await page.goto(URL + '#/p'); await page.waitForTimeout(200); }
 await page.locator('.card', { hasText: 'Davi' }).getByRole('button', { name: 'Abrir' }).first().click(); await page.waitForTimeout(400); const pr = await txt();

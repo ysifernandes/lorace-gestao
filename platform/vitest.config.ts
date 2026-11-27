@@ -13,6 +13,7 @@ export default defineConfig({
       '@edu/brand': p('./packages/brand/src/index.ts'),
       '@edu/content-math': p('./packages/content-math/src/index.ts'),
       '@edu/learning': p('./packages/learning/src/index.ts'),
+      '@edu/tutor': p('./packages/tutor/src/index.ts'),
       '@edu/backend': p('./services/backend/src/index.ts'),
     },
   },

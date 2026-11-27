@@ -13,7 +13,8 @@
     "web:build": "pnpm --filter @edu/web build",
     "web:preview-build": "pnpm --filter @edu/web build:preview",
     "test:all": "vitest run && bash tests/db/run.sh",
-    "e2e": "vite-node --config vitest.config.ts apps/web/e2e/journey.ts"
+    "e2e": "vite-node --config vitest.config.ts apps/web/e2e/journey.ts",
+    "e2e:visual": "vite-node --config vitest.config.ts apps/web/e2e/visual.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

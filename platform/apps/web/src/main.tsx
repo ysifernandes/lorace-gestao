@@ -1,7 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { brand, brandCssVars } from '@edu/brand';
+import '@fontsource-variable/nunito';
 import './theme/theme.css';
+import './theme/mascot.css';
+import './theme/aprendix.css';
 import App from './App';
 
 // Marca: tokens do pacote brand viram variáveis CSS; título vem da mesma fonte.

@@ -42,6 +42,9 @@
       ],
       "@edu/backend": [
         "services/backend/src/index.ts"
+      ],
+      "@edu/tutor": [
+        "packages/tutor/src/index.ts"
       ]
     },
     "jsx": "react-jsx",
