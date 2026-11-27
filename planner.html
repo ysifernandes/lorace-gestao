@@ -1333,6 +1333,26 @@
   .cmd-help { margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
   .cmd-help ul { margin: 6px 0 0 18px; padding: 0; }
   @media (prefers-reduced-motion: no-preference) { .cmd-fab { transition: transform .15s ease; } }
+  /* ---------- Assistente: ouvir, falar e responder ---------- */
+  .cmd-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .cmd-mic { all: unset; box-sizing: border-box; flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: var(--brand); color: var(--on-brand); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 70%, #000); }
+  .cmd-mic svg { width: 28px; height: 28px; }
+  .cmd-mic:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .cmd-mic.on { animation: cmd-pulse 1.2s ease-in-out infinite; background: var(--danger, #c2185b); }
+  @keyframes cmd-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent); } 50% { box-shadow: 0 0 0 16px color-mix(in srgb, var(--brand) 0%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .cmd-mic.on { animation: none; } }
+  .cmd-st { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; color: var(--ink-soft); overflow-wrap: anywhere; min-height: 22px; }
+  .cmd-st.listen { color: var(--ink); font-weight: 600; }
+  .cmd-type { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+  .cmd-type .input { resize: none; }
+  .cmd-opt { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 13.5px; color: var(--ink-soft); cursor: pointer; }
+  .cmd-ah { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .cmd-ah h3, .cmd-ah .cmd-sum { margin: 0; font-size: 16px; font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .cmd-ah .btn { flex: none; }
+  .cmd-items { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+  .cmd-items li { display: flex; flex-direction: column; padding: 9px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14.5px; overflow-wrap: anywhere; }
+  .cmd-items li b { font-weight: 600; }
+  .cmd-items li span { font-size: 13px; color: var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -6136,6 +6156,51 @@
      Assistente de comandos: "mover os compromissos de hoje para amanhã", "reagendar os vídeos da semana".
      A Claude só devolve um PLANO; o app confere cada item, mostra a prévia, e só muda depois do "confirmar".
      ========================================================= */
+
+  /* Escuta de uma frase (para o assistente): termina sozinha quando a pessoa para de falar */
+  const Listen = {
+    SR: window.SpeechRecognition || window.webkitSpeechRecognition, rec: null,
+    ok() { return !!this.SR; },
+    stop() { const r = this.rec; this.rec = null; if (r) { r.__off = true; try { r.abort ? r.abort() : r.stop(); } catch (e) { /* já parou */ } } },
+    start({ onText, onDone, onFail }) {
+      this.stop();
+      let r; try { r = new this.SR(); } catch (e) { onFail('unavailable'); return; }
+      this.rec = r; r.lang = 'pt-BR'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+      let final = '', interim = '', finished = false, silence = null, hard = null;
+      const done = (why) => { if (finished || r.__off) return; finished = true; clearTimeout(silence); clearTimeout(hard); if (this.rec === r) this.rec = null; const txt = (final || interim).trim(); if (why && !txt) onFail(why); else onDone(txt); };
+      r.onresult = (e) => {
+        final = ''; interim = '';
+        for (let i = 0; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) final += x[0].transcript + ' '; else interim += x[0].transcript; }
+        onText((final + interim).trim());
+        clearTimeout(silence); silence = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 1500); // parou de falar: encerra e executa
+      };
+      r.onerror = (e) => { const c = e && e.error; if (c === 'aborted') return; done(c === 'not-allowed' || c === 'service-not-allowed' ? 'denied' : c === 'no-speech' ? 'nospeech' : 'error'); };
+      r.onend = () => done('nospeech');
+      hard = setTimeout(() => { try { r.stop(); } catch (x) { /* já parou */ } }, 15000); // ninguém falou: desiste
+      try { r.start(); } catch (e) { done('error'); }
+    },
+  };
+  /* Voz de resposta (o aparelho lê o texto em voz alta) */
+  const Say = {
+    ok() { return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; },
+    // o iPhone só deixa falar depois de um toque: um toque inicial "destrava" a voz para as respostas seguintes
+    unlock() { if (!this.ok() || this._u) return; try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); this._u = true; } catch (e) { /* sem voz */ } },
+    clean: (t) => String(t || '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').replace(/[*_#>`~]/g, ' ').replace(/\s+/g, ' ').trim(),
+    voice() { try { const v = speechSynthesis.getVoices(); return v.find((x) => /^pt[-_]BR/i.test(x.lang)) || v.find((x) => /^pt/i.test(x.lang)) || null; } catch (e) { return null; } },
+    stop() { this.on = false; try { clearTimeout(this._t); speechSynthesis.cancel(); } catch (e) { /* sem voz */ } },
+    speak(text, onend) {
+      const clean = this.clean(text);
+      if (!this.ok() || !clean) { if (onend) onend(); return false; }
+      this.stop();
+      let fin = false; this.on = true; const end = () => { if (fin) return; fin = true; this.on = false; clearTimeout(this._t); if (onend) onend(); };
+      const u = new SpeechSynthesisUtterance(clean); u.lang = 'pt-BR'; u.rate = 1.02; const v = this.voice(); if (v) u.voice = v;
+      u.onend = end; u.onerror = end;
+      this._t = setTimeout(end, 4000 + clean.length * 95); // se o aparelho não avisar que terminou, segue assim mesmo
+      try { speechSynthesis.speak(u); } catch (e) { end(); return false; }
+      return true;
+    },
+  };
+
   const Cmd = {
     POS: 'bloom_cmd_pos',
     DOWS: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
@@ -6144,18 +6209,31 @@
     okTime: (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t || ''),
     // o que vai para a Claude: só o necessário, cortado aqui (o servidor corta de novo)
     context(text) {
-      const t = today(), from = addDays(t, -7), to = addDays(t, 60);
+      const t = today(), from = addDays(t, -7), to = addDays(t, 60), cut = (v, n) => String(v || '').slice(0, n);
       const tarefas = [];
       for (const it of S.tasks.items) {
         if (!it.due) continue;
         if (isRep(it)) {
           const occ = []; for (let i = 0; i < 28 && occ.length < 8; i++) { const d = addDays(t, i); if (occursOn(it, d) && !isDoneOn(it, d)) occ.push(d); }
-          if (occ.length) tarefas.push({ id: it.id, t: it.text, rep: it.repeat, time: it.time || '', ocorre_em: occ });
-        } else if (!it.done && it.due >= from && it.due <= to) tarefas.push({ id: it.id, t: it.text, rep: 'none', time: it.time || '', due: it.due });
+          if (occ.length) tarefas.push({ id: it.id, t: cut(it.text, 80), rep: it.repeat, time: it.time || '', ocorre_em: occ, lista: cut(listById(it.listId).name, 30) });
+        } else if (it.due >= addDays(t, it.done ? -2 : -7) && it.due <= to) tarefas.push({ id: it.id, t: cut(it.text, 80), rep: 'none', time: it.time || '', due: it.due, feita: !!it.done, prio: it.prio === 'alta' ? 'alta' : '', lista: cut(listById(it.listId).name, 30) });
       }
-      const conteudos = B().posts.filter((x) => !x.example && x.status !== 'publicado' && x.date && x.date >= from && x.date <= to).map((x) => ({ id: x.id, t: x.title, data: x.date, hora: x.time || '', formato: x.format, status: x.status }));
+      const fname = (id) => { const f = B().folders.find((x) => x.id === id); return f ? f.name : ''; };
+      const open = B().posts.filter((x) => !x.example && x.status !== 'publicado' && ((x.date && x.date >= from && x.date <= to) || !x.date));
+      const conteudos = open.sort((a, b2) => (a.date || '9').localeCompare(b2.date || '9')).slice(0, 100).map((x) => ({ id: x.id, t: cut(x.title, 80), data: x.date || '', hora: x.time || '', formato: x.format, status: x.status, pilar: cut(fname(x.folderId), 30), gancho: cut(x.hook, 80), tem_roteiro: !!x.script }));
+      const mt = (x) => x.metrics || {};
+      const publicados = B().posts.filter((x) => !x.example && x.status === 'publicado' && x.date && x.date >= addDays(t, -45) && x.metrics).sort((a, b2) => b2.date.localeCompare(a.date)).slice(0, 40)
+        .map((x) => ({ t: cut(x.title, 60), data: x.date, formato: x.format, views: num(mt(x).views ?? mt(x).reach), alcance: num(mt(x).reach), curtidas: num(mt(x).likes), comentarios: num(mt(x).comments), salvos: num(mt(x).saves), compartilhamentos: num(mt(x).shares) }));
+      let ins = null;
+      try {
+        const d = pulseData(), ig = (Social.accounts || {}).instagram;
+        ins = { conectado: !!d.connected, ultimos_7_dias: { posts: d.n, visualizacoes: d.v, variacao_pct_vs_semana_anterior: d.dv, engajamento_pct: d.e != null ? Math.round(d.e * 10) / 10 : null }, melhor_formato: d.best ? { melhor: FORMATS[d.best.top] || d.best.top, pior: FORMATS[d.best.low] || d.best.low, vezes_mais_views: d.best.x } : null, seguidores_ganhos_7_dias: d.fol ? d.fol.n : null, seguidores_total: ig && ig.followers != null ? ig.followers : null, posts_do_mes: d.month };
+      } catch (e) { ins = null; }
+      const habitos = S.habits.slice(0, 12).map((h) => ({ nome: cut(h.name, 40), meta_por_semana: h.goal, feitos_nesta_semana: weekCount(h), feito_hoje: !!(h.days && h.days[t]) }));
+      const metas = (S.goals || []).filter((g) => !g.done).slice(0, 15).map((g) => ({ titulo: cut(g.title, 60), prazo: g.deadline || '', atual: g.target ? g.current : null, alvo: g.target || null, unidade: g.unit || '' }));
+      const notas = [...(S.notes || [])].sort((a, b2) => (b2.at || 0) - (a.at || 0)).slice(0, 10).map((n) => cut(n.text || n.t || n, 120));
       const calendario = Array.from({ length: 21 }, (_, i) => { const d = addDays(t, i - 1); return { data: d, dia: this.DOWS[dow(d)] }; });
-      return { texto: String(text).trim().slice(0, 500), hoje: t, dia_semana: this.DOWS[dow(t)], calendario, tarefas: tarefas.slice(0, 120), conteudos: conteudos.slice(0, 80) };
+      return { texto: cut(String(text).trim(), 500), hoje: t, dia_semana: this.DOWS[dow(t)], calendario, tarefas: tarefas.slice(0, 140), conteudos, publicados, insights: ins, habitos, metas, notas };
     },
     // confere cada ação que a Claude sugeriu contra os dados reais. O que não bate é descartado.
     plan(res) {
@@ -6229,49 +6307,107 @@
       if (typeof Social === 'undefined') throw new Error('x');
       return Social.call('command', this.context(text));
     },
-    open() {
+    open(o = {}) {
       if (dlg.open) return;
+      Say.unlock();
+      if (typeof Voice !== 'undefined' && Voice.kill) Voice.kill();
+      const speakOn = () => { try { return localStorage.getItem('bloom_cmd_speak') !== '0'; } catch (e) { return true; } };
       modal({
-        title: 'pedir pela voz', cancelLabel: 'Fechar', wide: false,
+        title: 'assistente', cancelLabel: 'Fechar', wide: false,
         extraHTML: `<div class="cmd">
-          <p class="muted" style="margin:0 0 8px">Fale ou escreva o que quer mudar de data. Eu mostro o que vai mudar e só faço depois que você confirmar.</p>
-          <div class="mic-wrap"><textarea class="input" id="cmd-text" rows="3" placeholder="Ex.: mover os compromissos de hoje para amanhã" aria-label="O que você quer fazer"></textarea><button type="button" class="mic-btn" data-mic aria-label="Falar em vez de digitar" title="Falar">${MIC_SVG}</button></div>
-          <div class="row" style="margin-top:8px"><button type="button" class="btn" id="cmd-go">Pedir</button></div>
+          <div class="cmd-top"><button type="button" class="cmd-mic" id="cmd-mic" aria-label="Falar com o assistente" title="Falar">${MIC_SVG}</button><div class="cmd-st" id="cmd-st" role="status" aria-live="polite">Toque no microfone e fale.</div></div>
+          <div class="cmd-type"><textarea class="input" id="cmd-text" rows="2" placeholder="ou escreva aqui: quais os compromissos de amanhã?" aria-label="O que você quer saber ou fazer"></textarea><button type="button" class="btn" id="cmd-go">Enviar</button></div>
+          <label class="cmd-opt"><input type="checkbox" class="check" id="cmd-speak" ${speakOn() ? 'checked' : ''}> responder em voz alta</label>
           <div id="cmd-out" aria-live="polite"></div>
-          <details class="cmd-help"><summary>exemplos</summary><ul><li>mover os compromissos de hoje para amanhã</li><li>reagendar os vídeos dessa semana para a semana que vem</li><li>passar só a reunião de hoje para as 16h de amanhã</li><li>mudar a reunião de toda sexta para toda segunda</li></ul></details>
+          <details class="cmd-help"><summary>o que posso pedir</summary><ul><li>quais são os compromissos de amanhã?</li><li>quais conteúdos tenho para gravar amanhã?</li><li>que ideias de conteúdo tenho na agenda?</li><li>como foram meus resultados no Instagram?</li><li>como estão meus hábitos e minhas metas?</li><li>mover os compromissos de hoje para amanhã</li><li>reagendar os vídeos dessa semana para a semana que vem</li><li>mudar a reunião de toda sexta para toda segunda</li></ul></details>
         </div>`,
         onOpen: (form) => {
-          const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form);
-          const say = (html) => { out.innerHTML = html; };
-          go.addEventListener('click', async () => {
-            if (Voice.kill) Voice.kill();
-            const text = ta.value.trim();
-            if (text.length < 4) { toast('Fale ou escreva o que você quer mudar.'); ta.focus(); return; }
-            go.disabled = true; say('<p class="muted">pensando…</p>');
-            try {
-              const r = await this.ask(text), d = r.data || r;
-              const plan = this.plan(d);
-              this.last = plan;
-              let html = '';
-              if (d.perguntas && d.perguntas.length) html += `<div class="cmd-ask"><b>Preciso entender melhor:</b><ul>${d.perguntas.map((q) => `<li>${esc(q)}</li>`).join('')}</ul><span class="muted">Complete o pedido acima e toque em “Pedir” de novo.</span></div>`;
-              if (!plan.items.length) { html += `<p>${d.perguntas && d.perguntas.length ? '' : 'Não achei nada para mudar com esse pedido.'}</p>`; }
+          const out = $('#cmd-out', form), go = $('#cmd-go', form), ta = $('#cmd-text', form), st = $('#cmd-st', form), mic = $('#cmd-mic', form), chk = $('#cmd-speak', form);
+          let dead = false, busy = false, doConfirm = null, doCancel = null;
+          dlg.addEventListener('close', () => { dead = true; Listen.stop(); Say.stop(); }, { once: true });
+          const setSt = (t, cls) => { st.textContent = t || 'Toque no microfone para falar.'; st.className = 'cmd-st' + (cls ? ' ' + cls : ''); };
+          chk.addEventListener('change', () => { try { localStorage.setItem('bloom_cmd_speak', chk.checked ? '1' : '0'); } catch (e) { /* sem armazenamento */ } if (!chk.checked) Say.stop(); });
+          const listen = (mode) => {
+            if (dead) return false;
+            if (!Listen.ok()) { setSt('Seu aparelho não liberou o microfone aqui. Escreva abaixo, ou use o 🎤 do teclado.'); return false; }
+            Say.stop(); mic.classList.add('on'); setSt('Ouvindo… pode falar', 'listen');
+            Listen.start({
+              onText: (t) => { if (mode === 'ask') ta.value = t; setSt('“' + t + '”', 'listen'); },
+              onDone: (t) => { mic.classList.remove('on'); if (dead) return; if (mode === 'confirm') return answerConfirm(t); ta.value = t; submit(t, true); },
+              onFail: (why) => { mic.classList.remove('on'); if (dead) return; setSt(why === 'denied' ? 'O microfone não foi liberado. Libere nas configurações do aparelho, ou escreva abaixo.' : why === 'nospeech' ? 'Não ouvi nada. Toque no microfone para tentar de novo.' : 'Não consegui ouvir agora. Toque no microfone ou escreva abaixo.'); },
+            });
+            return true;
+          };
+          const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').trim();
+          const answerConfirm = (t) => {
+            const n = norm(t);
+            if (/^(sim|confirm|pode|isso|ok|certo|manda|faz|claro|positivo|vai)/.test(n) && doConfirm) { setSt('Feito.'); doConfirm(); }
+            else if (/^(nao|cancel|deixa|para|esquece|negativo)/.test(n) && doCancel) { doCancel(); }
+            else setSt('Não entendi. Toque em Confirmar ou Cancelar.');
+          };
+          const speak = (text, then) => {
+            if (dead) return;
+            if (!chk.checked || !Say.ok()) { setSt(''); if (then) then(); return; }
+            setSt('Falando…', 'say'); out.querySelectorAll('[data-say]').forEach((b) => { b.textContent = '⏹ parar'; });
+            Say.speak(text, () => { out.querySelectorAll('[data-say]').forEach((b) => { b.textContent = '🔊 ouvir'; }); if (dead) return; setSt(''); if (then) then(); });
+          };
+          const bindSay = (text) => out.querySelectorAll('[data-say]').forEach((b) => b.addEventListener('click', () => {
+            if (Say.on) { Say.stop(); out.querySelectorAll('[data-say]').forEach((x) => { x.textContent = '🔊 ouvir'; }); setSt(''); return; }
+            Listen.stop(); mic.classList.remove('on'); setSt('Falando…', 'say'); out.querySelectorAll('[data-say]').forEach((x) => { x.textContent = '⏹ parar'; });
+            Say.speak(text, () => { out.querySelectorAll('[data-say]').forEach((x) => { x.textContent = '🔊 ouvir'; }); if (!dead) setSt(''); });
+          }));
+          const render = (d, viaVoice) => {
+            doConfirm = null; doCancel = null;
+            const itens = (Array.isArray(d.itens) ? d.itens : []).slice(0, 30);
+            const ask = d.perguntas && d.perguntas.length ? `<div class="cmd-ask"><b>Preciso entender melhor:</b><ul>${d.perguntas.map((q) => `<li>${esc(q)}</li>`).join('')}</ul><span class="muted">Toque no microfone e responda, ou escreva acima.</span></div>` : '';
+            const sayBtn = '<button type="button" class="btn sm ghost" data-say>🔊 ouvir</button>';
+            let spoken = String(d.fala || d.resumo || '');
+            if (d.intencao === 'mudanca') {
+              const plan = this.plan(d); this.last = plan;
+              let html = ask;
+              if (!plan.items.length) html += `<p>${d.perguntas && d.perguntas.length ? '' : esc(d.resumo || 'Não achei nada para mudar com esse pedido.')}</p>`;
               else {
-                html += `<p class="cmd-sum">${esc(d.resumo || 'Vou fazer estas mudanças:')}</p><div class="cmd-list">${plan.items.map((x, i) => `<label class="cmd-it"><input type="checkbox" class="check" data-i="${i}" checked><span class="cmd-ic" aria-hidden="true">${x.icon}</span><span class="cmd-tx"><b>${esc(x.title)}</b><span>${this.label(x)}</span></span></label>`).join('')}</div>
+                html += `<div class="cmd-ah"><p class="cmd-sum">${esc(d.resumo || 'Vou fazer estas mudanças:')}</p>${sayBtn}</div><div class="cmd-list">${plan.items.map((x, i) => `<label class="cmd-it"><input type="checkbox" class="check" data-i="${i}" checked><span class="cmd-ic" aria-hidden="true">${x.icon}</span><span class="cmd-tx"><b>${esc(x.title)}</b><span>${this.label(x)}</span></span></label>`).join('')}</div>
                   <div class="row" style="margin-top:10px"><button type="button" class="btn" id="cmd-ok">Confirmar</button><button type="button" class="btn ghost" id="cmd-no">Cancelar</button></div>`;
+                spoken = (d.fala || d.resumo || 'Vou fazer estas mudanças.') + ' Posso confirmar?';
               }
               if (plan.notes.length) html += `<p class="muted">${plan.notes.map(esc).join('<br>')}</p>`;
-              say(html);
-              try { out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+              out.innerHTML = html;
               const ok = $('#cmd-ok', form);
               if (ok) {
-                ok.addEventListener('click', () => { const pick = [...form.querySelectorAll('.cmd-it input:checked')].map((c) => plan.items[Number(c.dataset.i)]); dlg.close(); if (!pick.length) { toast('Nada foi marcado.'); return; } this.apply(pick); });
-                $('#cmd-no', form).addEventListener('click', () => { say('<p class="muted">Tudo bem, não mudei nada.</p>'); });
+                doConfirm = () => { const pick = [...form.querySelectorAll('.cmd-it input:checked')].map((c) => plan.items[Number(c.dataset.i)]); Say.stop(); Listen.stop(); dlg.close(); if (!pick.length) { toast('Nada foi marcado.'); return; } this.apply(pick); };
+                doCancel = () => { Say.stop(); Listen.stop(); out.innerHTML = '<p class="muted">Tudo bem, não mudei nada.</p>'; setSt(''); };
+                ok.addEventListener('click', doConfirm); $('#cmd-no', form).addEventListener('click', doCancel);
               }
-            } catch (e) {
+              bindSay(spoken);
+              try { out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+              speak(spoken, viaVoice && ok ? () => listen('confirm') : null);
+              return;
+            }
+            // consulta: resposta prática, em lista
+            out.innerHTML = `${ask}<div class="cmd-ans"><div class="cmd-ah"><h3>${esc(d.resumo || 'Aqui está')}</h3>${spoken ? sayBtn : ''}</div>${itens.length ? `<ul class="cmd-items">${itens.map((i) => `<li><b>${esc(i && i.texto)}</b>${i && i.detalhe ? `<span>${esc(i.detalhe)}</span>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
+            bindSay(spoken);
+            try { out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+            speak(spoken, viaVoice && d.perguntas && d.perguntas.length ? () => listen('ask') : null);
+          };
+          const submit = async (text, viaVoice) => {
+            if (busy) return;
+            text = String(text || '').trim();
+            if (text.length < 3) { toast('Fale ou escreva o que você quer saber ou fazer.'); ta.focus(); return; }
+            busy = true; go.disabled = true; Say.stop(); setSt('Pensando…', 'think'); out.innerHTML = '';
+            try { const r = await this.ask(text); if (dead) return; setSt(''); render(r.data || r, viaVoice); }
+            catch (e) {
               const c = e && e.code;
-              say(`<p>${c === 'rate_limited' ? 'Você usou todos os pedidos de hoje. Amanhã libera de novo.' : c === 'unauthorized' ? 'Entre na sua conta para usar.' : c === 'not_found' || c === 'not_configured' ? 'Essa função ainda não está disponível. Tente mais tarde.' : 'Não consegui agora. Confira a internet e tente de novo.'}</p>`);
-            } finally { go.disabled = false; }
+              setSt(''); out.innerHTML = `<p>${c === 'rate_limited' ? 'Você usou todos os pedidos de hoje. Amanhã libera de novo.' : c === 'unauthorized' ? 'Entre na sua conta para usar.' : c === 'not_found' || c === 'not_configured' ? 'Essa função ainda não está disponível. Tente mais tarde.' : 'Não consegui agora. Confira a internet e tente de novo.'}</p>`;
+            } finally { busy = false; go.disabled = false; }
+          };
+          go.addEventListener('click', () => { Listen.stop(); mic.classList.remove('on'); submit(ta.value, false); });
+          ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Listen.stop(); mic.classList.remove('on'); submit(ta.value, false); } });
+          mic.addEventListener('click', () => {
+            if (mic.classList.contains('on')) { try { Listen.rec && Listen.rec.stop(); } catch (e) { /* já parou */ } return; } // tocar de novo = terminei
+            Say.stop(); listen('ask');
           });
+          if (o.listen) listen('ask');
         },
       });
     },
@@ -6302,11 +6438,11 @@
       const end = () => {
         if (!st) return; const moved = st.moved; st = null; b.classList.remove('drag');
         if (moved) { try { localStorage.setItem(this.POS, JSON.stringify({ r: parseFloat(b.style.right), b: parseFloat(b.style.bottom) })); } catch (e) {} }
-        else this.open();
+        else this.open({ listen: true });
       };
       b.addEventListener('pointerup', end);
       b.addEventListener('pointercancel', () => { st = null; b.classList.remove('drag'); });
-      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.open(); } });
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.open({ listen: true }); } });
       window.addEventListener('resize', () => this.place(b));
     },
   };
@@ -6319,7 +6455,7 @@
   Reminders.tick();
   if (location.search.includes('job=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + '#conteudo'); } catch (e) {} }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Assist.check(); });
-  if (location.protocol === 'file:') window.__bloom = { Cmd, Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
+  if (location.protocol === 'file:') window.__bloom = { Cmd, Listen, Say, Plan, Assist, Social, S: () => S, rerender: () => rerender() }; // só nos testes locais
   setTimeout(() => { Assist.check(); if ((Assist.st().jobs || []).length) Assist.watch(); }, 2500);
   if (location.search.includes('task=')) { openFromUrl(location.href); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open') openFromUrl(e.data.url); });

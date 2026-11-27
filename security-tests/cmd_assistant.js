@@ -10,6 +10,7 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     let p = await ctx.newPage(); await p.clock.install({ time: new Date(2026, 10, 27, 10, 0, 0) }); // sexta 27/11/2026
     await p.goto(FILE); await p.waitForTimeout(400); await p.goto('about:blank');
     await ctx.addInitScript(() => {
+      try { delete window.webkitSpeechRecognition; delete window.SpeechRecognition; } catch (e) {}
       try {
         if (sessionStorage.__seed) return; sessionStorage.__seed = '1';
         const S = JSON.parse(localStorage.lorace_planner_v1); const L = S.tasks.lists[0].id; const F = S.biz.folders[0].id;
@@ -33,7 +34,7 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     await p.goto(FILE); await p.waitForTimeout(700);
     const calls = []; let reply = null;
     await p.evaluate(() => { window.__calls = []; window.__reply = null; window.__bloom.Social.call = async (path, body) => { window.__calls.push({ path, body }); if (window.__fail) throw Object.assign(new Error(window.__fail), { code: window.__fail }); return { ok: true, data: window.__reply }; }; });
-    const setReply = (r) => p.evaluate((r) => { window.__reply = r; window.__fail = null; }, r);
+    const setReply = (r) => p.evaluate((r) => { window.__reply = r; window.__fail = null; }, Object.assign({ intencao: 'mudanca', fala: '', itens: [] }, r));
     const ask = async (text) => { await p.click('#cmd-fab'); await p.waitForSelector('#cmd-text'); await p.fill('#cmd-text', text); await p.click('#cmd-go'); await p.waitForTimeout(250); };
     const st = () => p.evaluate(() => { const S = window.__bloom.S(); return { tasks: S.tasks.items.map((x) => ({ id: x.id, due: x.due, time: x.time, repeat: x.repeat, skip: x.skipDates && Object.keys(x.skipDates), from: x.movedFrom, text: x.text })), posts: S.biz.posts.map((x) => ({ id: x.id, date: x.date, time: x.time })) }; });
     const on = (id, d) => p.evaluate(([id, d]) => { const S = window.__bloom.S(); const it = S.tasks.items.find((x) => x.id === id); return window.__bloom.Cmd && (function () { const occ = (it, date) => window.__occ(it, date); return null; })(); }, [id, d]);
@@ -68,7 +69,7 @@ let fail = 0; const t = (n, ok, x = '') => { console.log((ok ? 'OK    ' : 'FALHA
     const body = await p.evaluate(() => window.__calls[window.__calls.length - 1]);
     t('pedido vai para a rota "command"', body.path === 'command');
     t('o app envia hoje, dia da semana e calendário', body.body.hoje === '2026-11-27' && body.body.dia_semana === 'sex' && body.body.calendario.length === 21 && body.body.calendario[1].dia === 'sex');
-    t('não envia tarefa concluída nem post publicado nem exemplo', !body.body.tarefas.some((x) => x.id === 'a3') && !body.body.conteudos.some((x) => ['p4', 'p5'].includes(x.id)));
+    t('concluída vai marcada como feita; publicado e exemplo não vão nos conteúdos', (body.body.tarefas.find((x) => x.id === 'a3') || {}).feita === true && !body.body.conteudos.some((x) => ['p4', 'p5'].includes(x.id)) && !(body.body.publicados || []).some((x) => x.t === 'Exemplo'));
     t('tarefa que se repete vai com as datas em que ocorre', (body.body.tarefas.find((x) => x.id === 'v1').ocorre_em || []).length === 8 && body.body.tarefas.find((x) => x.id === 'r1').ocorre_em[0] === '2026-11-27');
     const rows = await p.$$eval('.cmd-it', (e) => e.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
     t('prévia mostra só as 3 ações válidas (descarta id inexistente, concluída, data inválida, publicado)', rows.length === 3, JSON.stringify(rows));

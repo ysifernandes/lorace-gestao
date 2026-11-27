@@ -743,9 +743,12 @@ async function monthPlan(userId: string, body: any) {
 /* Assistente de comandos: a Claude só devolve um PLANO de mudanças de data. Quem confere e aplica é o app, depois do "confirmar". */
 const CMD_DAYS = ['', 'dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 const CMD_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['resumo', 'perguntas', 'acoes'],
+  type: 'object', additionalProperties: false, required: ['intencao', 'resumo', 'fala', 'itens', 'perguntas', 'acoes'],
   properties: {
+    intencao: { type: 'string', enum: ['consulta', 'mudanca', 'pergunta'] },
     resumo: { type: 'string' },
+    fala: { type: 'string' },
+    itens: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['texto', 'detalhe'], properties: { texto: { type: 'string' }, detalhe: { type: 'string' } } } },
     perguntas: { type: 'array', items: { type: 'string' } },
     acoes: {
       type: 'array',
@@ -762,55 +765,86 @@ const CMD_SCHEMA = {
     },
   },
 };
-const CMD_SYSTEM = `Você ajuda uma empreendedora brasileira a reorganizar a agenda do app Bloom por comando de voz ou texto. Você NÃO executa nada: devolve um plano de mudanças de data que ela vai conferir e confirmar.
+const CMD_SYSTEM = `Você é a assistente do Bloom, o planner de uma empreendedora brasileira. Ela fala ou escreve pedidos curtos, e você responde sobre a agenda, as tarefas, os conteúdos, as ideias, os resultados do Instagram, os hábitos e as metas dela, ou reorganiza datas. Use SOMENTE os dados que recebeu: nunca invente compromissos, números, datas ou resultados. Se faltar dado, diga isso com simplicidade.
 
-O que você recebe (JSON): o pedido dela, a data de hoje, um calendário com o dia da semana de cada data, as tarefas e os conteúdos (posts, vídeos) que ainda não foram concluídos ou publicados.
+O que você recebe (JSON): o pedido, a data de hoje, um calendário com o dia da semana de cada data, "tarefas" (compromissos e tarefas; "feita" indica concluída), "conteudos" (posts e vídeos não publicados, com status, data, pilar, gancho; os de data vazia são ideias ainda sem dia), "publicados" (posts recentes com números), "insights" (resumo dos últimos 7 dias, melhor formato, seguidores), "habitos", "metas" e "notas".
 
-Faça somente o que ela pediu, nem mais nem menos. Use apenas os ids que estão na lista; nunca invente itens. Tipos de ação:
-- "mover_item": muda a data de uma tarefa que NÃO se repete (rep = "none") ou de um conteúdo. Preencha "nova_data" (AAAA-MM-DD). "data_origem" fica vazio.
-- "mover_ocorrencia": muda UMA ocorrência de uma tarefa que se repete (rep diferente de "none"), sem mexer na série. Preencha "data_origem" com a data da ocorrência (uma das de "ocorre_em") e "nova_data".
+Primeiro decida a "intencao":
+- "consulta": ela quer saber algo (o que tem amanhã, quais conteúdos gravar, ideias na agenda, insights, hábitos, metas, notas). Responda com "resumo", "fala" e "itens". "acoes" fica vazio.
+- "mudanca": ela quer mudar datas. Devolva "acoes" e uma "fala" curta dizendo o que vai fazer. "itens" fica vazio.
+- "pergunta": o pedido é vago demais. Devolva "perguntas" (curtas) e nada mais.
+
+Como responder uma consulta:
+- "resumo": o título da resposta em uma frase curta (ex.: "Amanhã, sábado 28/11: 3 compromissos").
+- "itens": uma lista prática, do mais cedo para o mais tarde quando houver horário. "texto" é o essencial (horário e nome, ou o título do conteúdo). "detalhe" é uma informação extra curta (lista, status, formato, número) ou vazio. No máximo 15 itens.
+- "fala": o que será lido em voz alta, em português natural e acolhedor, sem emojis, sem listas, sem símbolos. No máximo 450 caracteres. Diga o total e leia os primeiros itens; se houver mais de 5, diga "e mais N". Horários como "às 10 horas". Se não houver nada, diga isso de forma simples.
+- Compromissos de um dia: tarefas com "due" naquela data e tarefas que se repetem com a data em "ocorre_em"; ignore as concluídas, a menos que ela pergunte pelo que já fez.
+- Conteúdos para gravar: use "status" (gravar, roteiro, editar, agendado) e a data. "Ideias de conteúdo na agenda": conteúdos com status "ideia", com ou sem data. Diga o pilar quando ajudar.
+- Insights do Instagram: use "insights" e "publicados". Compare os últimos 7 dias com a semana anterior (variacao_pct_vs_semana_anterior), cite o melhor formato, os seguidores ganhos e os 2 ou 3 posts que mais foram vistos, sempre com os números que estão nos dados. Se "conectado" for falso e não houver números, diga que ainda não há resultados e que ela pode conectar o Instagram na página Insights ou anotar os números à mão. Termine com uma sugestão prática de uma frase, baseada nos números.
+- Hábitos e metas: diga quanto já fez nesta semana ou o progresso, com os números recebidos.
+
+Como mudar datas (intencao "mudanca"). Tipos de ação:
+- "mover_item": muda a data de uma tarefa que NÃO se repete (rep = "none", e não "feita") ou de um conteúdo. Preencha "nova_data" (AAAA-MM-DD). "data_origem" fica vazio.
+- "mover_ocorrencia": muda UMA ocorrência de uma tarefa que se repete (rep diferente de "none"), sem mexer na série. Preencha "data_origem" com uma das datas de "ocorre_em" e "nova_data".
 - "mudar_serie": muda o dia da semana de uma tarefa SEMANAL (rep = "weekly") para sempre, só quando ela pedir isso claramente ("toda sexta para toda segunda"). Preencha "novo_dia_semana" (dom, seg, ter, qua, qui, sex, sab).
 - Em "mover_item" e "mover_ocorrencia", "novo_dia_semana" fica "". Em "mudar_serie", "nova_data" e "data_origem" ficam vazios.
-- "novo_horario": HH:MM só se ela pedir um horário novo; senão deixe vazio (o horário atual fica).
+- "novo_horario": HH:MM só se ela pedir um horário novo; senão vazio.
 - "alvo": "tarefa" para tarefas e compromissos, "conteudo" para posts, vídeos, reels, carrosséis e stories da lista de conteúdos.
+- "compromissos de hoje": itens de tarefas de hoje que não estão concluídos. Os que se repetem entram como "mover_ocorrencia" (só a de hoje), nunca como mudar_serie, a menos que ela peça para mudar a série.
+- "amanhã", "sexta", "semana que vem": use o calendário. "Semana que vem" = a mesma data somada a 7 dias, mantendo o dia da semana. "Essa semana" = de segunda a domingo da semana de hoje. "Vídeos" = conteúdos de formato reels, curto ou video; "conteúdos" ou "posts" = todos os formatos.
+- Use apenas ids da lista. Se não houver nada para mexer, "acoes" vazio e explique em "resumo" e "fala".
 
-Regras de interpretação:
-- "compromissos de hoje" e "tarefas de hoje": itens de tarefas cuja data é hoje (ou que se repetem e ocorrem hoje). Itens que se repetem entram como "mover_ocorrencia" (só a de hoje), nunca como mudar_serie, a menos que ela peça para mudar a série.
-- "amanhã", "depois de amanhã", "sexta", "semana que vem": use o calendário. "Semana que vem" = a mesma data somada a 7 dias, mantendo o dia da semana. "Essa semana" = de segunda a domingo da semana de hoje.
-- "vídeos": conteúdos com formato reels, curto ou video. Se ela disser "conteúdos" ou "posts", todos os formatos.
-- Se o pedido for vago ou houver mais de um jeito de entender, não chute: devolva "perguntas" (curtas, em português) e "acoes" vazio.
-- Se não houver nada na lista para mexer, devolva "acoes" vazio e explique em "resumo".
-- "resumo": uma frase curta no tom acolhedor, dizendo o que você vai fazer (ex.: "Vou mover 3 compromissos de hoje para amanhã.").
+Se o pedido não for sobre o Bloom ou os dados dela, responda em uma frase gentil que você ajuda com agenda, conteúdos, resultados, hábitos e metas.
 Escreva em português do Brasil.`;
 async function commandPlan(userId: string, body: any) {
   if (!ANTHROPIC_KEY) return { status: 400, body: { error: 'not_configured' } };
   const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   const isDate = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const arr = (v: unknown, n: number) => (Array.isArray(v) ? v.slice(0, n) : []);
   const texto = clip(body?.texto, 500);
-  if (texto.length < 4) return { status: 400, body: { error: 'no_text' } };
+  if (texto.length < 3) return { status: 400, body: { error: 'no_text' } };
   if (!isDate(body?.hoje)) return { status: 400, body: { error: 'bad_date' } };
-  const tarefas = (Array.isArray(body?.tarefas) ? body.tarefas : []).slice(0, 120).map((x: any) => ({
+  const tarefas = arr(body?.tarefas, 140).map((x: any) => ({
     id: clip(x?.id, 60), t: clip(x?.t, 80), rep: ['none', 'daily', 'weekdays', 'weekly', 'monthly'].includes(x?.rep) ? x.rep : 'none',
-    time: clip(x?.time, 5), due: isDate(x?.due) ? x.due : undefined,
+    time: clip(x?.time, 5), due: isDate(x?.due) ? x.due : undefined, feita: x?.feita === true ? true : undefined, prio: x?.prio === 'alta' ? 'alta' : undefined, lista: clip(x?.lista, 30),
     ocorre_em: Array.isArray(x?.ocorre_em) ? x.ocorre_em.filter(isDate).slice(0, 8) : undefined,
   })).filter((x: any) => x.id);
-  const conteudos = (Array.isArray(body?.conteudos) ? body.conteudos : []).slice(0, 80).map((x: any) => ({
+  const conteudos = arr(body?.conteudos, 100).map((x: any) => ({
     id: clip(x?.id, 60), t: clip(x?.t, 80), data: isDate(x?.data) ? x.data : '', hora: clip(x?.hora, 5), formato: clip(x?.formato, 20), status: clip(x?.status, 20),
+    pilar: clip(x?.pilar, 30), gancho: clip(x?.gancho, 80), tem_roteiro: x?.tem_roteiro === true,
   })).filter((x: any) => x.id);
-  const calendario = (Array.isArray(body?.calendario) ? body.calendario : []).slice(0, 30).filter((x: any) => isDate(x?.data)).map((x: any) => ({ data: x.data, dia: clip(x?.dia, 3) }));
+  const publicados = arr(body?.publicados, 40).map((x: any) => ({
+    t: clip(x?.t, 60), data: isDate(x?.data) ? x.data : '', formato: clip(x?.formato, 20), views: num(x?.views), alcance: num(x?.alcance), curtidas: num(x?.curtidas), comentarios: num(x?.comentarios), salvos: num(x?.salvos), compartilhamentos: num(x?.compartilhamentos),
+  }));
+  const i = body?.insights && typeof body.insights === 'object' ? body.insights : null;
+  const insights = i ? {
+    conectado: i.conectado === true,
+    ultimos_7_dias: { posts: num(i.ultimos_7_dias?.posts), visualizacoes: num(i.ultimos_7_dias?.visualizacoes), variacao_pct_vs_semana_anterior: num(i.ultimos_7_dias?.variacao_pct_vs_semana_anterior), engajamento_pct: num(i.ultimos_7_dias?.engajamento_pct) },
+    melhor_formato: i.melhor_formato ? { melhor: clip(i.melhor_formato.melhor, 30), pior: clip(i.melhor_formato.pior, 30), vezes_mais_views: num(i.melhor_formato.vezes_mais_views) } : null,
+    seguidores_ganhos_7_dias: num(i.seguidores_ganhos_7_dias), seguidores_total: num(i.seguidores_total),
+    posts_do_mes: i.posts_do_mes && typeof i.posts_do_mes === 'object' ? { feitos: num(i.posts_do_mes.done), total: num(i.posts_do_mes.total) } : null,
+  } : null;
+  const habitos = arr(body?.habitos, 12).map((h: any) => ({ nome: clip(h?.nome, 40), meta_por_semana: num(h?.meta_por_semana), feitos_nesta_semana: num(h?.feitos_nesta_semana), feito_hoje: h?.feito_hoje === true }));
+  const metas = arr(body?.metas, 15).map((g: any) => ({ titulo: clip(g?.titulo, 60), prazo: isDate(g?.prazo) ? g.prazo : '', atual: num(g?.atual), alvo: num(g?.alvo), unidade: clip(g?.unidade, 20) }));
+  const notas = arr(body?.notas, 10).map((n: unknown) => clip(n, 120)).filter(Boolean);
+  const calendario = arr(body?.calendario, 30).filter((x: any) => isDate(x?.data)).map((x: any) => ({ data: x.data, dia: clip(x?.dia, 3) }));
   if (!(await aiAllowed(userId))) return { status: 429, body: { error: 'rate_limited' } };
-  const pedido = { pedido: texto, hoje: body.hoje, dia_semana: clip(body?.dia_semana, 3), calendario, tarefas, conteudos };
-  const r = await askClaude(CMD_SYSTEM, `Dados (JSON):\n${JSON.stringify(pedido)}`, CMD_SCHEMA, { effort: 'low', max: 4000 });
+  const pedido = { pedido: texto, hoje: body.hoje, dia_semana: clip(body?.dia_semana, 3), calendario, tarefas, conteudos, publicados, insights, habitos, metas, notas };
+  const r = await askClaude(CMD_SYSTEM, `Dados (JSON):\n${JSON.stringify(pedido)}`, CMD_SCHEMA, { effort: 'low', max: 6000 });
   if (r.status !== 200) return r;
   // o servidor só deixa passar ações sobre itens que ele mesmo enviou, com datas válidas
   const d: any = (r.body as any).data;
   const idsT = new Set(tarefas.map((x: any) => x.id)), idsC = new Set(conteudos.map((x: any) => x.id));
-  d.acoes = (Array.isArray(d.acoes) ? d.acoes : []).filter((a: any) =>
+  d.intencao = ['consulta', 'mudanca', 'pergunta'].includes(d.intencao) ? d.intencao : 'consulta';
+  d.acoes = d.intencao !== 'mudanca' ? [] : (Array.isArray(d.acoes) ? d.acoes : []).filter((a: any) =>
     (a.alvo === 'tarefa' ? idsT.has(a.id) : idsC.has(a.id)) &&
     (a.tipo === 'mudar_serie' ? CMD_DAYS.includes(a.novo_dia_semana) && a.novo_dia_semana !== '' : isDate(a.nova_data)) &&
     (!a.novo_horario || /^([01]\d|2[0-3]):[0-5]\d$/.test(a.novo_horario))).slice(0, 80);
+  d.itens = (Array.isArray(d.itens) ? d.itens : []).slice(0, 20).map((x: any) => ({ texto: String(x?.texto ?? '').slice(0, 200), detalhe: String(x?.detalhe ?? '').slice(0, 200) }));
   d.perguntas = (Array.isArray(d.perguntas) ? d.perguntas : []).slice(0, 3).map((q: unknown) => String(q).slice(0, 200));
   d.resumo = String(d.resumo ?? '').slice(0, 300);
+  d.fala = String(d.fala ?? '').slice(0, 700);
   return { status: 200, body: { ok: true, data: d } };
 }
 async function analyzePosts(userId: string, raw: unknown) {
