@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler",
+    "strict": true, "noUncheckedIndexedAccess": true, "noImplicitOverride": true,
+    "skipLibCheck": true, "noEmit": true, "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@estuda/types": ["packages/types/src/index.ts"],
+      "@estuda/pedagogy": ["packages/pedagogy/src/index.ts"],
+      "@estuda/gamification": ["packages/gamification/src/index.ts"],
+      "@estuda/parental-control": ["packages/parental-control/src/index.ts"],
+      "@estuda/security": ["packages/security/src/index.ts"],
+      "@estuda/backend": ["services/backend/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src", "packages/*/test", "services/*/src", "services/*/test", "tests/poc"]
+}

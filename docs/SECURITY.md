@@ -1,0 +1,6 @@
+# Segurança
+
+Implementado e testado: RLS negar-por-padrão · isolamento família/instituição · escola só com matrícula+consentimento ativo e (professor) turma · sem escalada de papel (grant por coluna) · escritas sensíveis só via backend · comandos assinados (HMAC por dispositivo, nonce, expiração, tempo constante) · carteira append-only/idempotente/encadeada · auditoria append-only · validação de entrada, limite de corpo, rate limit · erros sem vazamento (500 genérico) · pareamento de uso único.
+Achado corrigido durante os testes: `REVOKE UPDATE(coluna)` não remove UPDATE de tabela inteira (permitia mudar o próprio papel) → agora revoga tudo e concede só `full_name`.
+**Pendente / a fazer antes de produção**: Supabase Auth real (MFA para responsáveis/gestores, política de senha) · gestão de segredos (cofre, rotação da chave mestre de comandos) · varredura de uploads (tipo/tamanho/antivírus) · WAF · testes de intrusão · SAST/dependabot · backups e DR · logging com PII mascarada · moderação da IA · autenticação do dispositivo além de bearer (ex.: chave assimétrica por dispositivo) · criptografia de campos sensíveis · revisão de `search_path`/privilégios em ambiente Supabase real (roles `anon`).
+Limitação conhecida do PoC: tokens/estado em memória.
