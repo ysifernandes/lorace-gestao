@@ -1092,6 +1092,25 @@ async function handle(req: Request): Promise<Response> {
       return json({ ok: true, ...(await pushTick()) });
     }
 
+    // diagnóstico das notificações (só o agendador, com o segredo): tenta enviar um aviso de teste e devolve o que o serviço de push respondeu
+    if (route[0] === 'push-diag' && req.method === 'POST') {
+      if (!cronOk(req)) return json({ error: 'unauthorized' }, 401);
+      const { data: subs } = await admin.from('push_subscriptions').select('*');
+      const out: unknown[] = [];
+      for (const sub of subs ?? []) {
+        let host = '';
+        try { host = new URL(sub.endpoint).hostname; } catch { /* inválido */ }
+        if (!pushEndpointOk(sub.endpoint)) { out.push({ host, ok: false, motivo: 'endereço não permitido' }); continue; }
+        try {
+          const r = await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ title: 'Bloom 🎀', body: 'Teste: se você viu este aviso, as notificações estão funcionando.', url: APP_URL || '/', tag: 'bloom-diag' }), { TTL: 600 });
+          out.push({ host, ok: true, status: r.statusCode });
+        } catch (e) {
+          out.push({ host, ok: false, status: (e as any)?.statusCode ?? null, corpo: String((e as any)?.body ?? (e as any)?.message ?? e).slice(0, 200) });
+        }
+      }
+      return json({ ok: true, vapid: !!(VAPID_PUBLIC && VAPID_PRIVATE), resultados: out });
+    }
+
     if (route[0] === 'push-test' && req.method === 'POST') {
       const user = await userFrom(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
