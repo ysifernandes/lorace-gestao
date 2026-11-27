@@ -5,7 +5,7 @@ Plataforma de apoio escolar adaptativo + gamificação + controle parental. Prod
 **Nome/logotipo/cores/mascote(paleta)/contatos: SOMENTE em `packages/brand/src/index.ts`**. Nome atual **Aprendix** (provisório: falta pesquisa de disponibilidade e registro). Referências visuais aprovadas: `docs/design/references/`. Mascote: axolote (`apps/web/src/ui/axolotl.tsx`); nunca demonstra decepção ao erro.
 
 ## Comandos
-- `pnpm install` · `pnpm test` (vitest: 91 testes — pedagogia, conteúdo, motor da jornada, tutor, gamificação, parental/PoC, store e painel web) · `pnpm typecheck`
+- `pnpm install` · `pnpm test` (vitest: 107 testes — pedagogia, conteúdo, motor da jornada, tutor, gamificação, parental/PoC, store e painel web) · `pnpm typecheck`
 - `pnpm test:db` — migrations + seed + RLS/segurança em Postgres 16 descartável (precisa de Postgres local; 45+35+seed).
 - `pnpm web:dev` (app web) · `pnpm web:build` · `pnpm web:preview-build` (HTML único/fragmento p/ Artifact) · `pnpm e2e` (jornada completa) · `pnpm e2e:visual` (7 resoluções, axe-core, comparação com as referências; ambos exigem `vite preview` em :4173) · `pnpm seed:gen`.
 

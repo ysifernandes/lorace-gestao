@@ -40,3 +40,14 @@ Feedback do usuário: axolote "estranho/feio" e diferente da referência; tela i
 - Motor: equívoco agora aparece no relatório de qualquer habilidade com evidência dele (ex.: "contou as fatias que sobram" na Pizzaria).
 - Testes: +8 (lógica dos jogos: gabaritos, equívocos, integração com diagnóstico, estrelas) e `pnpm e2e:games` (robô joga os 5 jogos até o fim, erro proposital, axe).
 - Bugs corrigidos pelos testes: Mercado exibia total diferente dos itens da cesta; pedido de "metade" na Pizzaria impedia detectar o erro de contar fatias que sobram; estado do jogo anterior ficava preso ao trocar de jogo por link.
+
+## 0.5.0 — Personalização por idade e interesses (11–17 anos)
+Feedback: jogos "infantis" demais para 11+; é preciso identificar a idade e adaptar skin/layout/conteúdo.
+- **Conteúdo avançado**: +6 habilidades (porcentagem, desconto/acréscimo, proporção, equação do 1º grau, média, juros), +36 itens, +14 equívocos com explicações (31 habilidades, 165 itens, 49 equívocos no total); novos mundos no mapa.
+- **Faixa efetiva** = idade (responsável) ± maturidade, com travas de segurança; **diagnóstico e prática só miram o que cabe na idade**.
+- **Cadastro inicial** (interesses + estilo) e **Perfil de aprendizagem** para o responsável.
+- **Jogos 11–17**: Finanças do Dia a Dia, Escape Room (4 portas), Placar & Estatística; interesses mudam o tema; treino de base com nomes adultos; catálogo por faixa.
+- Painel com tom por faixa (sem "Nova Missão!" para adolescentes; mascote discreto/ausente).
+- **"Sair" em todas as páginas do aluno** (menu lateral e botão flutuante): antes só existia na tela inicial.
+- Testes: 107 unitários; novo `pnpm e2e:teens`.
+- Bugs achados pelos testes: contraste das etiquetas dos jogos (axe); "Sair" inacessível fora do painel; comentário engolindo teste.

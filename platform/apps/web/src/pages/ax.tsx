@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { brand } from '@edu/brand';
 import { useDB, logout, balances, setAvatar, requestTime, type Student, type DB } from '../store/db';
 import { buildDashboard, fmtMinutes, toneOf, type DashVM, type MapNode } from '../store/dashboard';
 import { Axolotl, type MascotState } from '../ui/axolotl';
 import { Modal, Btn } from '../ui';
 import { GamesHub } from '../games/Games';
-import { AvatarFace, ArtBook, ArtCalc, ArtFlask, ArtMuseum, ArtGlobe, ArtLang, IGame, ArtCompass, ArtGame, ArtTarget, ArtVideo, ArtPeople, IBell, IChevron, ICheck, IEvolution, IFamily, IGear, IHome, ILibrary, ILock, IMission, IPlay, IArrow, ISpeaker, IStar, IStudy, ITrophy, ITutor, Medal, SHIRTS, SKINS, HAIRS, Wordmark, IPhone, type AvatarSpec } from '../ui/art';
+import { AvatarFace, ArtBook, ArtCalc, ArtFlask, ArtMuseum, ArtGlobe, ArtLang, IGame, ILogout, ArtCompass, ArtGame, ArtTarget, ArtVideo, ArtPeople, IBell, IChevron, ICheck, IEvolution, IFamily, IGear, IHome, ILibrary, ILock, IMission, IPlay, IArrow, ISpeaker, IStar, IStudy, ITrophy, ITutor, Medal, SHIRTS, SKINS, HAIRS, Wordmark, IPhone, type AvatarSpec } from '../ui/art';
 import { useStudent } from './student';
 
 const NAV = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/s/jogos', 'Jogos', IGame], ['/s/missoes', 'Minhas Missões', IMission], ['/s/progress', 'Minha Evolução', IEvolution], ['/s/conquistas', 'Conquistas', ITrophy]] as const;
@@ -15,13 +15,13 @@ const MOBILE = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/
 
 /** Casca do aluno: menu lateral (desktop) + navegação inferior fixa (celular/tablet). */
 export function AxShell() {
-  const { d, s } = useStudent(); const [dark, setDark] = useState(false); if (!s.onboarded) return <Navigate to="/s/comecar" replace />; const band = (d.students.find((x) => x.id === s.id) && buildBand(s));
+  const { d, s } = useStudent(); const [dark, setDark] = useState(false); if (!s.onboarded) return <Navigate to="/s/comecar" replace />; const band = (d.students.find((x) => x.id === s.id) && buildBand(s)); const here = useLocation().pathname;
   return <div className="ax-app" data-theme={band} data-band={band} data-mode={band === 'estrategistas' && dark ? 'dark' : undefined}>
     <aside className="ax-side" aria-label="Menu principal"><Wordmark size={46} />
-      <nav className="ax-nav" aria-label="Navegação">{NAV.map(([to, l, I]) => <NavLink key={to} end to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<hr />{NAV2.map(([to, l, I]) => <NavLink key={to} to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}</nav>
+      <nav className="ax-nav" aria-label="Navegação">{NAV.map(([to, l, I]) => <NavLink key={to} end to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<hr />{NAV2.map(([to, l, I]) => <NavLink key={to} to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<button className="ax-link out" onClick={logout}><ILogout size={28} />Sair</button></nav>
       <svg className="ax-wave" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden><path d="M0 60C50 20 100 20 150 55S250 90 300 40V120H0z" fill="#fff" opacity=".07" /><path d="M0 85C60 55 110 60 160 80S250 105 300 70V120H0z" fill="#fff" opacity=".07" /></svg>
       <Link to="/s/familia" className="ax-family"><ArtPeople size={52} /><span><b>Área da Família</b><small>Acompanhe o progresso e gerencie o tempo de uso</small></span><IChevron dir="right" size={22} /></Link></aside>
-    <main className="ax-main" id="conteudo"><Outlet context={{ dark, setDark }} /></main>
+    <main className="ax-main" id="conteudo">{here !== '/s' && <div className="ax-float"><UserMenu cls="ax-mmenu" /></div>}<Outlet context={{ dark, setDark }} /></main>
     <nav className="ax-bottom" aria-label="Navegação inferior">{MOBILE.map(([to, l, I]) => <NavLink key={to} end={to === '/s'} to={to} className={({ isActive }) => `ax-bt ${isActive ? 'on' : ''}`}><I size={26} /><span>{l}</span></NavLink>)}</nav></div>;
 }
 import { bandOf } from '../store/db';
@@ -29,9 +29,9 @@ const buildBand = (s: Student) => bandOf(s);
 
 function useOutside(close: () => void) { const r = useRef<HTMLDivElement>(null); useEffect(() => { const h = (e: MouseEvent) => { if (r.current && !r.current.contains(e.target as Node)) close(); }; const k = (e: KeyboardEvent) => e.key === 'Escape' && close(); document.addEventListener('mousedown', h); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', h); document.removeEventListener('keydown', k); }; }, [close]); return r; }
 
-function UserMenu({ onEdit, cls = '' }: { onEdit: () => void; cls?: string }) {
+function UserMenu({ onEdit, cls = '' }: { onEdit?: () => void; cls?: string }) {
   const nav = useNavigate(); const [menu, setMenu] = useState(false); const rm = useOutside(() => setMenu(false));
-  return <div className={`ax-pop-wrap ${cls}`} ref={rm}><button className="ax-round sm" aria-label="Menu do aluno" aria-expanded={menu} onClick={() => setMenu(!menu)}><IChevron size={22} /></button>{menu && <div className="ax-pop menu" role="menu"><button role="menuitem" onClick={() => { setMenu(false); onEdit(); }}>🎨 Personalizar avatar</button><button role="menuitem" onClick={() => nav('/s/familia')}>👨‍👩‍👧 Área da Família</button><button role="menuitem" onClick={() => nav('/s/tutor')}>🤖 Tutor IA</button><button role="menuitem" onClick={logout}>↩ Sair</button></div>}</div>;
+  return <div className={`ax-pop-wrap ${cls}`} ref={rm}><button className="ax-round sm" aria-label="Menu do aluno" aria-expanded={menu} onClick={() => setMenu(!menu)}><IChevron size={22} /></button>{menu && <div className="ax-pop menu" role="menu">{onEdit && <button role="menuitem" onClick={() => { setMenu(false); onEdit(); }}>🎨 Personalizar avatar</button>}<button role="menuitem" onClick={() => nav('/s/familia')}>👨‍👩‍👧 Área da Família</button><button role="menuitem" onClick={() => nav('/s/tutor')}>🤖 Tutor IA</button><button role="menuitem" onClick={logout}>↩ Sair</button></div>}</div>;
 }
 function Header({ vm, s }: { vm: DashVM; s: Student }) {
   const [bell, setBell] = useState(false); const [edit, setEdit] = useState(false);

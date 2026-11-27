@@ -32,7 +32,7 @@ Legenda: ✅ implementado+testado · 🟡 parcial · 📝 escrito, não validado
 | Páginas Estudar, Missões, Conquistas, Biblioteca, Tutor, Família | ✅ básicas |
 | Painéis de responsável/professor/gestor/admin | ✅ existentes (não redesenhados com a identidade infantil, por decisão) · ⏳ polimento visual |
 | Mapa de evolução interativo, fases por evidência | ✅ primeira versão · ⏳ mais mundos, animações |
-| Jogos educativos | ✅ 5 jogáveis e testados (Pizzaria, Mercado, Laboratório de Cupcakes, Montagem de Frases, Detetive de Palavras) · ⏳ Aventuras de Interpretação de Texto (6º jogo) · ⏳ níveis de dificuldade adaptativos por desempenho (hoje: rodadas fixas por semente) · ⏳ revisão pedagógica profissional |
+| Jogos educativos | ✅ 8 jogáveis e testados: 5 infantis (Pizzaria, Mercado, Laboratório de Cupcakes, Montagem de Frases, Detetive de Palavras) + 3 para 11–17 (Finanças, Escape Room, Placar & Estatística) · ✅ catálogo por faixa e tema por interesse · ⏳ Aventuras de Interpretação de Texto (6º jogo) · ⏳ níveis de dificuldade adaptativos por desempenho (hoje: rodadas fixas por semente) · ⏳ revisão pedagógica profissional |
 | Expansão da base (BNCC verificada, mais habilidades) | ⏳ bloqueado por conferência humana do documento oficial |
 | Tutor | ✅ arquitetura/segurança testadas · ⛔ conversa livre depende de provedor de IA |
 | Supabase (auth, recuperação de senha, sync, storage) | ⛔ aguarda credenciais; ⏳ repositório adaptador a escrever |

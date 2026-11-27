@@ -19,6 +19,7 @@ export const ILibrary = (p: IP) => <S {...p}><rect x="3" y="4" width="4" height=
 export const ITutor = (p: IP) => <S {...p}><rect x="4" y="8" width="16" height="12" rx="4" /><path d="M12 8V4M9.5 4h5" /><circle cx="9" cy="14" r="1.5" fill="currentColor" /><circle cx="15" cy="14" r="1.5" fill="currentColor" /><path d="M2 13v3M22 13v3" /></S>;
 export const IFamily = (p: IP) => <S {...p}><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.4" /><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6M15 14.5c3 0 6 1.7 6 5" /></S>;
 export const IGame = (p: IP) => <S {...p}><rect x="2.5" y="7" width="19" height="11" rx="5.5" /><path d="M8 10.5v4M6 12.5h4" /><circle cx="15.5" cy="11.5" r="1" fill="currentColor" /><circle cx="18" cy="14" r="1" fill="currentColor" /></S>;
+export const ILogout = (p: IP) => <S {...p}><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9" /></S>;
 export const IBell = (p: IP) => <S {...p}><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 0 0 4 0" /></S>;
 export const IGear = (p: IP) => <S {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></S>;
 export const ICheck = (p: IP) => <S {...p}><path d="m5 12.5 4.5 4.5L19 7" strokeWidth="3" /></S>;

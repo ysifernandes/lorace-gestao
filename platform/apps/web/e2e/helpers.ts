@@ -13,7 +13,7 @@ async function findItem(page: Page): Promise<Item> {
 export async function answerCurrent(page: Page, slips: Slips) {
   const it = await findItem(page); const tag = slips[it.skillId];
   switch (it.kind) {
-    case 'multiple_choice': case 'word_problem': case 'reasoning': { const o = (tag && it.options.find((x) => x.misconception === tag)) || it.options.find((x) => x.id === it.correct)!; await page.locator('[role=radio]', { hasText: o.text }).first().click(); break; }
+    case 'multiple_choice': case 'word_problem': case 'reasoning': { const o = (tag && it.options.find((x) => x.misconception === tag)) || it.options.find((x) => x.id === it.correct)!; const rs = page.locator('[role=radio]'); const ts = (await rs.allInnerTexts()).map((t) => t.replace(/^[A-D]\s*/, '').trim()); await rs.nth(ts.indexOf(o.text)).click(); break; }
     case 'fill_in': await page.locator('#fi').fill(tag ? (it.wrongPatterns?.find((w) => w.misconception === tag)?.answer ?? '0') : it.accepted[0]!); break;
     case 'fraction_visual': for (let i = 0; i < (tag ? (it.wrongPatterns?.[0]?.shaded ?? 1) : it.targetNum); i++) await page.getByLabel(`Parte ${i + 1}`).click(); break;
     case 'simulation': await page.locator('#sm').fill(String(tag ? 0 : it.targetNum)); break;

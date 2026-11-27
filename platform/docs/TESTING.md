@@ -2,7 +2,7 @@
 
 | Camada | Comando | Resultado atual |
 |---|---|---|
-| Unidade/integração (pedagogia, conteúdo, motor da jornada, catálogo, gamificação, parental, segurança, store web) | `pnpm test` | **99 testes OK** (11 arquivos; inclui tutor, painel, mascote, marca e lógica dos minigames) |
+| Unidade/integração (pedagogia, conteúdo, motor da jornada, catálogo, gamificação, parental, segurança, store web) | `pnpm test` | **107 testes OK** (11 arquivos; inclui tutor, painel, mascote, marca, lógica dos minigames, faixa efetiva/maturidade e jogos por faixa) |
 | Protocolo PoC (HTTP real, agente simulado; inclui lockout, revogação, diário, tempo extra) + vetores de assinatura | idem (`tests/poc`) | 13 OK |
 | Typecheck estrito | `pnpm typecheck` | OK |
 | Banco: migrations + RLS + triggers (`rls.sql` 45) · revisão de segurança (`security.sql` 35) · seed (`seed.sql`) | `pnpm test:db` | OK (Postgres 16) |
@@ -17,3 +17,6 @@ Limites: a comparação com a referência é estrutural + inspeção visual (nã
 
 ## Minigames — `pnpm e2e:games`
 Um robô (Playwright) joga os **5 jogos até o fim** pela interface com as rodadas geradas pela mesma lógica: dica progressiva, **erro proposital na rodada 2** (confere incentivo do mascote sem decepção e "tentar de novo"), tela final com estrelas, evidências/XP no progresso, estrelas na prateleira, axe-core na central de jogos (1440 e 390 px) e ausência de erros de console. Exige `vite preview` em :4173.
+
+## Personalização por idade — `pnpm e2e:teens`
+Teo (14, 1º acesso): cadastro inicial (sem mascote infantil), painel "Estrategistas" em tom de adolescente, catálogo com 3 jogos + treino de base com nomes adultos (sem "Pizzaria"), robô joga Finanças, Escape Room e Placar com o tema escolhido (futebol → "gols", chuteira), diagnóstico de conteúdo avançado, axe-core. Malu (12) escolhe "mais tranquilo" e cai na faixa 8–10; Caio (6) vê só jogos visuais; "Sair" acessível fora do painel em 1440 e 390 px; responsável ajusta a maturidade ("ajustado a partir de…").
