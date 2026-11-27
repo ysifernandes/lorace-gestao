@@ -51,3 +51,8 @@ Feedback: jogos "infantis" demais para 11+; é preciso identificar a idade e ada
 - **"Sair" em todas as páginas do aluno** (menu lateral e botão flutuante): antes só existia na tela inicial.
 - Testes: 107 unitários; novo `pnpm e2e:teens`.
 - Bugs achados pelos testes: contraste das etiquetas dos jogos (axe); "Sair" inacessível fora do painel; comentário engolindo teste.
+
+## 0.5.1
+- Minigames: emojis do sistema substituídos por ilustrações vetoriais próprias (`ui/gameart.tsx`, 8 jogos) nos cards e no cabeçalho.
+- Correção: o corpo do mascote ficava invisível em telas largas (classe `.ax-float` colidia com o menu do celular → renomeada `.ax-usermenu`); ids de gradiente do mascote agora únicos por instância. Teste de regressão no `e2e:visual`.
+- Pendente: emojis restantes nos tabuleiros (produtos do Mercado, onboarding) ainda são do sistema.

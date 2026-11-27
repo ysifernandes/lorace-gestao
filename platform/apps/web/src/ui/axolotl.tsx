@@ -1,6 +1,7 @@
 // Mascote oficial (axolote roxo). SVG paramétrico: cada parte é um grupo com id/classe estável (ax-gills-l/r, ax-eye-l/r, ax-arm-l/r, ax-mouth…),
 // pronto para virar rig no Rive/Lottie. Animação atual: CSS (respeita prefers-reduced-motion).
 // Regra pedagógica: o mascote NUNCA demonstra decepção, deboche ou tristeza diante de um erro.
+import { useId } from 'react';
 import { brand } from '@edu/brand';
 
 export type MascotState = 'feliz' | 'pensativo' | 'explicando' | 'estudando' | 'comemorando' | 'incentivando' | 'dando_dicas' | 'aguardando' | 'apresentando';
@@ -23,28 +24,29 @@ const PUPIL: Record<MascotState, [number, number]> = { feliz: [0, 1], pensativo:
 const rad = (d: number) => (d * Math.PI) / 180;
 
 /** Guelra externa plumosa: haste curva com folíolos e botão na ponta (como na ilustração de referência). */
-function Feather({ ax, ay, a, len, id }: { ax: number; ay: number; a: number; len: number; id: string }) {
+function Feather({ ax, ay, a, len, id, U }: { ax: number; ay: number; a: number; len: number; id: string; U: string }) {
   const m = brand.mascot; const bend = a < -130 ? -14 : 14;
   const pt = (t: number): [number, number] => { const r = len * t, ang = a + bend * t * t; return [ax + Math.cos(rad(ang)) * r, ay + Math.sin(rad(ang)) * r]; };
   const [ex, ey] = pt(1);
-  return <g id={id}><path d={`M${ax} ${ay}Q${pt(0.55)[0].toFixed(1)} ${pt(0.55)[1].toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`} stroke="url(#axGill)" strokeWidth="10.5" strokeLinecap="round" fill="none" />
-    {[0.3, 0.48, 0.66, 0.82].flatMap((t, i) => { const [x, y] = pt(t); const L = 17 - i * 2.4; return [-1, 1].map((sd) => { const ang = a + bend * t * t + sd * 52; return <path key={`${i}${sd}`} d={`M${x.toFixed(1)} ${y.toFixed(1)}l${(Math.cos(rad(ang)) * L).toFixed(1)} ${(Math.sin(rad(ang)) * L).toFixed(1)}`} stroke="url(#axGill)" strokeWidth={8 - i * 0.7} strokeLinecap="round" />; }); })}
+  return <g id={id}><path d={`M${ax} ${ay}Q${pt(0.55)[0].toFixed(1)} ${pt(0.55)[1].toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`} stroke={`url(#${U}Gill)`} strokeWidth="10.5" strokeLinecap="round" fill="none" />
+    {[0.3, 0.48, 0.66, 0.82].flatMap((t, i) => { const [x, y] = pt(t); const L = 17 - i * 2.4; return [-1, 1].map((sd) => { const ang = a + bend * t * t + sd * 52; return <path key={`${i}${sd}`} d={`M${x.toFixed(1)} ${y.toFixed(1)}l${(Math.cos(rad(ang)) * L).toFixed(1)} ${(Math.sin(rad(ang)) * L).toFixed(1)}`} stroke={`url(#${U}Gill)`} strokeWidth={8 - i * 0.7} strokeLinecap="round" />; }); })}
     <circle cx={ex} cy={ey} r="6.2" fill={m.gillsLight} /><circle cx={ex - 1.6} cy={ey - 1.8} r="2" fill="#fff" opacity=".75" /></g>;
 }
 
 export function Axolotl({ state = 'feliz', size = 140, cap = false, animate = true, title, className = '' }: { state?: MascotState; size?: number; cap?: boolean; animate?: boolean; title?: string; className?: string }) {
+  const U = 'ax' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const m = brand.mascot; const [dx, dy] = PUPIL[state]; const label = title ?? `Mascote ${brand.name}: ${MASCOT_STATES.find((s) => s.id === state)!.nome}`;
   const happyEyes = state === 'comemorando'; const wink = state === 'incentivando';
   const arc = (cx: number) => <path d={`M${cx - 13} ${EY + 4} Q${cx} ${EY - 15} ${cx + 13} ${EY + 4}`} stroke={m.ink} strokeWidth="5.5" fill="none" strokeLinecap="round" />;
   const eye = (cx: number, id: string, side: -1 | 1) => <g id={id}>
-    <ellipse cx={cx} cy={EY} rx="15.5" ry="18.5" fill="#fff" /><ellipse cx={cx + dx} cy={EY + 1.5 + dy} rx="14" ry="17" fill="url(#axIris)" /><ellipse cx={cx + dx} cy={EY + 4 + dy} rx="8" ry="9.6" fill="#0e0a2e" />
+    <ellipse cx={cx} cy={EY} rx="15.5" ry="18.5" fill="#fff" /><ellipse cx={cx + dx} cy={EY + 1.5 + dy} rx="14" ry="17" fill={`url(#${U}Iris)`} /><ellipse cx={cx + dx} cy={EY + 4 + dy} rx="8" ry="9.6" fill="#0e0a2e" />
     <ellipse cx={cx + dx + 5} cy={EY - 5 + dy} rx="5.6" ry="6.2" fill="#fff" /><circle cx={cx + dx - 5} cy={EY + 8 + dy} r="3" fill="#fff" opacity=".92" /><circle cx={cx + dx + 7} cy={EY + 6 + dy} r="1.5" fill="#ffd6f0" />
     {animate && <ellipse className="ax-blink" cx={cx} cy={EY} rx="17.5" ry="19.5" fill="#a47cf6" />}</g>;
   const gills = (side: 'l' | 'r') => <g id={`ax-gills-${side}`} transform={side === 'r' ? 'translate(200 0) scale(-1 1)' : undefined}><g className={`ax-gill-${side}`}>
-    <Feather ax={52} ay={58} a={-112} len={50} id={`ax-gill-${side}-1`} /><Feather ax={44} ay={72} a={-146} len={50} id={`ax-gill-${side}-2`} /><Feather ax={40} ay={90} a={-176} len={44} id={`ax-gill-${side}-3`} /></g></g>;
+    <Feather U={U} ax={52} ay={58} a={-112} len={50} id={`ax-gill-${side}-1`} /><Feather U={U} ax={44} ay={72} a={-146} len={50} id={`ax-gill-${side}-2`} /><Feather U={U} ax={40} ay={90} a={-176} len={44} id={`ax-gill-${side}-3`} /></g></g>;
   const mouth = () => {
     if (state === 'explicando' || state === 'comemorando' || state === 'apresentando' || state === 'feliz')
-      return <g id="ax-mouth"><path d="M70 102 Q100 144 130 102 Q100 111 70 102z" fill="#7a2a6e" stroke={m.ink} strokeWidth="3.4" strokeLinejoin="round" /><clipPath id="axMouth"><path d="M70 102 Q100 144 130 102 Q100 111 70 102z" /></clipPath><ellipse cx="100" cy="126" rx="15" ry="9" fill={m.cheek} clipPath="url(#axMouth)" /><path d="M86 106q14 6 28 0" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".9" /></g>;
+      return <g id="ax-mouth"><path d="M70 102 Q100 144 130 102 Q100 111 70 102z" fill="#7a2a6e" stroke={m.ink} strokeWidth="3.4" strokeLinejoin="round" /><clipPath id={`${U}Mouth`}><path d="M70 102 Q100 144 130 102 Q100 111 70 102z" /></clipPath><ellipse cx="100" cy="126" rx="15" ry="9" fill={m.cheek} clipPath={`url(#${U}Mouth)`} /><path d="M86 106q14 6 28 0" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".9" /></g>;
     if (state === 'pensativo') return <path id="ax-mouth" d="M88 108 Q100 116 112 108" stroke={m.ink} strokeWidth="4.8" fill="none" strokeLinecap="round" />;
     if (state === 'aguardando') return <path id="ax-mouth" d="M84 106 Q100 118 116 106" stroke={m.ink} strokeWidth="4.8" fill="none" strokeLinecap="round" />;
     return <path id="ax-mouth" d="M80 104 Q100 124 120 104" stroke={m.ink} strokeWidth="5" fill="none" strokeLinecap="round" />;
@@ -82,25 +84,25 @@ export function Axolotl({ state = 'feliz', size = 140, cap = false, animate = tr
   return <svg className={`ax-svg ${animate ? 'ax-anim' : ''} ${className}`} width={size} height={size} viewBox="0 0 200 200" role="img" aria-label={label} data-state={state}>
     <title>{label}</title>
     <defs>
-      <radialGradient id="axHead" cx="40%" cy="22%" r="85%"><stop offset="0" stopColor="#c9adff" /><stop offset=".55" stopColor={m.bodyLight} /><stop offset="1" stopColor="#8f63ee" /></radialGradient>
-      <linearGradient id="axBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a47bf6" /><stop offset="1" stopColor="#7f52e4" /></linearGradient>
-      <linearGradient id="axGill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff4fa6" /><stop offset="1" stopColor="#ff86c6" /></linearGradient>
-      <radialGradient id="axIris" cx="50%" cy="30%" r="80%"><stop offset="0" stopColor="#3b2f94" /><stop offset=".6" stopColor="#241a63" /><stop offset="1" stopColor="#4b3fb0" /></radialGradient>
-      <radialGradient id="axCheek" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#ff7fbd" stopOpacity=".85" /><stop offset="1" stopColor="#ff7fbd" stopOpacity="0" /></radialGradient>
+      <radialGradient id={`${U}Head`} cx="40%" cy="22%" r="85%"><stop offset="0" stopColor="#c9adff" /><stop offset=".55" stopColor={m.bodyLight} /><stop offset="1" stopColor="#8f63ee" /></radialGradient>
+      <linearGradient id={`${U}Body`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a47bf6" /><stop offset="1" stopColor="#7f52e4" /></linearGradient>
+      <linearGradient id={`${U}Gill`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff4fa6" /><stop offset="1" stopColor="#ff86c6" /></linearGradient>
+      <radialGradient id={`${U}Iris`} cx="50%" cy="30%" r="80%"><stop offset="0" stopColor="#3b2f94" /><stop offset=".6" stopColor="#241a63" /><stop offset="1" stopColor="#4b3fb0" /></radialGradient>
+      <radialGradient id={`${U}Cheek`} cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#ff7fbd" stopOpacity=".85" /><stop offset="1" stopColor="#ff7fbd" stopOpacity="0" /></radialGradient>
     </defs>
     <ellipse cx="100" cy="193" rx="54" ry="7" fill="#1d104f" opacity=".16" />
     <g className="ax-float">
       <g id="ax-tail"><path d="M64 168C22 178 4 150 14 120C22 146 40 156 66 150z" fill="#8f63ee" /><path d="M14 120C4 150 22 178 64 168" stroke="#ff7cc0" strokeWidth="5.5" fill="none" strokeLinecap="round" /><path d="M14 120l-6-8M10 138l-8-2M16 156l-7 4M32 170l-3 8" stroke="#ff7cc0" strokeWidth="5" strokeLinecap="round" /><path d="M50 160C32 160 22 148 20 134" stroke="#c9adff" strokeWidth="3" fill="none" strokeLinecap="round" opacity=".7" /></g>
       <ellipse cx="72" cy="186" rx="18" ry="9" fill="#7f52e4" /><ellipse cx="128" cy="186" rx="18" ry="9" fill="#7f52e4" />
-      <g id="ax-pack"><rect x="52" y="116" width="34" height="48" rx="12" fill="#3b3a52" /><rect x="56" y="124" width="26" height="12" rx="5" fill="#ff8a3d" /></g><ellipse id="ax-body" cx="100" cy="150" rx="42" ry="40" fill="url(#axBody)" /><ellipse cx="100" cy="160" rx="26" ry="26" fill={m.belly} /><path d="M72 128c-4 14 0 26 8 34M128 128c4 14 0 26-8 34" stroke="#ff8a3d" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <g id="ax-pack"><rect x="52" y="116" width="34" height="48" rx="12" fill="#3b3a52" /><rect x="56" y="124" width="26" height="12" rx="5" fill="#ff8a3d" /></g><ellipse id="ax-body" cx="100" cy="150" rx="42" ry="40" fill={`url(#${U}Body)`} /><ellipse cx="100" cy="160" rx="26" ry="26" fill={m.belly} /><path d="M72 128c-4 14 0 26 8 34M128 128c4 14 0 26-8 34" stroke="#ff8a3d" strokeWidth="6" fill="none" strokeLinecap="round" />
       {state === 'estudando' ? null : arms()}
       {(state === 'feliz' || state === 'explicando') && closedBook(98, 128)}
       {state === 'estudando' && <>{openBook}{arms()}</>}
       <g id="ax-head" transform={`rotate(${tilt} 100 112)`}>
         {gills('l')}{gills('r')}
-        <path d="M40 88C40 52 66 30 100 30s60 22 60 58c0 32-24 50-60 50S40 120 40 88z" fill="url(#axHead)" /><g fill="#6d42c7" opacity=".16"><circle cx="70" cy="46" r="2.4" /><circle cx="86" cy="40" r="2" /><circle cx="116" cy="41" r="2.2" /><circle cx="132" cy="48" r="2.4" /><circle cx="100" cy="46" r="1.8" /><circle cx="62" cy="64" r="1.8" /><circle cx="140" cy="64" r="1.8" /></g>
+        <path d="M40 88C40 52 66 30 100 30s60 22 60 58c0 32-24 50-60 50S40 120 40 88z" fill={`url(#${U}Head)`} /><g fill="#6d42c7" opacity=".16"><circle cx="70" cy="46" r="2.4" /><circle cx="86" cy="40" r="2" /><circle cx="116" cy="41" r="2.2" /><circle cx="132" cy="48" r="2.4" /><circle cx="100" cy="46" r="1.8" /><circle cx="62" cy="64" r="1.8" /><circle cx="140" cy="64" r="1.8" /></g>
         <ellipse cx="84" cy="48" rx="28" ry="8" fill="#fff" opacity=".2" />
-        <ellipse cx="56" cy="106" rx="14" ry="9" fill="url(#axCheek)" /><ellipse cx="144" cy="106" rx="14" ry="9" fill="url(#axCheek)" />
+        <ellipse cx="56" cy="106" rx="14" ry="9" fill={`url(#${U}Cheek)`} /><ellipse cx="144" cy="106" rx="14" ry="9" fill={`url(#${U}Cheek)`} />
         {happyEyes ? <g id="ax-eyes">{arc(EX.l)}{arc(EX.r)}</g> : wink ? <g id="ax-eyes">{eye(EX.l, 'ax-eye-l', -1)}<g id="ax-eye-r">{arc(EX.r)}</g></g> : <g id="ax-eyes">{eye(EX.l, 'ax-eye-l', -1)}{eye(EX.r, 'ax-eye-r', 1)}</g>}
         <circle cx="95" cy="100" r="1.7" fill={m.ink} opacity=".4" /><circle cx="105" cy="100" r="1.7" fill={m.ink} opacity=".4" />
         {mouth()}

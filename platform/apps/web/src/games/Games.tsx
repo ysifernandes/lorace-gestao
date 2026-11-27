@@ -1,3 +1,4 @@
+import { GameArt } from '../ui/gameart';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Item } from '@edu/content-math';
@@ -139,7 +140,7 @@ function GamePage() {
     <p>Você acertou de primeira <b>{first.filter(Boolean).length}</b> de {rounds.length} e ganhou <b>{xp} XP</b>. {teen ? 'O resultado atualiza o seu mapa de habilidades.' : 'Cada tentativa ajuda o Aprendix a conhecer o que você já sabe.'}</p><p className="ax-muted">{teen ? 'As estrelas consideram acertos de primeira e autonomia (sem dicas).' : 'Estrelas premiam o esforço: terminar já vale uma!'}</p>
     <div className="row" style={{ justifyContent: 'center' }}><Btn onClick={() => { setSeed(seed + 1); setI(0); setAttempt(0); setState(null); setRecorded(false); setFirst([]); setHints(0); setTotalHints(0); setXp(0); setDone(false); }}>Jogar de novo</Btn><Btn variant="ghost" onClick={() => nav('/s/jogos')}>Outros jogos</Btn><Btn variant="ghost" onClick={() => nav('/s/progress')}>Minha evolução</Btn></div></div>;
   return <div className="ax-page gm" data-teen={teen || undefined} style={{ ['--g1' as string]: game.from, ['--g2' as string]: game.to }}>
-    <header className="gm-head"><Link to="/s/jogos" className="gm-back" aria-label="Voltar aos jogos">←</Link><div><h1>{lab.emoji} {lab.name}</h1><p>{game.goal}</p></div></header>
+    <header className="gm-head"><Link to="/s/jogos" className="gm-back" aria-label="Voltar aos jogos">←</Link><span className="gm-headart" style={{ background: `linear-gradient(135deg,${game.from},${game.to})` }} aria-hidden><GameArt id={game.id} size={44} /></span><div><h1>{lab.name}</h1><p>{game.goal}</p></div></header>
     <div className="gm-progress" role="progressbar" aria-valuenow={i + 1} aria-valuemin={1} aria-valuemax={rounds.length} aria-label="Rodadas">{rounds.map((_, k) => <span key={k} className={k < i ? 'done' : k === i ? 'now' : ''} />)}</div>
     <div className={`gm-coach ${teen ? 'assistant' : ''}`}><Axolotl state={mood} size={teen ? 56 : 104} cap={!teen} animate={!teen} /><div className="gm-bubble" aria-live="polite">{say}</div></div>
     <section className="gm-stage" key={`${round.item.id}-${attempt}`}><Board round={round as never} locked={!!state?.ok || false} submit={submit} /></section>
@@ -155,7 +156,7 @@ export function GamesHub({ compact = false }: { compact?: boolean }) {
   const { s } = useStudent(); const nav = useNavigate(); const band = bandOf(s); const teen = band === 'desafiadores' || band === 'estrategistas'; const { main, base } = gamesForBand(band);
   const weak = Object.values(s.learner.hypotheses).filter((h) => h.status !== 'discarded').map((h) => h.skillId); const rec = weak.map((w) => gameForSkill(w, band)?.id).find(Boolean);
   const card = (g: (typeof main)[number]) => { const st = s.games?.[g.id]; const L = labelFor(g, band); return <article key={g.id} className="gm-card" style={{ ['--g1' as string]: g.from, ['--g2' as string]: g.to }}>
-    {rec === g.id && <span className="gm-ribbon">Para você</span>}<div className="gm-art" aria-hidden>{L.emoji}</div><div className="gm-info"><b>{L.name}</b><small>{L.tagline}</small><span className="gm-tag">{g.subject}</span>
+    {rec === g.id && <span className="gm-ribbon">Para você</span>}<div className="gm-art" aria-hidden><GameArt id={g.id} /></div><div className="gm-info"><b>{L.name}</b><small>{L.tagline}</small><span className="gm-tag">{g.subject}</span>
       <div className="gm-foot"><span className="gm-stars sm" role="img" aria-label={`${st?.bestStars ?? 0} de 3 estrelas`}>{[1, 2, 3].map((n) => <span key={n} className={n <= (st?.bestStars ?? 0) ? 'on' : ''}>★</span>)}</span><button onClick={() => nav(`/s/jogos/${g.id}`)}>Jogar ▶</button></div></div></article>; };
   const cls = `gm-hub ${compact ? 'compact' : ''} ${teen ? 'teen' : ''}`;
   return <div className="gm-sections"><div className={cls}>{main.map(card)}</div>{!compact && base.length > 0 && <><h2 className="gm-sub">Treino de base</h2><p className="ax-muted gm-subp">Revise o que o diagnóstico mostrar que precisa de reforço, com situações rápidas e diretas.</p><div className={cls}>{base.map(card)}</div></>}</div>;

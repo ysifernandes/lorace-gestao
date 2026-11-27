@@ -21,7 +21,7 @@ export function AxShell() {
       <nav className="ax-nav" aria-label="Navegação">{NAV.map(([to, l, I]) => <NavLink key={to} end to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<hr />{NAV2.map(([to, l, I]) => <NavLink key={to} to={to} className={({ isActive }) => `ax-link ${isActive ? 'on' : ''}`}><I size={28} />{l}</NavLink>)}<button className="ax-link out" onClick={logout}><ILogout size={28} />Sair</button></nav>
       <svg className="ax-wave" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden><path d="M0 60C50 20 100 20 150 55S250 90 300 40V120H0z" fill="#fff" opacity=".07" /><path d="M0 85C60 55 110 60 160 80S250 105 300 70V120H0z" fill="#fff" opacity=".07" /></svg>
       <Link to="/s/familia" className="ax-family"><ArtPeople size={52} /><span><b>Área da Família</b><small>Acompanhe o progresso e gerencie o tempo de uso</small></span><IChevron dir="right" size={22} /></Link></aside>
-    <main className="ax-main" id="conteudo">{here !== '/s' && <div className="ax-float"><UserMenu cls="ax-mmenu" /></div>}<Outlet context={{ dark, setDark }} /></main>
+    <main className="ax-main" id="conteudo">{here !== '/s' && <div className="ax-usermenu"><UserMenu cls="ax-mmenu" /></div>}<Outlet context={{ dark, setDark }} /></main>
     <nav className="ax-bottom" aria-label="Navegação inferior">{MOBILE.map(([to, l, I]) => <NavLink key={to} end={to === '/s'} to={to} className={({ isActive }) => `ax-bt ${isActive ? 'on' : ''}`}><I size={26} /><span>{l}</span></NavLink>)}</nav></div>;
 }
 import { bandOf } from '../store/db';
