@@ -3,12 +3,13 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { brand } from '@edu/brand';
 import { useDB, logout, balances, setAvatar, requestTime, type Student, type DB } from '../store/db';
 import { buildDashboard, fmtMinutes, toneOf, type DashVM, type MapNode } from '../store/dashboard';
-import { Axolotl } from '../ui/axolotl';
+import { Axolotl, type MascotState } from '../ui/axolotl';
 import { Modal, Btn } from '../ui';
-import { AvatarFace, ArtBook, ArtCalc, ArtFlask, ArtMuseum, ArtCompass, ArtGame, ArtTarget, ArtVideo, ArtPeople, IBell, IChevron, ICheck, IEvolution, IFamily, IGear, IHome, ILibrary, ILock, IMission, IPlay, IArrow, ISpeaker, IStar, IStudy, ITrophy, ITutor, Medal, SHIRTS, SKINS, HAIRS, Wordmark, IPhone, type AvatarSpec } from '../ui/art';
+import { GamesHub } from '../games/Games';
+import { AvatarFace, ArtBook, ArtCalc, ArtFlask, ArtMuseum, ArtGlobe, ArtLang, IGame, ArtCompass, ArtGame, ArtTarget, ArtVideo, ArtPeople, IBell, IChevron, ICheck, IEvolution, IFamily, IGear, IHome, ILibrary, ILock, IMission, IPlay, IArrow, ISpeaker, IStar, IStudy, ITrophy, ITutor, Medal, SHIRTS, SKINS, HAIRS, Wordmark, IPhone, type AvatarSpec } from '../ui/art';
 import { useStudent } from './student';
 
-const NAV = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/s/missoes', 'Minhas Missões', IMission], ['/s/progress', 'Minha Evolução', IEvolution], ['/s/conquistas', 'Conquistas', ITrophy]] as const;
+const NAV = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/s/jogos', 'Jogos', IGame], ['/s/missoes', 'Minhas Missões', IMission], ['/s/progress', 'Minha Evolução', IEvolution], ['/s/conquistas', 'Conquistas', ITrophy]] as const;
 const NAV2 = [['/s/biblioteca', 'Biblioteca', ILibrary], ['/s/tutor', 'Tutor IA', ITutor]] as const;
 const MOBILE = [['/s', 'Início', IHome], ['/s/estudar', 'Estudar', IStudy], ['/s/missoes', 'Missões', IMission], ['/s/progress', 'Evolução', IEvolution], ['/s/familia', 'Família', IFamily]] as const;
 
@@ -54,23 +55,40 @@ export function AvatarEditor({ s, onClose }: { s: Student; onClose: () => void }
     <div className="row" style={{ marginTop: 14 }}><Btn onClick={() => { setAvatar(s.id, a); onClose(); }}>Salvar</Btn><Btn variant="ghost" onClick={onClose}>Cancelar</Btn></div></Modal>;
 }
 
+const TIPS = ['Errar ajuda a aprender. Vamos tentar de novo?', 'Que tal um minigame hoje? Aprender brincando é mais divertido!', 'Você chega lá, um passo de cada vez!', 'Pedir uma dica é coisa de quem é esperto!', 'Respire fundo, pense no seu ritmo. Sem pressa!', 'Vamos descobrir algo novo hoje?'];
+const MOODS: MascotState[] = ['comemorando', 'incentivando', 'dando_dicas', 'feliz', 'explicando', 'apresentando'];
 function Banner({ vm }: { vm: DashVM }) {
-  const nav = useNavigate(); const can = typeof window !== 'undefined' && 'speechSynthesis' in window; const kid = vm.band === 'exploradores';
+  const nav = useNavigate(); const can = typeof window !== 'undefined' && 'speechSynthesis' in window; const [tap, setTap] = useState(-1); const [bounce, setBounce] = useState(false);
   const say = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(`${vm.mission.title} ${vm.mission.text}`); u.lang = 'pt-BR'; u.rate = 0.9; speechSynthesis.speak(u); } catch { /* sem voz disponível */ } };
-  return <section className="ax-banner" aria-label="Missão"><div className="ax-banner-mascot"><Axolotl state={vm.mission.mascot} size={vm.band === 'estrategistas' ? 96 : 230} cap /></div>
+  const poke = () => { setTap((tap + 1) % TIPS.length); setBounce(true); setTimeout(() => setBounce(false), 650); };
+  return <section className="ax-banner" aria-label="Missão"><Decor /><div className={`ax-banner-mascot ${bounce ? 'hop' : ''}`}><button className="ax-pet" onClick={poke} aria-label="Fazer carinho no mascote: ele conta uma dica"><Axolotl state={tap >= 0 ? MOODS[tap % MOODS.length]! : vm.mission.mascot} size={vm.band === 'estrategistas' ? 96 : 230} cap /></button>{tap >= 0 && <div className="ax-say" role="status">{TIPS[tap]}</div>}</div>
     <div className="ax-banner-text"><h2><em>Nova</em> Missão!</h2><p>{vm.mission.text}</p>
-      <div className="row"><button className="ax-cta" onClick={() => nav(vm.mission.route)}>{vm.mission.cta} <IPlay size={20} /></button>{(kid || can) && can && <button className="ax-ghost" onClick={say} aria-label="Ouvir a missão em voz alta"><ISpeaker size={22} /><span className="ax-lbl"> Ouvir</span></button>}</div></div>
+      <div className="row"><button className="ax-cta" onClick={() => nav(vm.mission.route)}>{vm.mission.cta} <IPlay size={20} /></button>{can && <button className="ax-ghost" onClick={say} aria-label="Ouvir a missão em voz alta"><ISpeaker size={22} /><span className="ax-lbl"> Ouvir</span></button>}</div></div>
     <div className="ax-banner-pie" aria-hidden>{vm.mission.pie ? <PieArt /> : <ArtCompass size={96} />}</div><i className="ax-spark s1" /><i className="ax-spark s2" /></section>;
 }
 const PieArt = () => <svg width="120" height="120" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#dfe9ff" /><path d="M50 50V6a44 44 0 0 1 44 44z" fill="#8db4ff" /><path d="M50 50h44a44 44 0 0 1-44 44z" fill="#c4d6fa" /><path d="M50 4v92M4 50h92" stroke="#fff" strokeWidth="3" /><text x="50" y="47" textAnchor="middle" fontSize="22" fontWeight="900" fill="#271a5c">1</text><path d="M39 52h22" stroke="#271a5c" strokeWidth="2.6" strokeLinecap="round" /><text x="50" y="74" textAnchor="middle" fontSize="22" fontWeight="900" fill="#271a5c">4</text></svg>;
 
-const SUBJ_ART = { portugues: ArtBook, matematica: ArtCalc, ciencias: ArtFlask, historia: ArtMuseum } as const;
+const SUBJ_ART = { portugues: ArtBook, matematica: ArtCalc, ciencias: ArtFlask, historia: ArtMuseum, geografia: ArtGlobe, ingles: ArtLang } as const;
+/** Faixa de disciplinas (como na referência): cartões fixos, rolagem horizontal por arrastar/deslizar e seta. */
 function Subjects({ vm }: { vm: DashVM }) {
-  const nav = useNavigate(); const ref = useRef<HTMLDivElement>(null);
-  return <section className="ax-subjects" aria-label="Disciplinas"><div className="ax-subj-row" ref={ref}>{vm.subjects.map((x) => { const A = SUBJ_ART[x.id]; return <button key={x.id} className={`ax-subj ${x.id} ${x.active ? '' : 'soon'}`} disabled={!x.active} onClick={() => nav('/s/estudar')} aria-label={`${x.name}: ${x.pct === null ? x.note : `${x.pct}% (estimativa)`}`}>
-    <A size={64} /><b>{x.name}</b><span className="ax-bar"><i className={x.pct === null ? 'none' : ''} style={{ width: `${x.pct ?? 0}%` }} /></span><strong>{x.pct === null ? <small>{x.note}</small> : `${x.pct}%`}</strong></button>; })}</div>
-    <button className="ax-next" aria-label="Ver mais disciplinas" onClick={() => ref.current?.scrollBy({ left: 220, behavior: 'smooth' })}><IChevron dir="right" size={24} /></button></section>;
+  const nav = useNavigate(); const ref = useRef<HTMLDivElement>(null); const drag = useRef({ down: false, x: 0, left: 0, moved: false }); const [edge, setEdge] = useState({ l: false, r: true });
+  const upd = () => { const e = ref.current; if (e) setEdge({ l: e.scrollLeft > 4, r: e.scrollLeft + e.clientWidth < e.scrollWidth - 4 }); };
+  useEffect(upd, []);
+  return <section className="ax-subjects" aria-label="Disciplinas">{edge.l && <button className="ax-next left" aria-label="Disciplinas anteriores" onClick={() => ref.current?.scrollBy({ left: -240, behavior: 'smooth' })}><IChevron dir="left" size={24} /></button>}
+    <div className="ax-subj-row" ref={ref} onScroll={upd} tabIndex={0} role="list" aria-label="Deslize para ver mais disciplinas"
+      onPointerDown={(e) => { if (e.pointerType === 'mouse') { drag.current = { down: true, x: e.clientX, left: ref.current!.scrollLeft, moved: false }; } }}
+      onPointerMove={(e) => { const d = drag.current; if (d.down) { const dx = e.clientX - d.x; if (Math.abs(dx) > 5) d.moved = true; ref.current!.scrollLeft = d.left - dx; } }}
+      onPointerUp={() => { drag.current.down = false; }} onPointerLeave={() => { drag.current.down = false; }} onClickCapture={(e) => { if (drag.current.moved) { e.stopPropagation(); e.preventDefault(); drag.current.moved = false; } }}>
+      {vm.subjects.map((x) => { const A = SUBJ_ART[x.id]; return <button role="listitem" key={x.id} className={`ax-subj ${x.id} ${x.active ? '' : 'soon'}`} disabled={!x.active} onClick={() => nav('/s/estudar')} aria-label={`${x.name}: ${x.pct === null ? x.note : `${x.pct}% (estimativa)`}`}>
+        <span className="ico"><A size={64} /></span><b>{x.name}</b><span className="pr"><span className="ax-bar"><i className={x.pct === null ? 'none' : ''} style={{ width: `${x.pct ?? 0}%` }} /></span><strong>{x.pct === null ? <small>{x.active ? '—' : 'Em breve'}</small> : `${x.pct}%`}</strong></span></button>; })}</div>
+    {edge.r && <button className="ax-next" aria-label="Mais disciplinas" onClick={() => ref.current?.scrollBy({ left: 240, behavior: 'smooth' })}><IChevron dir="right" size={24} /></button>}</section>;
 }
+
+/** Prateleira de minigames na tela inicial. */
+function GamesShelf() { const nav = useNavigate(); return <section className="ax-shelf" aria-label="Minigames"><div className="row"><h3 className="grow"><IGame size={30} /> Minigames</h3><button className="ax-all link" onClick={() => nav('/s/jogos')}>Ver todos</button></div><GamesHub compact /></section>; }
+
+/** Decoração animada e lúdica do fundo (nuvens, estrelas e bolhas). */
+function Decor() { return <div className="ax-decor" aria-hidden><i className="c c1" /><i className="c c2" /><i className="c c3" /><i className="s s1" /><i className="s s2" /><i className="s s3" /><i className="b b1" /><i className="b b2" /></div>; }
 
 function Performance({ vm }: { vm: DashVM }) {
   const nav = useNavigate(); const kid = vm.band === 'exploradores';
@@ -85,7 +103,7 @@ const PLAN_ART = { video: ArtVideo, game: ArtGame, target: ArtTarget, compass: A
 function Plan({ vm }: { vm: DashVM }) {
   const nav = useNavigate();
   return <section className="ax-card"><h3><span className="ico"><ArtVideo size={30} /></span> Meu Plano de Estudos</h3><p className="ax-sub">{vm.plan.subtitle}</p>
-    <ul className="ax-plan">{vm.plan.items.map((it) => { const A = PLAN_ART[it.art]; return <li key={it.id}><A size={30} /><span className="t">{it.title}</span><span className="m">{it.min} min</span><span className={`ck ${it.done ? 'on' : ''}`} role="img" aria-label={it.done ? 'concluído' : 'a fazer'}>{it.done && <ICheck size={16} />}</span></li>; })}</ul>
+    <ul className="ax-plan">{vm.plan.items.map((it) => { const A = PLAN_ART[it.art]; return <li key={it.id} className={it.route ? 'go' : ''} onClick={() => it.route && nav(it.route)} onKeyDown={(e) => it.route && e.key === 'Enter' && nav(it.route)} tabIndex={it.route ? 0 : undefined} role={it.route ? 'link' : undefined}><A size={30} /><span className="t">{it.title}</span><span className="m">{it.min} min</span><span className={`ck ${it.done ? 'on' : ''}`} role="img" aria-label={it.done ? 'concluído' : 'a fazer'}>{it.done && <ICheck size={16} />}</span></li>; })}</ul>
     <p className="ax-note">Tempos são estimativas.</p><button className="ax-primary" onClick={() => nav(vm.plan.cta.route)}><IPlay size={20} /> {vm.plan.cta.label}</button></section>;
 }
 
@@ -134,7 +152,7 @@ function Medals({ vm }: { vm: DashVM }) {
 
 export function Dashboard() {
   const { d, s } = useStudent(); const vm = buildDashboard(d, s);
-  return <div className="ax-dash"><Header vm={vm} s={s} /><div className="ax-cols"><div className="ax-left"><Banner vm={vm} /><Subjects vm={vm} /><div className="ax-two"><Performance vm={vm} /><Plan vm={vm} /></div></div>
+  return <div className="ax-dash"><Header vm={vm} s={s} /><div className="ax-cols"><div className="ax-left"><Banner vm={vm} /><Subjects vm={vm} /><GamesShelf /><div className="ax-two"><Performance vm={vm} /><Plan vm={vm} /></div></div>
     <div className="ax-right"><Island vm={vm} /><Phone vm={vm} s={s} /><Medals vm={vm} /></div></div></div>;
 }
 export const _unused: ReactNode = null; void brand; void balances; void ArtGame; void ArtTarget; void ArtCompass;

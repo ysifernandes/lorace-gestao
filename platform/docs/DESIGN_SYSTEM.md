@@ -24,3 +24,6 @@ Menu lateral roxo com gradiente, pílula branca no item ativo, onda decorativa e
 
 ## Acessibilidade e qualidade (automatizadas em `pnpm e2e:visual`)
 axe-core WCAG 2 A/AA + boas práticas em 1440 e 390 px (sem violações críticas/sérias; inclui contraste), foco visível, `aria-*`, alvos de toque, `prefers-reduced-motion`, nós do mapa operáveis por teclado, sem rolagem horizontal em 7 resoluções. **Pendente**: teste com leitor de tela real e com usuários; auditoria WCAG formal; narração de áudio gravada para 5–7 (hoje: voz sintética do navegador).
+
+## Revisão do mascote após feedback (Fase 3.1)
+A primeira versão do axolote ficou "estranha" frente à referência (guelras como fios com bolinhas, cabeça achatada, olhos marrons, cauda do lado errado). Refeito em comparação direta com o recorte da referência (`axo-compare`): guelras plumosas em leque, olhos índigo grandes com brilhos, cauda rosa à esquerda, mochila e capelo. **Ainda é arte vetorial própria, mais simples que a ilustração aprovada** (sem textura/sombreado fino): para igualar 100% a referência recomenda-se enviar o arquivo da ilustração (ou um ilustrador) para vetorização/rig em Rive. A faixa de disciplinas segue a referência (cartão com ícone redondo, nome e barra+%) com rolagem lateral; a tela inicial ganhou elementos lúdicos (mascote interativo, decoração animada, prateleira de minigames).

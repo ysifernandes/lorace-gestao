@@ -7,7 +7,7 @@ import { gradeItem, possibleTags, type Grade, type Response } from './grade';
 /** Triagem diagnóstica usa limiares menores (2 evidências); a confiança permanece baixa e é exibida como tal. Parâmetros NÃO calibrados. */
 export const JOURNEY_PARAMS: MasteryParams = { ...DEFAULT_PARAMS, minEvidence: 2, minConfidence: 0.3 };
 
-export interface ResponseRecord { itemId: string; skillId: string; correct: boolean; score: number; hintsUsed: number; kind: EvidenceKind; at: number; misconceptions: string[]; response: Response; phase: 'diagnostic' | 'practice' | 'reassessment' }
+export interface ResponseRecord { itemId: string; skillId: string; correct: boolean; score: number; hintsUsed: number; kind: EvidenceKind; at: number; misconceptions: string[]; response: Response; phase: 'diagnostic' | 'practice' | 'reassessment' | 'game' }
 export interface Snapshot { at: number; label: string; skills: Record<string, { p: number; confidence: number; state: MasteryState; n: number }> }
 export interface LearnerState {
   studentId: string; evidence: Evidence[]; responses: ResponseRecord[]; hypotheses: Record<string, Hypothesis>;
@@ -25,7 +25,7 @@ export function recordResponse(st: LearnerState, item: Item, resp: Response, o: 
   const grade = gradeItem(item, resp);
   const prior = st.responses.filter((r) => r.skillId === item.skillId);
   // transferência: problema contextualizado após já ter praticado a habilidade em outro formato
-  const kind: EvidenceKind = o.phase === 'diagnostic' ? 'diagnostic' : item.kind === 'word_problem' && prior.length > 0 ? 'transfer' : 'practice';
+  const kind: EvidenceKind = o.phase === 'diagnostic' ? 'diagnostic' : o.phase === 'game' ? 'game' : item.kind === 'word_problem' && prior.length > 0 ? 'transfer' : 'practice';
   const ev: Evidence = { skillId: item.skillId, correct: grade.correct, hintsUsed: o.hintsUsed, kind, at: o.at };
   const hyps = { ...st.hypotheses };
   for (const tag of grade.misconceptions) {
@@ -89,7 +89,7 @@ export function buildReport(st: LearnerState, sc: Scope, skillIds: string[], now
   return skillIds.map((id) => {
     const s = byId.get(id)!; const e = estimate(st, id, now); const rs = st.responses.filter((r) => r.skillId === id);
     const causes: Cause[] = [];
-    for (const h of Object.values(st.hypotheses).filter((x) => x.skillId === id && x.status !== 'discarded')) {
+    for (const h of Object.values(st.hypotheses).filter((x) => (x.skillId === id || rs.some((r) => r.misconceptions.includes(x.id))) && x.status !== 'discarded')) { // equívoco aparece também em habilidades correlatas onde houve evidência dele
       const ev = rs.filter((r) => r.misconceptions.includes(h.id)).map(label);
       causes.push({ kind: 'misconception', label: MISCONCEPTIONS[h.id]?.label ?? h.description, status: h.status === 'confirmed' ? 'confirmada' : 'suspeita', confidence: h.status === 'confirmed' ? 'alta' : h.support >= 2 ? 'média' : 'baixa', evidence: ev, misconceptionId: h.id });
     }

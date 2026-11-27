@@ -6,7 +6,7 @@ export interface Brand {
   supportEmail: string; legalName: string; domain: string;
   colors: Record<'primary' | 'primaryDark' | 'primaryDeep' | 'secondary' | 'accent' | 'accentInk' | 'success' | 'warning' | 'danger' | 'ink' | 'surface' | 'bg' | 'teal' | 'tealInk' | 'cream', string>;
   /** cores de disciplinas (cartões coloridos da referência) */
-  subjects: Record<'portugues' | 'matematica' | 'ciencias' | 'historia', { bg: string; ink: string; accent: string }>;
+  subjects: Record<'portugues' | 'matematica' | 'ciencias' | 'historia' | 'geografia' | 'ingles', { bg: string; ink: string; accent: string }>;
   /** paleta do mascote (axolote) */
   mascot: { body: string; bodyLight: string; belly: string; gills: string; gillsLight: string; cheek: string; ink: string; gold: string; book: string };
   appIds: { android: string; ios: string };
@@ -25,6 +25,8 @@ export const brand: Brand = {
     matematica: { bg: '#cfe3ff', ink: '#12306b', accent: '#3b82f6' },
     ciencias: { bg: '#cdeec9', ink: '#12461f', accent: '#34b25a' },
     historia: { bg: '#ffdea8', ink: '#5c3500', accent: '#f09a1c' },
+    geografia: { bg: '#c9f1ee', ink: '#0b4a52', accent: '#12968f' },
+    ingles: { bg: '#e6d9ff', ink: '#3b1d8f', accent: '#7b4de0' },
   },
   mascot: { body: '#9b6dff', bodyLight: '#b894ff', belly: '#e1d2ff', gills: '#ff6fb6', gillsLight: '#ffa6d3', cheek: '#ff8fc4', ink: '#2a1a5e', gold: '#ffc93c', book: '#4b2fb8' },
   appIds: { android: 'br.edu.platform', ios: 'br.edu.platform' },

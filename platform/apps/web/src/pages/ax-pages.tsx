@@ -8,12 +8,14 @@ import { Medal, ArtBook, ArtCalc, ArtFlask, ArtMuseum, ILock, ICheck } from '../
 import { Btn, StateBadge, Notice } from '../ui';
 import { useStudent } from './student';
 import { TimeModal } from './ax';
+import { GamesHub } from '../games/Games';
 
 const Head = ({ title, mascot, children }: { title: string; mascot: Parameters<typeof Axolotl>[0]['state']; children?: React.ReactNode }) => <div className="row"><Axolotl state={mascot} size={96} cap /><div className="grow"><h1>{title}</h1>{children}</div></div>;
 
 export function Estudar() {
   const { d, s } = useStudent(); const vm = buildDashboard(d, s); const nav = useNavigate(); const rep = new Map(reportFor(s).map((r) => [r.skillId, r]));
-  return <div className="ax-page"><Head title="Estudar" mascot="estudando"><p className="ax-muted">Escolha o que fazer. Os mundos abrem conforme as suas evidências de aprendizagem.</p></Head>
+  return <div className="ax-page"><Head title="Estudar" mascot="estudando"><p className="ax-muted">Escolha um minigame ou uma missão. Os mundos abrem conforme as suas evidências de aprendizagem.</p></Head>
+    <h2>Minigames</h2><GamesHub />
     <div className="ax-list">{[['ArtCalc', 'Matemática', true], ['ArtBook', 'Português', false], ['ArtFlask', 'Ciências', false], ['ArtMuseum', 'História', false]].map(([k, n, on]) => <div key={n as string} className="ax-item">{k === 'ArtCalc' ? <ArtCalc size={48} /> : k === 'ArtBook' ? <ArtBook size={48} /> : k === 'ArtFlask' ? <ArtFlask size={48} /> : <ArtMuseum size={48} />}<div className="grow"><b>{n}</b><small>{on ? 'Jornada completa disponível' : 'Em breve'}</small></div>{on ? <span className="ax-badge ok">disponível</span> : <span className="ax-badge">em breve</span>}</div>)}</div>
     <div className="row"><Btn onClick={() => nav('/s/session?kind=diagnostic')} disabled={s.diagDone}>{s.diagDone ? 'Diagnóstico concluído' : 'Fazer diagnóstico'}</Btn><Btn onClick={() => nav('/s/session?kind=practice')} disabled={!s.diagDone}>Praticar</Btn><Btn variant="ghost" onClick={() => nav('/s/session?kind=reassessment')} disabled={s.practiceRounds <= s.reassessRounds}>Reavaliar</Btn></div>
     {MATH_WORLDS.map((w) => <div key={w.id} className="ax-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}><div className="row"><b className="grow">{w.name}</b><small>{w.theme}</small></div><div className="row">{w.skillIds.map((id) => { const r = rep.get(id)!; const locked = vm.world.id === w.id ? (vm.world.nodes.find((n: MapNode) => n.skillId === id)?.status === 'locked') : false; return <span key={id} title={r.recommendation}>{locked ? <span className="ax-badge warn"><ILock size={14} /> {r.name}</span> : <StateBadge s={r.state} kid />} <small>{r.name}</small></span>; })}</div></div>)}</div>;

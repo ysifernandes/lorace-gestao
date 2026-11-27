@@ -20,7 +20,7 @@ export interface Session { kind: 'diagnostic' | 'practice' | 'reassessment'; ite
 export interface Student {
   id: string; familyId: string; userId?: string; name: string; birthYear: number; bandOverride?: AgeBand; avatar: { color: string; face: string; spec?: import('../ui/art').AvatarSpec }; interests: string[];
   learner: LearnerState; diagDone: boolean; practiceRounds: number; reassessRounds: number; session?: Session; shownExplanations: string[];
-  rewards: { xpPerMinute: number; dailyCapMinutes: number }; ledger: Tx[]; schoolCode: string;
+  rewards: { xpPerMinute: number; dailyCapMinutes: number }; ledger: Tx[]; schoolCode: string; games?: Record<string, { plays: number; bestStars: number }>;
 }
 export interface Device { id: string; familyId: string; studentId: string; name: string; platform: 'android' | 'ios'; online: boolean; permissionOk: boolean; lastHeartbeat: number | null; apps: { id: string; label: string; essential?: boolean }[]; rules: Rules }
 export interface Cmd { id: string; deviceId: string; type: 'block_app' | 'unblock_app' | 'grant_time'; appId: string; minutes?: number; status: CommandStatus; history: { status: CommandStatus; at: number; detail?: string }[]; createdAt: number; expiresAt: number }
@@ -149,6 +149,13 @@ export function answer(studentId: string, item: Item, resp: Response, hintsUsed:
   });
   return { grade: r.grade, xp: r.xp, minutes };
 }
+/** Rodada de minigame: registra evidência (tipo "game"), XP e minutos pelo mesmo motor e carteira das demais atividades. */
+export function answerGame(studentId: string, item: Item, resp: Response, hintsUsed: number) {
+  const s = studentOf(studentId); const now = Date.now(); const r = recordResponse(s.learner, item, resp, { hintsUsed, at: now, phase: 'game' }); let minutes = 0;
+  update(() => { s.learner = r.state; const l = ledgerOf(s); const key = `${item.id}@${now}`; l.post(s.id, 'xp', Math.max(1, r.xp), 'activity', `xp:${key}`); minutes = l.earnMinutes(s.id, Math.max(1, r.xp), s.rewards, new Date().setHours(0, 0, 0, 0), `min:${key}`); s.ledger = l.export(); });
+  return { grade: r.grade, xp: r.xp, minutes };
+}
+export function finishGame(studentId: string, gameId: string, stars: number) { const s = studentOf(studentId); update(() => { const g = (s.games ??= {}); const c = (g[gameId] ??= { plays: 0, bestStars: 0 }); c.plays++; c.bestStars = Math.max(c.bestStars, stars); }); }
 export function finishSession(studentId: string) {
   const s = studentOf(studentId); const ses = s.session!; const now = Date.now();
   update(() => {

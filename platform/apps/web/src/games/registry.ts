@@ -1,0 +1,11 @@
+import type { GameId } from './logic';
+export interface GameInfo { id: GameId; name: string; tagline: string; emoji: string; from: string; to: string; skills: string[]; goal: string; how: string; subject: 'Matemática' | 'Português' }
+export const GAMES: GameInfo[] = [
+  { id: 'pizzaria', name: 'Pizzaria das Frações', tagline: 'Atenda os clientes e corte fatias certinhas!', emoji: '🍕', from: '#ff8a3d', to: '#ff5e7a', skills: ['frac.visual', 'frac.id', 'frac.equiv', 'frac.compare', 'frac.add.same'], goal: 'Representar, identificar, comparar e somar frações (parte de um todo).', how: 'Toque nas fatias para servir o pedido; descubra qual fração sobrou e quem comeu mais.', subject: 'Matemática' },
+  { id: 'mercado', name: 'Mercado Virtual', tagline: 'Faça compras, some preços e dê o troco!', emoji: '🛒', from: '#34b25a', to: '#16a6a0', skills: ['add.facts', 'add.carry', 'mul.facts', 'sub.borrow', 'prob.multi'], goal: 'Somar, multiplicar e subtrair em situações de compra e troco.', how: 'Veja a compra, calcule o total e monte o troco com notas e moedas.', subject: 'Matemática' },
+  { id: 'laboratorio', name: 'Laboratório de Cupcakes', tagline: 'Fileiras, caixas e pacotes: multiplique e reparta!', emoji: '🧁', from: '#b06cff', to: '#ff6fb6', skills: ['mul.facts', 'div.facts', 'div.algorithm'], goal: 'Multiplicação como grupos iguais e divisão como repartir e agrupar (com resto).', how: 'Encha bandejas, reparta em caixas e embale pacotes; depois responda.', subject: 'Matemática' },
+  { id: 'frases', name: 'Montagem de Frases', tagline: 'Arrume as palavras e leia a frase pronta!', emoji: '🧩', from: '#3b82f6', to: '#6a3fd8', skills: ['pt.write.sentence', 'pt.gram.agree'], goal: 'Construir frases com sentido e concordância.', how: 'Toque nas palavras na ordem certa para montar a frase.', subject: 'Português' },
+  { id: 'detetive', name: 'Detetive de Palavras', tagline: 'Ache a palavra escrita errada e conserte!', emoji: '🔍', from: '#f7b928', to: '#f0801c', skills: ['pt.spell.rules', 'pt.gram.agree'], goal: 'Reconhecer regularidades ortográficas e concordância.', how: 'Toque na palavra suspeita e escolha a escrita correta.', subject: 'Português' },
+];
+export const gameById = (id: string) => GAMES.find((g) => g.id === id);
+export const gameForSkill = (skillId: string) => GAMES.find((g) => g.skills.includes(skillId));

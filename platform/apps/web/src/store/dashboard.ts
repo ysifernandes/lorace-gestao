@@ -7,16 +7,17 @@ import type { AgeBand } from '@edu/types';
 import { balances, bandOf, levelInfo, reportFor, skillName, type DB, type Student } from './db';
 import { DEFAULT_AVATAR, type AvatarSpec, type MedalKind } from '../ui/art';
 import type { MascotState } from '../ui/axolotl';
+import { gameForSkill, GAMES } from '../games/registry';
 
 export type Tone = 'ok' | 'warn' | 'bad' | 'none';
 export const toneOf = (p: number | null): Tone => (p === null ? 'none' : p >= 0.8 ? 'ok' : p >= 0.5 ? 'warn' : 'bad');
 export interface Medal { kind: MedalKind; title: string; sub: string; earned: boolean; how: string }
 export interface MapNode { id: string; label: string; skillId: string; status: 'mastered' | 'current' | 'open' | 'locked'; state: MasteryState; why: string }
-export interface PlanItem { id: string; art: 'video' | 'game' | 'target' | 'compass'; title: string; min: number; done: boolean }
+export interface PlanItem { id: string; art: 'video' | 'game' | 'target' | 'compass'; title: string; min: number; done: boolean; route?: string }
 export interface Mission { title: string; text: string; cta: string; route: string; mascot: MascotState; pie: boolean }
 export interface DashVM {
   name: string; band: AgeBand; avatar: AvatarSpec; xp: number; level: { n: number; into: number; span: number; title: string }; minutes: number; hasDiag: boolean;
-  mission: Mission; subjects: { id: 'portugues' | 'matematica' | 'ciencias' | 'historia'; name: string; pct: number | null; note: string; active: boolean }[];
+  mission: Mission; subjects: { id: 'portugues' | 'matematica' | 'ciencias' | 'historia' | 'geografia' | 'ingles'; name: string; pct: number | null; note: string; active: boolean }[];
   groups: { id: string; name: string; pct: number | null; n: number; conf: string }[];
   plan: { subtitle: string; items: PlanItem[]; cta: { label: string; route: string } };
   world: { id: string; name: string; theme: string; nodes: MapNode[] }; medals: Medal[]; notifications: { id: string; text: string; route: string }[]; focusName?: string;
@@ -42,6 +43,8 @@ export function buildDashboard(d: DB, s: Student): DashVM {
     { id: 'matematica', name: 'Matemática', pct: mean(assessed) === null ? null : Math.round(mean(assessed)! * 100), note: assessed.length ? `estimativa de ${assessed.length} habilidade(s)` : 'Faça o diagnóstico', active: true },
     { id: 'ciencias', name: 'Ciências', pct: null, note: 'Em breve', active: false },
     { id: 'historia', name: 'História', pct: null, note: 'Em breve', active: false },
+    { id: 'geografia', name: 'Geografia', pct: null, note: 'Em breve', active: false },
+    { id: 'ingles', name: 'Inglês', pct: null, note: 'Em breve', active: false },
   ];
   const groups = PERFORMANCE_GROUPS.map((g) => { const rs = assessed.filter((r) => g.match(r.skillId)); const m = mean(rs); const conf = rs.length ? (rs.reduce((a, r) => a + r.confidence, 0) / rs.length < 0.4 ? 'baixa' : 'média') : '—'; return { id: g.id, name: g.name, pct: m === null ? null : Math.round(m * 100), n: rs.length, conf }; });
 
@@ -49,7 +52,9 @@ export function buildDashboard(d: DB, s: Student): DashVM {
   if (!s.diagDone) planItems.push({ id: 'diag', art: 'compass', title: 'Diagnóstico inicial: descobrir o que você já sabe', min: 20, done: false });
   else {
     if (unseen.length || s.shownExplanations.length) planItems.push({ id: 'explain', art: 'video', title: `Entender: ${MISCONCEPTIONS[(unseen[0]?.id ?? s.shownExplanations.at(-1))!]?.label ?? 'explicação'}`, min: 15, done: unseen.length === 0 });
-    planItems.push({ id: 'practice', art: 'game', title: focus ? `Praticando ${focus.name} (atividades)` : 'Praticando com revisão leve', min: 16, done: false });
+    const g = (focus && gameForSkill(focus.skillId)) || GAMES[0]!;
+    planItems.push({ id: 'game', art: 'game', title: `Jogar: ${g.name}${focus ? ` (treina ${focus.name})` : ''}`, min: 10, done: (s.games?.[g.id]?.plays ?? 0) > 0, route: `/s/jogos/${g.id}` });
+    planItems.push({ id: 'practice', art: 'game', title: focus ? `Praticando ${focus.name} (atividades)` : 'Praticando com revisão leve', min: 16, done: false, route: '/s/session?kind=practice' });
     planItems.push({ id: 'reassess', art: 'target', title: 'Reavaliar e ver a evolução', min: 10, done: s.reassessRounds > 0 && !reassess });
   }
   const planCta = { label: 'Continuar Plano', route: mission.route };

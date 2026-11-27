@@ -2,7 +2,7 @@ export * from './types';
 export * from './skills';
 export * from './misconceptions';
 export * from './generators';
-export { gcd, lcm } from './rng';
+export { gcd, lcm, mulberry32, ri, shuffle } from './rng';
 import { ALL_SKILLS } from './skills';
 import { buildItemBank } from './generators';
 import { MISCONCEPTIONS, EXPLANATIONS } from './misconceptions';

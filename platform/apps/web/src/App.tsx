@@ -7,6 +7,7 @@ import { Logo, Badge, Btn, ErrorBoundary, Toaster, Notice } from './ui';
 import { HOME, Login } from './pages/auth';
 import { StudentSession, StudentExplain, StudentProgress } from './pages/student';
 import { AxShell, Dashboard } from './pages/ax';
+import { GameRoute, GamesPage } from './games/Games';
 import { Estudar, Missoes, Conquistas, Biblioteca, Tutor, Familia } from './pages/ax-pages';
 import { ParentHome, ParentChild } from './pages/parent';
 import { TeacherHome, TeacherStudent, ManagerHome } from './pages/school';
@@ -34,7 +35,7 @@ export default function App() {
   useEffect(() => { sweep(); const t = setInterval(sweep, 15_000); return () => clearInterval(t); }, []);
   return <ErrorBoundary><Router><Routes>
     <Route path="/" element={<Root />} /><Route path="/login" element={<Login />} /><Route path="/marca" element={<BrandGallery />} />
-    <Route path="/s" element={<Guard role="student"><AxShell /></Guard>}><Route index element={<Dashboard />} /><Route path="estudar" element={<Estudar />} /><Route path="missoes" element={<Missoes />} /><Route path="conquistas" element={<Conquistas />} /><Route path="biblioteca" element={<Biblioteca />} /><Route path="tutor" element={<Tutor />} /><Route path="familia" element={<Familia />} /><Route path="session" element={<StudentSession />} /><Route path="explain" element={<StudentExplain />} /><Route path="progress" element={<StudentProgress />} /></Route>
+    <Route path="/s" element={<Guard role="student"><AxShell /></Guard>}><Route index element={<Dashboard />} /><Route path="estudar" element={<Estudar />} /><Route path="jogos" element={<GamesPage />} /><Route path="jogos/:id" element={<GameRoute />} /><Route path="missoes" element={<Missoes />} /><Route path="conquistas" element={<Conquistas />} /><Route path="biblioteca" element={<Biblioteca />} /><Route path="tutor" element={<Tutor />} /><Route path="familia" element={<Familia />} /><Route path="session" element={<StudentSession />} /><Route path="explain" element={<StudentExplain />} /><Route path="progress" element={<StudentProgress />} /></Route>
     <Route path="/p" element={<Guard role="guardian"><AdultShell role="guardian" /></Guard>}><Route index element={<ParentHome />} /><Route path="child/:id" element={<ParentChild />} /></Route>
     <Route path="/t" element={<Guard role="teacher"><AdultShell role="teacher" /></Guard>}><Route index element={<TeacherHome />} /><Route path="student/:id" element={<TeacherStudent />} /></Route>
     <Route path="/m" element={<Guard role="school_manager"><AdultShell role="school_manager" /></Guard>}><Route index element={<ManagerHome />} /><Route path="student/:id" element={<TeacherStudent />} /></Route>
