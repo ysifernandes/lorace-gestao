@@ -1,0 +1,16 @@
+/* Animações do mascote (CSS). Respeitam prefers-reduced-motion. Camadas ids: ax-gills-l/r, ax-eye-l/r, ax-arm-l/r, ax-mouth, ax-head, ax-body, ax-tail. */
+.ax-svg{display:block;overflow:visible}
+.ax-anim .ax-float{animation:axfloat 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.ax-anim .ax-gill-l{transform-box:fill-box;transform-origin:right center;animation:axgill 2.6s ease-in-out infinite}
+.ax-anim .ax-gill-r{transform-box:fill-box;transform-origin:right center;animation:axgill 2.6s ease-in-out infinite .35s}
+.ax-blink{transform-box:fill-box;transform-origin:center top;transform:scaleY(0);animation:axblink 5.2s infinite}
+.ax-anim .ax-dot{animation:axdot 1.4s infinite}.ax-anim .ax-dot.d2{animation-delay:.2s}.ax-anim .ax-dot.d3{animation-delay:.4s}
+.ax-anim .ax-spark{transform-box:fill-box;transform-origin:center;animation:axspark 1.8s ease-in-out infinite}
+.ax-anim .ax-glow{animation:axglow 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes axfloat{50%{transform:translateY(-4px)}}
+@keyframes axgill{50%{transform:rotate(-7deg)}}
+@keyframes axblink{0%,92%,100%{transform:scaleY(0)}95%{transform:scaleY(1)}}
+@keyframes axdot{0%,60%,100%{opacity:.25}30%{opacity:1}}
+@keyframes axspark{50%{transform:scale(1.35) rotate(12deg);opacity:.7}}
+@keyframes axglow{50%{transform:scale(1.25);opacity:.45}}
+@media(prefers-reduced-motion:reduce){.ax-anim *{animation:none!important}.ax-blink{display:none}}

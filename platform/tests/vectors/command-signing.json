@@ -1,0 +1,18 @@
+{
+  "deviceKey": "c3a53a760d1b9a12636834cfe770f83879987bc97592e0435b84df70bb71c6b1",
+  "body": {
+    "id": "c1",
+    "deviceId": "11111111-1111-4111-8111-111111111111",
+    "nonce": "abc",
+    "issuedAt": 1700000000000,
+    "expiresAt": 1700086400000,
+    "type": "grant_time",
+    "payload": {
+      "minutes": 10,
+      "appId": "com.example.app",
+      "note": "ação ✓"
+    }
+  },
+  "canonical": "{\"deviceId\":\"11111111-1111-4111-8111-111111111111\",\"expiresAt\":1700086400000,\"id\":\"c1\",\"issuedAt\":1700000000000,\"nonce\":\"abc\",\"payload\":{\"appId\":\"com.example.app\",\"minutes\":10,\"note\":\"ação ✓\"},\"type\":\"grant_time\"}",
+  "signature": "fcf520c85c9ec8538a569f40d35b14649c67923c0c62da4752276584cbb9a166"
+}
