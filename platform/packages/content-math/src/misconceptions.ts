@@ -1,4 +1,5 @@
 import type { ExplanationVariant, Misconception } from './types';
+import { EARLY_MISCONCEPTIONS, earlyExplanations } from './early';
 
 const M = (id: string, skillId: string, category: Misconception['category'], label: string, description: string): Misconception => ({ id, skillId, category, label, description });
 
@@ -53,6 +54,7 @@ export const MISCONCEPTIONS: Record<string, Misconception> = Object.fromEntries(
   M('pt_over_infer', 'pt.read.infer', 'text_interpretation', 'Inferência sem apoio no texto', 'Concluiu algo que o texto não permite.'),
   M('pt_agree_noun', 'pt.gram.agree', 'conceptual', 'Concordância nominal', 'Não ajustou gênero/número entre artigo, substantivo e adjetivo.'),
 ].map((m) => [m.id, m]));
+for (const [id, skillId, category, label, description] of EARLY_MISCONCEPTIONS) MISCONCEPTIONS[id] = M(id, skillId, category, label, description);
 
 const V = (method: ExplanationVariant['method'], title: string, ...body: string[]): ExplanationVariant => ({ method, title, body });
 
@@ -136,3 +138,4 @@ export const EXPLANATIONS: Record<string, ExplanationVariant[]> = {
   pt_over_infer: [V('passo_a_passo', 'Do texto, não do palpite', 'Uma inferência precisa de pelo menos uma pista no texto. Qual frase apoia sua resposta?')],
   pt_agree_noun: [V('passo_a_passo', 'Combine artigo, substantivo e adjetivo', 'Se o substantivo está no feminino plural, os acompanhantes também: "as casas pequenas".')],
 };
+Object.assign(EXPLANATIONS, earlyExplanations(V));

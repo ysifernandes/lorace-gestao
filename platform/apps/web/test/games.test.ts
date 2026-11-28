@@ -4,7 +4,7 @@ import { ALL_SKILLS, MISCONCEPTIONS, type Item } from '@edu/content-math';
 import { pizzaRounds, marketRounds, labRounds, sentenceRounds, detectiveRounds, financasRounds, escapeRounds, placarRounds, ctxOf, CTX, roundsFor, starsFor, type GameId } from '../src/games/logic';
 import { GAMES, gameForSkill, gamesForBand, labelFor } from '../src/games/registry';
 
-const IDS: GameId[] = ['pizzaria', 'mercado', 'laboratorio', 'frases', 'detetive', 'financas', 'escape', 'placar'];
+const IDS: GameId[] = ['contagem', 'sons', 'formas', 'pizzaria', 'mercado', 'laboratorio', 'frases', 'detetive', 'financas', 'escape', 'placar'];
 const skillIds = new Set(ALL_SKILLS.map((s) => s.id));
 /** Resposta CORRETA do item (independente da UI) */
 function solve(it: Item) { switch (it.kind) { case 'fill_in': return { text: it.accepted[0]! }; case 'fraction_visual': return { shaded: it.targetNum }; case 'ordering': return { order: it.correctOrder }; case 'multiple_choice': return { choice: it.correct }; default: throw new Error(it.kind); } }
@@ -45,11 +45,11 @@ describe('minigames: rodadas e itens', () => {
 describe('jogos por faixa etária e por interesse', () => {
   it('catálogo muda com a faixa; adolescentes não veem jogos infantis como principais', () => {
     const ids = (b: Parameters<typeof gamesForBand>[0]) => gamesForBand(b).main.map((g) => g.id);
-    expect(ids('exploradores')).toEqual(['pizzaria', 'mercado']); // 5–7: jogos visuais (sem leitura)
+    expect(ids('exploradores')).toEqual(['contagem', 'sons', 'formas', 'mercado']); // 5–7: áudio-primeiro, sem leitura obrigatória
     expect(ids('aventureiros').sort()).toEqual(['detetive', 'frases', 'laboratorio', 'mercado', 'pizzaria']);
     expect(ids('desafiadores')).toEqual(expect.arrayContaining(['financas', 'escape', 'placar'])); expect(ids('desafiadores')).not.toContain('pizzaria');
     expect(ids('estrategistas').sort()).toEqual(['escape', 'financas', 'placar']);
-    expect(gamesForBand('estrategistas').base.map((g) => g.id).sort()).toEqual(['detetive', 'frases', 'laboratorio', 'mercado', 'pizzaria']); expect(gamesForBand('aventureiros').base).toEqual([]);
+    expect(ids('exploradores')).not.toContain('pizzaria'); expect(gamesForBand('estrategistas').base.map((g) => g.id).sort()).toEqual(['detetive', 'frases', 'laboratorio', 'mercado', 'pizzaria']); expect(gamesForBand('aventureiros').base).toEqual([]);
     for (const g of GAMES.filter((x) => x.base)) expect(g.teen).toBeTruthy();
   });
   it('treino de base para adolescentes usa nome e tom adultos (sem "Pizzaria das Frações")', () => {
@@ -71,3 +71,22 @@ describe('jogos por faixa etária e por interesse', () => {
     }
   });
 });
+
+describe('jogos áudio-primeiro (5–7)', () => {
+  const AUDIO: GameId[] = ['contagem', 'sons', 'formas'];
+  it('rodadas: itens de múltipla escolha com a pergunta falada, ids únicos por partida e gabarito correto pelo motor', () => {
+    for (const g of AUDIO) for (const seed of [1, 2, 5, 8]) { const rs = roundsFor(g, seed); const ids = new Set(rs.map((r) => r.item.id)); expect(ids.size).toBe(rs.length);
+      for (const r of rs) { const it = r.item as Extract<Item, { options: unknown }>; expect(it.kind).toBe('multiple_choice'); expect(it.options).toHaveLength(4); expect(gradeItem(it, { choice: it.correct }).correct).toBe(true); const wrong = it.options.find((o) => o.id !== it.correct)!; expect(gradeItem(it, { choice: wrong.id }).correct).toBe(false); expect((it.spoken ?? it.statement).length).toBeGreaterThan(5); } }
+  });
+  it('a dificuldade sobe aos poucos quando a criança joga de novo, sem passar do nível 5', () => {
+    const d = (seed: number) => roundsFor('contagem', seed).reduce((s, r) => s + r.item.difficulty, 0); expect(d(5)).toBeGreaterThan(d(1)); expect(Math.max(...roundsFor('contagem', 99).map((r) => r.item.difficulty))).toBeLessThanOrEqual(0.9);
+  });
+  it('a primeira tentativa gera evidência (fase game) nas habilidades de 5–7 e o relatório as enxerga', () => {
+    let st = newLearner('kid'); let t = 1_700_000_000_000; for (const r of roundsFor('contagem', 1)) { const it = r.item as Extract<Item, { options: unknown }>; st = recordResponse(st, it, { choice: it.correct }, { hintsUsed: 0, at: (t += 60_000), phase: 'game' }).state; }
+    const rep = buildReport(st, { skills: ALL_SKILLS as never, items: [] } as never, ['num.count', 'num.compare', 'num.order'], t); expect(rep.some((x) => x.evidenceCount > 0)).toBe(true);
+  });
+  it('erro típico vira hipótese de equívoco do próprio jogo (contagem ±1)', () => {
+    const it = makeCount(); const bad = it.options.find((o) => o.misconception === 'count_off_by_one')!; expect(bad).toBeTruthy(); expect(MISCONCEPTIONS[bad.misconception!]).toBeTruthy();
+  });
+});
+function makeCount() { return roundsFor('contagem', 1)[0]!.item as Extract<Item, { options: unknown }>; }

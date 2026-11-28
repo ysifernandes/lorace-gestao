@@ -38,3 +38,7 @@ Legenda: ✅ implementado+testado · 🟡 parcial · 📝 escrito, não validado
 | Supabase (auth, recuperação de senha, sync, storage) | ⛔ aguarda credenciais; ⏳ repositório adaptador a escrever |
 | Controle parental: UI de limites diários/horários/histórico | ⏳ (apps/bloqueio/tempo extra existem; limites e janelas na UI pendentes) |
 | Apps nativos (React Native + módulos Kotlin/Swift) | ⏳ estrutura a criar; módulos nativos escritos e não compilados |
+
+| Jogos 5–7 áudio-primeiro (voz do aparelho) | ✅ implementado e testado (e2e:audio); áudio gravado profissional: pendente |
+| Conteúdo ampliado (18 habilidades novas) | ✅ rascunho autoral testado; revisão pedagógica e BNCC: pendentes |
+| Português na jornada adaptativa (diagnóstico/plano) | pendente |

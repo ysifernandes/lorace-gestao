@@ -7,6 +7,27 @@ const Bg = () => <g fill="#fff"><circle cx="18" cy="22" r="22" opacity=".1" /><c
 const Gl = ({ d }: { d: string }) => <path d={d} fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".55" />;
 
 const ART: Record<string, () => ReactNode> = {
+  contagem: () => <>
+    <Sh cy={92} rx={46} />
+    <path d="M30 40 80 14l50 26v52H30z" fill="#e8475f" /><path d="M30 40 80 14l50 26" fill="none" stroke="#b3283f" strokeWidth="5" strokeLinejoin="round" /><path d="M30 40h100" stroke="#b3283f" strokeWidth="3" opacity=".5" />
+    <rect x="62" y="56" width="36" height="36" rx="4" fill="#fff4d6" /><path d="M62 56l36 36M98 56 62 92" stroke="#e8475f" strokeWidth="4" /><rect x="62" y="56" width="36" height="36" rx="4" fill="none" stroke="#b3283f" strokeWidth="4" />
+    <circle cx="80" cy="34" r="12" fill="#fff" /><text x="80" y="42" textAnchor="middle" fontSize="20" fontWeight="900" fill="#b3283f" fontFamily="Nunito, system-ui, sans-serif">3</text>
+    <g><circle cx="26" cy="78" r="12" fill="#ffd34d" /><circle cx="26" cy="78" r="12" fill="none" stroke="#e59a00" strokeWidth="2.5" /><text x="26" y="84" textAnchor="middle" fontSize="16" fontWeight="900" fill="#a76500" fontFamily="Nunito, system-ui, sans-serif">1</text><circle cx="136" cy="80" r="12" fill="#ffd34d" /><circle cx="136" cy="80" r="12" fill="none" stroke="#e59a00" strokeWidth="2.5" /><text x="136" y="86" textAnchor="middle" fontSize="16" fontWeight="900" fill="#a76500" fontFamily="Nunito, system-ui, sans-serif">2</text></g>
+  </>,
+  sons: () => <>
+    <Sh cy={92} rx={44} />
+    <rect x="24" y="30" width="44" height="44" rx="10" fill="#fff" transform="rotate(-8 46 52)" /><text x="46" y="63" textAnchor="middle" fontSize="34" fontWeight="900" fill="#3b82f6" fontFamily="Nunito, system-ui, sans-serif" transform="rotate(-8 46 52)">A</text>
+    <rect x="64" y="38" width="44" height="44" rx="10" fill="#ffd34d" transform="rotate(6 86 60)" /><text x="86" y="71" textAnchor="middle" fontSize="34" fontWeight="900" fill="#a76500" fontFamily="Nunito, system-ui, sans-serif" transform="rotate(6 86 60)">B</text>
+    <path d="M112 36v22h8l12 10V26l-12 10z" fill="#fff" /><path d="M138 34a14 14 0 0 1 0 26M144 26a24 24 0 0 1 0 42" stroke="#fff" strokeWidth="4" strokeLinecap="round" fill="none" opacity=".85" />
+    <path d="m124 14 2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fff" opacity=".8" />
+  </>,
+  formas: () => <>
+    <Sh cy={92} rx={46} />
+    <rect x="30" y="46" width="46" height="46" rx="8" fill="#3b82f6" stroke="#1d4ed8" strokeWidth="4" />
+    <circle cx="106" cy="68" r="24" fill="#e8475f" stroke="#b3283f" strokeWidth="4" />
+    <path d="M70 12 96 52H44z" fill="#ffd34d" stroke="#d9951a" strokeWidth="4" strokeLinejoin="round" />
+    <path d="M40 54a30 30 0 0 1 16-8M94 58a20 20 0 0 1 8-8" stroke="#fff" strokeWidth="4" strokeLinecap="round" fill="none" opacity=".55" />
+  </>,
   pizzaria: () => <>
     <Sh cy={92} rx={44} />
     <path d="M70 56 105.9 52.9A36 36 0 1 1 93.1 28.4Z" fill="#e8963a" />

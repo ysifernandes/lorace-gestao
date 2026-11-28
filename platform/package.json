@@ -16,7 +16,8 @@
     "e2e": "vite-node --config vitest.config.ts apps/web/e2e/journey.ts",
     "e2e:visual": "vite-node --config vitest.config.ts apps/web/e2e/visual.ts",
     "e2e:games": "vite-node --config vitest.config.ts apps/web/e2e/games.ts",
-    "e2e:teens": "vite-node --config vitest.config.ts apps/web/e2e/teens.ts"
+    "e2e:teens": "vite-node --config vitest.config.ts apps/web/e2e/teens.ts",
+    "e2e:audio": "vite-node --config vitest.config.ts apps/web/e2e/audio.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

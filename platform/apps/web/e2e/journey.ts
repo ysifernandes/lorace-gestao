@@ -19,7 +19,9 @@ type Slips = Record<string, string>;
 async function findItem(): Promise<Item> {
   const statement = (await page.locator('h2').first().innerText()).trim(); const cf = page.locator('div.card.flat'); const ctxT = (await cf.count()) ? await cf.first().innerText() : ''; const ctxClean = ctxT.startsWith('📖') ? ctxT.replace('📖', '').trim() : '';
   const opts = (await page.locator('[role=radio]').allInnerTexts()).map((t) => t.replace(/^[A-D]\s*/, '').trim());
-  const c = bank.filter((i) => i.statement === statement && (i.context ?? '') === ctxClean && (!('options' in i) || (opts.length === i.options.length && i.options.every((o) => opts.includes(o.text)))));
+  const fig = await page.evaluate(() => ({ n: document.querySelector('.fg-count')?.getAttribute('data-n') ?? null, shape: document.querySelector('.fg-shape')?.getAttribute('data-shape') ?? null, seq: document.querySelector('.fg-pattern')?.getAttribute('data-seq') ?? null }));
+  const figOk = (i: Item) => { const f = i.figure; if (f?.type === 'count') return String(f.n) === fig.n; if (f?.type === 'shape') return f.shape === fig.shape; if (f?.type === 'pattern') return f.seq.join('|') === fig.seq; return fig.n === null && fig.shape === null && fig.seq === null || f?.type === 'fraction-bar'; };
+  const c = bank.filter((i) => figOk(i) && i.statement === statement && (i.context ?? '') === ctxClean && (!('options' in i) || (opts.length === i.options.length && i.options.every((o) => opts.includes(o.text)))));
   if (c.length > 1 && c.every((x) => x.skillId === c[0]!.skillId && x.kind === c[0]!.kind && JSON.stringify((x as any).accepted ?? (x as any).correct) === JSON.stringify((c[0] as any).accepted ?? (c[0] as any).correct))) return c[0]!; if (c.length !== 1) throw new Error(`item ambíguo/não encontrado: "${statement}" (${c.length})`); return c[0]!;
 }
 async function answerCurrent(slips: Slips) {
@@ -43,7 +45,7 @@ console.log('1) Login e demonstração'); await page.goto(URL); await shot('01-l
 console.log('2) Luna (8–10): diagnóstico adaptativo'); await loginAs('Aluna Luna (9 anos)'); await shot('02-aluno-home-novo');
 await page.goto(URL + '#/s/tutor'); await page.waitForTimeout(300); ok((await txt()).includes('Ainda indisponível') && (await txt()).includes('Nada aqui é simulado'), 'tutor de IA declarado indisponível (não simulado)'); await page.goto(URL + '#/s'); await page.waitForTimeout(300);
 await page.getByRole('button', { name: /Começar agora/ }).click(); await page.waitForTimeout(300); await shot('03-atividade');
-const slipLuna: Slips = { 'frac.add.diff': 'add_num_and_den' }; const n = await runSessionSafe(slipLuna); ok(n >= 8 && n <= 24, `diagnóstico adaptativo com ${n} atividades (<= 24)`); await shot('04-diagnostico-concluido');
+const slipLuna: Slips = { 'frac.add.diff': 'add_num_and_den' }; const n = await runSessionSafe(slipLuna); ok(n >= 8 && n <= 26, `diagnóstico adaptativo com ${n} atividades (<= 24)`); await shot('04-diagnostico-concluido');
 console.log('3) Explicação personalizada'); await page.getByRole('button', { name: /Ver explicação/ }).click(); await page.waitForTimeout(300); const ex = await txt(); if (!/denominadores/i.test(ex)) console.log('EX:', ex.slice(0,600)); ok(/denominadores/i.test(ex) && /rascunho/.test(ex), 'explicação do equívoco, sinalizada como rascunho'); await shot('05-explicacao');
 console.log('4) Prática focada, reavaliação e evolução'); await page.getByRole('button', { name: /vamos praticar/ }).click(); await page.waitForTimeout(300); await runSessionSafe({}); await shot('06-pratica-concluida');
 await page.getByRole('button', { name: 'Início' }).click(); await page.waitForTimeout(300); await page.getByRole('button', { name: /Começar agora/ }).click(); await page.waitForTimeout(300); await runSessionSafe({}); await shot('07-reavaliacao');

@@ -1,9 +1,9 @@
 // Lógica PURA dos minigames: gera rodadas determinísticas (por semente) e o item pedagógico de cada rodada.
 // Cada rodada vira um Item sintético corrigido pelo MESMO motor (gradeItem/recordResponse) → evidências, equívocos e diagnóstico.
 // Conteúdo autoral em rascunho (revisão profissional pendente), como o restante do banco.
-import { mulberry32, ri, shuffle, type Item } from '@edu/content-math';
+import { makeItem, mulberry32, ri, shuffle, type Item } from '@edu/content-math';
 
-export type GameId = 'pizzaria' | 'mercado' | 'laboratorio' | 'frases' | 'detetive' | 'financas' | 'escape' | 'placar';
+export type GameId = 'contagem' | 'sons' | 'formas' | 'pizzaria' | 'mercado' | 'laboratorio' | 'frases' | 'detetive' | 'financas' | 'escape' | 'placar';
 export interface Round<V> { item: Item; view: V }
 const SRC = { kind: 'authored' as const, reference: 'Rodada de minigame gerada deterministicamente pelo projeto; gabarito calculado por código', license: 'Autoral do projeto (licença final a definir)' };
 const base = (id: string, skillId: string, difficulty: number, statement: string, hints: string[], justification: string) => ({ id, skillId, difficulty, statement, hints, justification, source: { ...SRC }, review: { status: 'draft' as const, needsProfessionalReview: true, version: 1 } });
@@ -162,5 +162,16 @@ export function placarRounds(seed = 1, ctx: Ctx = 'esportes'): Round<PlacarView>
   return out;
 }
 
-export const roundsFor = (g: GameId, seed: number, ctx: Ctx = 'esportes'): Round<unknown>[] => ({ pizzaria: () => pizzaRounds(seed), mercado: () => marketRounds(seed), laboratorio: () => labRounds(seed), frases: () => sentenceRounds(seed), detetive: () => detectiveRounds(seed), financas: () => financasRounds(seed, ctx), escape: () => escapeRounds(seed, ctx), placar: () => placarRounds(seed, ctx) })[g]();
+// ---------------- Jogos áudio-primeiro (5–7): rodadas vêm dos geradores do banco, com semente própria ----------------
+export type AudioView = { kind: 'audio' };
+const audioRounds = (game: string, plan: [string, number][], seed: number): Round<AudioView>[] => {
+  const lift = Math.min(2, Math.floor((seed - 1) / 2)); // sobe de nível aos poucos, conforme a criança joga de novo
+  return plan.map(([skill, lv], k) => { const lvl = Math.min(5, lv + (lv < 5 ? lift : 0)); const it = makeItem(skill, lvl, seed * 131 + k * 17 + skill.length);
+    return { view: { kind: 'audio' as const }, item: { ...it, id: `game.${game}.${seed}.${k + 1}` } as Item }; });
+};
+export const contagemRounds = (seed = 1) => audioRounds('contagem', [['num.count', 0], ['num.count', 1], ['num.compare', 0], ['num.order', 0], ['num.count', 2]], seed);
+export const sonsRounds = (seed = 1) => audioRounds('sons', [['pt.letter.sound', 0], ['pt.syllable', 0], ['pt.rhyme', 0], ['pt.letter.sound', 1], ['pt.syllable', 1]], seed);
+export const formasRounds = (seed = 1) => audioRounds('formas', [['geo.shapes', 0], ['pat.seq', 0], ['geo.shapes', 1], ['pat.seq', 1], ['geo.shapes', 3]], seed);
+
+export const roundsFor = (g: GameId, seed: number, ctx: Ctx = 'esportes'): Round<unknown>[] => ({ contagem: () => contagemRounds(seed), sons: () => sonsRounds(seed), formas: () => formasRounds(seed), pizzaria: () => pizzaRounds(seed), mercado: () => marketRounds(seed), laboratorio: () => labRounds(seed), frases: () => sentenceRounds(seed), detetive: () => detectiveRounds(seed), financas: () => financasRounds(seed, ctx), escape: () => escapeRounds(seed, ctx), placar: () => placarRounds(seed, ctx) })[g]();
 export const starsFor = (firstTryCorrect: number, total: number, hints: number) => 1 + (firstTryCorrect >= Math.ceil(total * 0.6) ? 1 : 0) + (firstTryCorrect >= total - 1 && hints === 0 ? 1 : 0);

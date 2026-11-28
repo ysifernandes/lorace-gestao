@@ -2,6 +2,7 @@ export * from './types';
 export * from './skills';
 export * from './misconceptions';
 export * from './generators';
+export { tokenName } from './early';
 export { gcd, lcm, mulberry32, ri, shuffle } from './rng';
 import { ALL_SKILLS } from './skills';
 import { buildItemBank } from './generators';
@@ -33,19 +34,26 @@ export function validateContent(skills = ALL_SKILLS, items = buildItemBank()): s
 /** Mundos temáticos da jornada de matemática (conteúdo editorial: nomes e ordem das fases). Cada fase = uma habilidade do grafo. */
 export interface World { id: string; name: string; theme: string; skillIds: string[] }
 export const MATH_WORLDS: World[] = [
+  { id: 'bosque-contagem', name: 'Bosque da Contagem', theme: 'Contar e comparar', skillIds: ['num.count', 'num.compare', 'num.order'] },
+  { id: 'campo-formas', name: 'Campo das Formas', theme: 'Formas e padrões', skillIds: ['geo.shapes', 'pat.seq'] },
   { id: 'ilha-numeros', name: 'Ilha dos Números', theme: 'Adição e subtração', skillIds: ['add.facts', 'add.carry', 'sub.facts', 'sub.borrow'] },
   { id: 'laboratorio', name: 'Laboratório da Multiplicação', theme: 'Multiplicação e divisão', skillIds: ['mul.facts', 'mul.multi', 'div.facts', 'div.algorithm', 'factors'] },
   { id: 'pizzaria', name: 'Pizzaria das Frações', theme: 'Frações', skillIds: ['frac.id', 'frac.visual', 'frac.compare', 'frac.equiv', 'frac.simplify', 'frac.add.same', 'frac.add.diff'] },
+  { id: 'vila-tempo', name: 'Vila do Tempo e do Dinheiro', theme: 'Medidas', skillIds: ['meas.time', 'meas.money'] },
   { id: 'vila-problemas', name: 'Vila dos Problemas', theme: 'Resolução de problemas', skillIds: ['prob.interpret', 'prob.multi', 'prob.frac'] },
+  { id: 'rio-decimais', name: 'Rio dos Decimais', theme: 'Decimais e negativos', skillIds: ['dec.compare', 'dec.add', 'int.neg'] },
+  { id: 'torre-geometria', name: 'Torre da Geometria', theme: 'Perímetro e área', skillIds: ['geo.perim', 'geo.area'] },
   { id: 'financas', name: 'Cidade das Finanças', theme: 'Porcentagem e juros', skillIds: ['perc.of', 'perc.change', 'fin.interest'] },
   { id: 'algebra', name: 'Laboratório de Álgebra', theme: 'Proporção e equações', skillIds: ['ratio.prop', 'alg.eq1'] },
   { id: 'dados', name: 'Estádio de Dados', theme: 'Estatística', skillIds: ['data.mean'] },
 ];
 /** Agrupamento usado no card "Meu Desempenho". */
 export const PERFORMANCE_GROUPS: { id: string; name: string; match: (skillId: string) => boolean }[] = [
+  { id: 'inicio', name: 'Contagem, formas e padrões', match: (s) => s.startsWith('num.') || s.startsWith('geo.shapes') || s.startsWith('pat.') },
   { id: 'addsub', name: 'Adição e subtração', match: (s) => s.startsWith('add.') || s.startsWith('sub.') },
   { id: 'muldiv', name: 'Multiplicação e divisão', match: (s) => s.startsWith('mul.') || s.startsWith('div.') || s === 'factors' },
   { id: 'frac', name: 'Frações', match: (s) => s.startsWith('frac.') },
+  { id: 'medidas', name: 'Medidas, decimais e geometria', match: (s) => s.startsWith('meas.') || s.startsWith('dec.') || s.startsWith('int.') || s === 'geo.perim' || s === 'geo.area' },
   { id: 'prob', name: 'Problemas matemáticos', match: (s) => s.startsWith('prob.') },
   { id: 'avancado', name: 'Porcentagem, álgebra e dados', match: (s) => s.startsWith('perc.') || s.startsWith('ratio.') || s.startsWith('alg.') || s.startsWith('data.') || s.startsWith('fin.') },
   { id: 'texto', name: 'Interpretação de texto', match: (s) => s.startsWith('pt.read.') },

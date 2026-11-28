@@ -56,3 +56,12 @@ Feedback: jogos "infantis" demais para 11+; é preciso identificar a idade e ada
 - Minigames: emojis do sistema substituídos por ilustrações vetoriais próprias (`ui/gameart.tsx`, 8 jogos) nos cards e no cabeçalho.
 - Correção: o corpo do mascote ficava invisível em telas largas (classe `.ax-float` colidia com o menu do celular → renomeada `.ax-usermenu`); ids de gradiente do mascote agora únicos por instância. Teste de regressão no `e2e:visual`.
 - Pendente: emojis restantes nos tabuleiros (produtos do Mercado, onboarding) ainda são do sistema.
+
+## 0.6.0 — 5–7 áudio-primeiro e ampliação de conteúdo
+- **Decisão do produto**: o responsável **vê tudo, sempre** (sem espaço privado do adolescente). Registrado em PRIVACY.md; transparência com o próprio adolescente continua recomendada.
+- **Conteúdo**: +12 habilidades de Matemática (contagem, comparação, ordem, formas, padrões, tempo, dinheiro, decimais, negativos, perímetro, área) e +6 de Português (letras/sons, sílabas, rimas, verbos, pontuação, sinônimos). Total: 49 habilidades, 273 itens, 81 equívocos (seed regenerado; DB tests OK).
+- **Jogos**: Fazenda dos Números, Rua dos Sons, Formas e Padrões (5–7, áudio-primeiro, figuras SVG próprias, "bata palmas"). Pizzaria passou a 8–10. Emojis removidos do registro de jogos.
+- **Atividades**: figuras `count/shape/pattern` e botão "Ouvir" também no diagnóstico e na prática.
+- **Motor**: diagnóstico com teto de 26; habilidades novas ligadas ao grafo. Teste da jornada simula aluno de 11 anos (targets por idade).
+- **Testes**: 126 unitários; novo `e2e:audio`.
+- Limitações: voz do navegador (não gravada); Português ainda fora da jornada adaptativa; conteúdo em rascunho sem revisão profissional.

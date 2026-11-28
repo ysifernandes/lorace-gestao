@@ -147,7 +147,7 @@ export function startSession(studentId: string, kind: Session['kind']) {
 /** Próximo item da sessão (diagnóstica: adaptativo; demais: lista fixa). */
 export function currentItem(studentId: string): Item | null {
   const s = studentOf(studentId); const ses = s.session; if (!ses) return null;
-  if (ses.kind === 'diagnostic') { const n = nextDiagnosticItem(s.learner, scope(), { targets: targetIds(s), maxItems: 24 }); return n?.item ?? null; }
+  if (ses.kind === 'diagnostic') { const n = nextDiagnosticItem(s.learner, scope(), { targets: targetIds(s), maxItems: 26 }); return n?.item ?? null; }
   const id = ses.itemIds[ses.idx]; return id ? itemById(id) : null;
 }
 export function answer(studentId: string, item: Item, resp: Response, hintsUsed: number) {

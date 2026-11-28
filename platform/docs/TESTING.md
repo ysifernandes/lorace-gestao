@@ -2,7 +2,7 @@
 
 | Camada | Comando | Resultado atual |
 |---|---|---|
-| Unidade/integração (pedagogia, conteúdo, motor da jornada, catálogo, gamificação, parental, segurança, store web) | `pnpm test` | **107 testes OK** (11 arquivos; inclui tutor, painel, mascote, marca, lógica dos minigames, faixa efetiva/maturidade e jogos por faixa) |
+| Unidade/integração (pedagogia, conteúdo, motor da jornada, catálogo, gamificação, parental, segurança, store web) | `pnpm test` | **126 testes OK** (11 arquivos; inclui tutor, painel, mascote, marca, lógica dos minigames, faixa efetiva/maturidade e jogos por faixa) |
 | Protocolo PoC (HTTP real, agente simulado; inclui lockout, revogação, diário, tempo extra) + vetores de assinatura | idem (`tests/poc`) | 13 OK |
 | Typecheck estrito | `pnpm typecheck` | OK |
 | Banco: migrations + RLS + triggers (`rls.sql` 45) · revisão de segurança (`security.sql` 35) · seed (`seed.sql`) | `pnpm test:db` | OK (Postgres 16) |
@@ -20,3 +20,6 @@ Um robô (Playwright) joga os **5 jogos até o fim** pela interface com as rodad
 
 ## Personalização por idade — `pnpm e2e:teens`
 Teo (14, 1º acesso): cadastro inicial (sem mascote infantil), painel "Estrategistas" em tom de adolescente, catálogo com 3 jogos + treino de base com nomes adultos (sem "Pizzaria"), robô joga Finanças, Escape Room e Placar com o tema escolhido (futebol → "gols", chuteira), diagnóstico de conteúdo avançado, axe-core. Malu (12) escolhe "mais tranquilo" e cai na faixa 8–10; Caio (6) vê só jogos visuais; "Sair" acessível fora do painel em 1440 e 390 px; responsável ajusta a maturidade ("ajustado a partir de…").
+
+## Jogos áudio-primeiro (5–7) — `pnpm e2e:audio`
+Caio (6) joga os 3 jogos pela interface com a voz do navegador **substituída por um espião** (o teste não ouve áudio: confere que o app pede a fala certa ao abrir a rodada, em "Ouvir de novo" e ao tocar numa alternativa). Também confere figuras (objetos/forma/padrão), bater palmas, retentativa sem punição, estrelas, evidências, axe WCAG A/AA e rolagem horizontal em 1280 e 390 px. **Não testa** qualidade/pronúncia da voz nem uso real por crianças.

@@ -8,6 +8,8 @@ import { Axolotl, type MascotState } from '../ui/axolotl';
 import { Btn } from '../ui';
 import { useStudent } from '../pages/student';
 import { BILLS, CTX, ctxOf, roundsFor, starsFor, type DetectiveView, type EscapeView, type FinView, type LabView, type MarketView, type PizzaView, type PlacarView, type Round, type SentenceView } from './logic';
+import { ItemFigure, ShapeSvg, SpeakBtn, parseTokenName, speak, stopSpeaking } from '../ui/figures';
+import { ISpeaker } from '../ui/art';
 import { gameById, gameForSkill, gamesForBand, labelFor } from './registry';
 
 /* ---------- confete (comemoração; respeita prefers-reduced-motion via CSS) ---------- */
@@ -114,7 +116,19 @@ function PlacarBoard({ round, locked, submit }: BoardProps<PlacarView>) {
   return <div className="gm-board gm-teen"><div className="gm-scenario"><span className="gm-chip">{c.metric} por {c.per}</span><p>{round.item.statement}</p></div><Bars v={v} /><Keypad value={txt} onChange={setTxt} disabled={locked} max={4} /><GoBtn disabled={locked || !txt} onClick={() => submit({ text: txt })}>Confirmar</GoBtn></div>;
 }
 
-const BOARD: Record<string, (p: BoardProps<never>) => ReactNode> = { pizzaria: PizzaBoard as never, mercado: MarketBoard as never, laboratorio: LabBoard as never, frases: SentenceBoard as never, detetive: DetectiveBoard as never, financas: FinancasBoard as never, escape: EscapeBoard as never, placar: PlacarBoard as never };
+/* ---------- Jogos áudio-primeiro (5–7): pergunta falada, figura grande, alternativas que se ouvem ao tocar ---------- */
+function AudioBoard({ round, locked, submit }: BoardProps<{ kind: 'audio' }>) {
+  const it = round.item as Extract<Item, { options: unknown }>; const [sel, setSel] = useState<string>(); const [claps, setClaps] = useState(0); const syl = it.skillId === 'pt.syllable';
+  useEffect(() => { const t = setTimeout(() => speak(`${it.spoken ?? it.statement}`), 350); return () => { clearTimeout(t); stopSpeaking(); }; }, [it.id]);
+  const text = (o: { text: string }) => o.text;
+  return <div className="gm-board gm-audio"><p className="gm-ask">{it.statement}</p><SpeakBtn big text={it.spoken ?? it.statement} label="Ouvir de novo" />
+    <ItemFigure figure={it.figure} />
+    {syl && <button type="button" className="gm-drum" onClick={() => { setClaps(claps + 1); speak('pá', 1.4); }} aria-label={`Bater palmas nas sílabas. Palmas: ${claps}`}><svg width="28" height="28" viewBox="0 0 32 32" aria-hidden><ellipse cx="16" cy="10" rx="12" ry="5" fill="#fff" /><path d="M4 10v11c0 3 5 5 12 5s12-2 12-5V10c0 3-5 5-12 5S4 13 4 10z" fill="#ffd9c2" /><path d="M9 15l3 9M16 16v10M23 15l-3 9" stroke="#ff5e7a" strokeWidth="2" /><path d="M22 2l-6 8M10 2l6 8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" /></svg> Bata palmas <output>{claps}</output></button>}
+    <div className="gm-big" role="radiogroup" aria-label="Alternativas">{it.options.map((o, i) => <button key={o.id} type="button" role="radio" aria-checked={sel === o.id} disabled={locked} className={`gm-opt ${sel === o.id ? 'sel' : ''}`} onClick={() => { setSel(o.id); speak(text(o)); }}>{it.figure?.type === 'pattern' && parseTokenName(o.text) ? <><ShapeSvg shape={parseTokenName(o.text)!.shape} color={parseTokenName(o.text)!.color} size={64} /><small>{text(o)}</small></> : <span>{text(o)}</span>}<span className="ax-speak sm" aria-hidden><ISpeaker size={18} /></span><small className="sr-only">opção {i + 1}</small></button>)}</div>
+    <GoBtn disabled={locked || !sel} onClick={() => sel && submit({ choice: sel })}>Pronto!</GoBtn></div>;
+}
+
+const BOARD: Record<string, (p: BoardProps<never>) => ReactNode> = { contagem: AudioBoard as never, sons: AudioBoard as never, formas: AudioBoard as never, pizzaria: PizzaBoard as never, mercado: MarketBoard as never, laboratorio: LabBoard as never, frases: SentenceBoard as never, detetive: DetectiveBoard as never, financas: FinancasBoard as never, escape: EscapeBoard as never, placar: PlacarBoard as never };
 
 /* ---------- Página do jogo ---------- */
 /** Recria a partida sempre que o jogo muda (evita estado preso do jogo anterior). */

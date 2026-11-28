@@ -3,6 +3,7 @@ import type { Item } from '@edu/content-math';
 import type { Response, Grade } from '@edu/learning';
 import { Btn, Badge } from '../ui';
 import { Axolotl, mascotForEvent } from '../ui/axolotl';
+import { ItemFigure, SpeakBtn, speechOf } from '../ui/figures';
 
 export function FractionBar({ num, den, onToggle, shaded }: { num?: number; den: number; onToggle?: (i: number) => void; shaded?: Set<number> }) {
   return <div className="row" style={{ gap: 0 }} role="img" aria-label={num !== undefined ? `Barra com ${num} de ${den} partes pintadas` : `Barra com ${den} partes`}>
@@ -61,8 +62,8 @@ export function ActivityPlayer({ item, onSubmit, hints = true, showResult = true
   return <div className="col">
     {item.context && <div className="card flat" style={{ background: 'var(--line)' }}>📖 {item.context}</div>}
     <div className="ax-coach" aria-live="polite"><Axolotl state={fb ? mascotForEvent(fb.grade.correct ? 'correct' : 'incorrect') : h > 0 ? mascotForEvent('hint') : mascotForEvent('waiting')} size={72} /><span>{fb ? (fb.grade.correct ? 'Isso! Você mandou bem!' : 'Quase! Cada tentativa ensina algo.') : h > 0 ? 'Aqui vai uma ajudinha.' : 'Pense no seu ritmo, sem pressa.'}</span></div>
-    <h2>{item.statement}</h2>
-    {item.figure?.type === 'fraction-bar' && <FractionBar num={item.figure.num} den={item.figure.den} />}
+    <div className="row" style={{ alignItems: 'center' }}><h2 className="grow">{item.statement}</h2><SpeakBtn text={speechOf(item as never)} label="Ouvir" /></div>
+    {item.figure?.type === 'fraction-bar' && <FractionBar num={item.figure.num} den={item.figure.den} />}<ItemFigure figure={item.figure} />
     {(item.kind === 'multiple_choice' || item.kind === 'word_problem' || item.kind === 'reasoning') && <MC item={item} disabled={dis} onChange={setResp} revealed={fb && showResult ? item.correct : undefined} />}
     {item.kind === 'fill_in' && <Fill item={item} {...common} />}{item.kind === 'ordering' && <Ordering item={item} {...common} />}{item.kind === 'matching' && <Matching item={item} {...common} />}
     {item.kind === 'drag_drop' && <DragDrop item={item} {...common} />}{item.kind === 'fraction_visual' && <FracVisual item={item} {...common} />}{item.kind === 'simulation' && <Sim item={item} {...common} />}

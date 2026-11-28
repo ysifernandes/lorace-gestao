@@ -20,6 +20,8 @@ function answer(it: Item, p: Profile): Response {
 }
 const T0 = 1_700_000_000_000;
 const mathIds = MATH_SKILLS.map((s) => s.id);
+/** Aluno simulado de 11 anos: o app limita o diagnóstico a habilidades com ageMin ≤ idade+1. */
+const ageTargets = MATH_SKILLS.filter((s) => s.ageMin <= 12).map((s) => s.id);
 
 describe('jornada completa de matemática (motor, sem UI)', () => {
   const sc: Scope = { skills: MATH_SKILLS, items: buildItemBank().filter((i) => mathIds.includes(i.skillId)) };
@@ -29,10 +31,10 @@ describe('jornada completa de matemática (motor, sem UI)', () => {
   it('1) diagnóstico adaptativo é curto, desce pelos pré-requisitos e não testa o que é inferível', () => {
     const asked: string[] = [];
     for (let i = 0; i < 40; i++) {
-      const n = nextDiagnosticItem(st, sc, { targets: mathIds, maxItems: 30 }); if (!n) break;
+      const n = nextDiagnosticItem(st, sc, { targets: ageTargets, maxItems: 30 }); if (!n) break;
       st = recordResponse(st, n.item, answer(n.item, slip), { hintsUsed: 0, at: tick(), phase: 'diagnostic' }).state; asked.push(n.skillId);
     }
-    expect(asked.length).toBeLessThanOrEqual(24);
+    expect(asked.length).toBeLessThanOrEqual(26);
     expect(asked.length).toBeGreaterThan(8);
     expect(new Set(asked).size).toBeLessThan(mathIds.length); // nem todas as habilidades foram testadas diretamente
     expect(asked.filter((s) => s === 'frac.add.diff').length).toBe(2);

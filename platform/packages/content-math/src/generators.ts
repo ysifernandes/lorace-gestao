@@ -1,5 +1,6 @@
 import { gcd, lcm, mulberry32, ri, shuffle } from './rng';
 import type { Item, MCOption, Figure, Review, SourceRef } from './types';
+import { makeEarlyGens, type McFn } from './early';
 
 const SRC: SourceRef = { kind: 'authored', reference: 'Item gerado deterministicamente pelo projeto; gabarito calculado por código', license: 'Autoral do projeto (licença final a definir)' };
 const REVIEW: Review = { status: 'draft', needsProfessionalReview: true, version: 1 };
@@ -9,7 +10,7 @@ const fr = (n: number, d: number) => `${n}/${d}`;
 type D = { text: string; tag?: string };
 
 function mc(skillId: string, n: number, statement: string, correct: string, distractors: D[], hints: string[], justification: string, rng: () => number,
-  extra: { kind?: 'multiple_choice' | 'word_problem' | 'reasoning'; context?: string; figure?: Figure } = {}): Item {
+  extra: { kind?: 'multiple_choice' | 'word_problem' | 'reasoning'; context?: string; figure?: Figure; spoken?: string } = {}): Item {
   const seen = new Set<string>([correct]); const ds: D[] = [];
   for (const d of distractors) if (!seen.has(d.text)) { seen.add(d.text); ds.push(d); }
   // preenchimento de distratores respeitando o formato da resposta (fração, "q resto r" ou número)
@@ -18,7 +19,7 @@ function mc(skillId: string, n: number, statement: string, correct: string, dist
   const opts = shuffle(rng, [{ text: correct, ok: true }, ...ds.slice(0, 3).map((d) => ({ ...d, ok: false }))]);
   const ids = ['a', 'b', 'c', 'd'];
   const options: MCOption[] = opts.map((o, i) => ({ id: ids[i]!, text: o.text, ...('tag' in o && o.tag ? { misconception: o.tag } : {}) }));
-  return { id: `${skillId}.${n}`, skillId, difficulty: LEVELS[n]!, kind: extra.kind ?? 'multiple_choice', statement, context: extra.context, figure: extra.figure,
+  return { id: `${skillId}.${n}`, skillId, difficulty: LEVELS[n]!, kind: extra.kind ?? 'multiple_choice', statement, context: extra.context, figure: extra.figure, ...(extra.spoken ? { spoken: extra.spoken } : {}),
     options, correct: ids[opts.findIndex((o) => o.ok)]!, hints, justification, source: SRC, review: { ...REVIEW } };
 }
 const base = (skillId: string, n: number) => ({ id: `${skillId}.${n}`, skillId, difficulty: LEVELS[n]!, source: SRC, review: { ...REVIEW } });
@@ -110,6 +111,15 @@ function handmade(): Item[] {
   items.push({ ...base('prob.multi', 6 - 1 + 0), id: 'prob.multi.reason1', difficulty: 0.55, kind: 'reasoning', statement: 'Ordene os passos para resolver: "Um pacote tem 6 balas. Compro 3 pacotes e dou 5 balas. Quantas ficam?"', options: [{ id: 'a', text: '6 × 3 = 18; depois 18 − 5 = 13' }, { id: 'b', text: '6 − 5 = 1; depois 1 × 3 = 3', misconception: 'wrong_order' }, { id: 'c', text: '6 × 3 = 18 (e pronto)', misconception: 'one_step_only' }, { id: 'd', text: '6 + 3 − 5 = 4' }], correct: 'a', hints: ['Quantas balas você tem depois de comprar tudo?'], justification: '18 balas; tirando 5, ficam 13' });
   return items;
 }
+
+/** mc estrito para o conteúdo novo: exige 3 distratores distintos (sem preenchimento numérico automático). */
+const emc: McFn = (skillId, n, statement, correct, distractors, hints, justification, rng, extra) => {
+  const distinct = new Set([correct, ...distractors.map((d) => d.text)]); if (distinct.size < 4) throw new Error(`${skillId}.${n}: distratores repetidos (${[...distinct].join(' | ')})`);
+  return mc(skillId, n, statement, correct, distractors, hints, justification, rng, extra);
+};
+Object.assign(GENS, makeEarlyGens(emc));
+/** Gera um item da habilidade (nível 0–5) com semente própria: usado pelos minigames para variar as rodadas. */
+export function makeItem(skillId: string, level: number, seed: number): Item { const g = GENS[skillId]; if (!g) throw new Error(`sem gerador: ${skillId}`); return g(level, mulberry32(seed)); }
 
 function portuguese(): Item[] {
   const T1 = 'A gata Luna dormia na janela, mas acordou com o barulho da chuva. Correu até a cozinha e ficou esperando o leite.';

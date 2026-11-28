@@ -24,6 +24,12 @@ export interface Skill {
 
 export type Figure =
   | { type: 'fraction-bar'; num: number; den: number }
+  /** Objetos para contar (faixa 5–7). icon: maca | estrela | bola | peixe */
+  | { type: 'count'; n: number; icon: 'maca' | 'estrela' | 'bola' | 'peixe' }
+  /** Forma geométrica plana. */
+  | { type: 'shape'; shape: 'circulo' | 'quadrado' | 'triangulo' | 'retangulo' }
+  /** Sequência de fichas "forma:cor"; '?' marca a ficha que falta. */
+  | { type: 'pattern'; seq: string[] }
   | { type: 'none' };
 
 export interface MCOption { id: string; text: string; misconception?: string }
@@ -31,6 +37,8 @@ export interface MCOption { id: string; text: string; misconception?: string }
 interface Base {
   id: string; skillId: string; difficulty: number; statement: string;
   context?: string; figure?: Figure;
+  /** Texto lido em voz alta (áudio-primeiro, faixa 5–7); se ausente, lê-se o enunciado. */
+  spoken?: string;
   hints: string[]; justification: string; source: SourceRef; review: Review;
 }
 export type Item = Base & (
